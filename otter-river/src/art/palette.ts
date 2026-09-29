@@ -32,6 +32,23 @@ export const PALETTE: Record<string, string> = {
   H: '#3a3552', // lens dark
   I: '#8c90c8', // lens shine
   A: '#c4f3ec', // water highlight
+  // shading ramp additions (v2)
+  b: '#91563d', // fur shade
+  h: '#c68a60', // fur highlight
+  l: '#e8c7a2', // belly shade
+  o: '#7a5260', // soft inner line
+  p: '#fbc7cf', // light blush
+  s: '#ffe8df', // shell light
+  x: '#3f8466', // pine dark
+  a: '#9ed8d4', // water mid
+  w: '#e9eef8', // near white
+  d: '#5a3526', // darkest wood
+  j: '#ffeeb0', // pale yellow
+  z: '#c3eba2', // light grass
+  q: '#b2e0f0', // pale blue
+  e: '#ffc9dd', // pale pink
+  i: '#e3d5f7', // pale lavender
+  n: '#a4a9bd', // stone shade
 };
 
 // World colors used for large fills (still from the same cozy family).

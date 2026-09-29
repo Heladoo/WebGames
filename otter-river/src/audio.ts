@@ -11,7 +11,10 @@ const CHORDS = [
   { pad: [41, 48, 57], tones: [72, 77, 81, 84] }, // F
   { pad: [43, 50, 59], tones: [74, 79, 83, 86] }, // G
 ];
-const PENTA = [72, 74, 76, 79, 81, 84, 86, 88, 91];
+// Two octaves of C major pentatonic for the collect melody.
+const PENTA = [67, 69, 72, 74, 76, 79, 81, 84, 86, 88];
+// Each full up-and-down walk moves to the next chord colour of the song.
+const WALK_SHIFT = [0, -3, 5, 2];
 
 interface ToneOpts {
   type?: OscillatorType;
@@ -94,6 +97,8 @@ export class AudioEngine {
     if (this.ctx?.state === 'suspended') void this.ctx.resume();
   }
 
+  private rainGain: GainNode | null = null;
+
   private startRiver() {
     const ctx = this.ctx!;
     const len = ctx.sampleRate * 3;
@@ -124,6 +129,22 @@ export class AudioEngine {
     g.connect(this.sfx);
     src.start();
     lfo.start();
+
+    // rain: brighter noise, silent until it rains
+    const rsrc = ctx.createBufferSource();
+    rsrc.buffer = buf;
+    rsrc.loop = true;
+    rsrc.playbackRate.value = 2.7;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'bandpass';
+    hp.frequency.value = 1800;
+    hp.Q.value = 0.4;
+    this.rainGain = ctx.createGain();
+    this.rainGain.gain.value = 0;
+    rsrc.connect(hp);
+    hp.connect(this.rainGain);
+    this.rainGain.connect(this.sfx);
+    rsrc.start();
   }
 
   private tone(freq: number, time: number, dur: number, o: ToneOpts = {}) {
@@ -167,13 +188,29 @@ export class AudioEngine {
     }
   }
 
+  /** Pitch for the n-th pickup of a streak: climbs, turns, descends, then shifts key. */
+  private walkNote(n: number) {
+    const period = (PENTA.length - 1) * 2;
+    const k = n % period;
+    const idx = k < PENTA.length ? k : period - k;
+    const shift = WALK_SHIFT[Math.floor(n / period) % WALK_SHIFT.length];
+    return PENTA[idx] + shift;
+  }
+
+  resetStreak() {
+    this.combo = -1;
+  }
+
   collect(value: number) {
     const ctx = this.ctx;
     if (!ctx) return;
     const t = ctx.currentTime;
-    this.combo = t - this.lastCollect < 1.4 ? this.combo + 1 : 0;
+    this.combo = t - this.lastCollect < 1.6 ? this.combo + 1 : 0;
     this.lastCollect = t;
-    const m = PENTA[Math.min(this.combo, PENTA.length - 1)];
+    const m = this.walkNote(this.combo);
+    if (this.combo > 0 && this.combo % 10 === 0) {
+      [0, 4, 7, 12].forEach((d, i) => this.tone(midi(m + d + 12), t + 0.12 + i * 0.07, 0.6, { gain: 0.035 }));
+    }
     this.tone(midi(m), t, 0.45, { type: 'triangle', gain: 0.09 });
     this.tone(midi(m + 12), t, 0.25, { gain: 0.03 });
     if (value >= 5) {
@@ -182,9 +219,26 @@ export class AudioEngine {
     }
   }
 
+  /** Soft "not yet" sound for a purchase you can't afford. */
+  deny() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    this.tone(midi(55), t, 0.25, { type: 'triangle', gain: 0.09 });
+    this.tone(midi(50), t + 0.13, 0.4, { type: 'triangle', gain: 0.09 });
+    this.bump();
+  }
+
+  /** Rain ambience (0..1). */
+  weather(rain: number) {
+    if (!this.ctx || !this.rainGain) return;
+    this.rainGain.gain.setTargetAtTime(rain * 0.1, this.ctx.currentTime, 0.8);
+  }
+
   bump() {
     const ctx = this.ctx;
     if (!ctx) return;
+    this.combo = -1;
     const t = ctx.currentTime;
     const osc = this.tone(260, t, 0.35, { gain: 0.1 });
     osc.frequency.setValueAtTime(260, t);

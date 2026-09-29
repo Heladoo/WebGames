@@ -1,8 +1,14 @@
 import { otterArt, PART } from './art/otter';
 import { AnchorName, itemById, ItemDef, Slot } from './art/items';
 import { draw } from './art/sprite';
+import { PALETTE } from './art/palette';
 
-export type Equipped = Partial<Record<Slot, string>>;
+export type Equipped = Partial<Record<Exclude<Slot, 'pet'>, string>>;
+
+export interface Outfit {
+  equipped: Equipped;
+  pets: string[];
+}
 
 export interface Pose {
   bob: number; // whole-otter float offset (px)
@@ -21,13 +27,16 @@ export function anchors(ox: number, oy: number, p: Pose): Record<AnchorName, [nu
   const hx = ox + p.lean;
   const hy = y + p.hb;
   return {
-    headTop: [hx, hy - 23],
-    eyes: [hx, hy - 18],
-    ears: [hx, hy - 24],
-    neck: [hx, hy - 10],
-    body: [ox - 11, y - 13],
-    pawR: [ox + 6, y - 8 + p.pawR],
-    belly: [ox, y - 1],
+    headTop: [hx, hy - 36],
+    eyes: [hx, hy - 28],
+    ears: [hx, hy - 30],
+    neck: [hx, hy - 16],
+    perch: [hx + 10, hy - 35],
+    body: [ox + PART.body.x, y + PART.body.y],
+    pawR: [ox + 8, y - 8 + p.pawR],
+    belly: [ox, y + 3],
+    lap: [ox, y + 14],
+    float: [ox, y + 3],
   };
 }
 
@@ -35,14 +44,20 @@ export function itemFrame(def: ItemDef, t: number) {
   return def.frames[Math.floor(t / def.frameTime) % def.frames.length];
 }
 
-/** Draws the otter puppet with its equipped items, layered by z. */
+/** Where a held balloon floats this frame (relative to the paw). */
+export function balloonPos(paw: [number, number], t: number): [number, number] {
+  return [paw[0] + 7 + Math.round(Math.sin(t * 0.8) * 2), paw[1] - 34 + Math.round(Math.sin(t * 1.1 + 1) * 1.5)];
+}
+
+/** Draws the otter puppet with its equipped items and riding friends, layered by z. */
 export function drawOtter(
   ctx: CanvasRenderingContext2D,
   ox: number,
   oy: number,
   p: Pose,
-  equipped: Equipped,
+  outfit: Outfit,
   t: number,
+  ghost?: ItemDef, // try-on preview drawn semi-transparent
 ) {
   const art = otterArt();
   const y = oy + p.bob;
@@ -76,12 +91,40 @@ export function drawOtter(
   ];
 
   const a = anchors(ox, oy, p);
-  for (const id of Object.values(equipped)) {
-    const def = itemById(id);
-    if (!def || (def.pet && def.pet !== 'ride')) continue;
+  const add = (def: ItemDef, alpha = 1) => {
     const [x, yy] = a[def.anchor];
-    layers.push({ z: def.z, fn: () => draw(ctx, itemFrame(def, t), x, yy) });
+    layers.push({
+      z: def.z,
+      fn: () => {
+        ctx.globalAlpha = alpha;
+        if (def.special === 'balloon') {
+          const [bx, by] = balloonPos(a.pawR, t);
+          ctx.fillStyle = PALETTE.M;
+          const steps = Math.abs(by - yy);
+          for (let i = 0; i <= steps; i++) {
+            const k = i / steps;
+            const sx = Math.round(x + (bx - x) * k + Math.sin(k * Math.PI * 2 + t * 2) * 1.2);
+            ctx.fillRect(sx, Math.round(yy + (by - yy) * k), 1, 1);
+          }
+          draw(ctx, itemFrame(def, t), bx, by);
+        } else {
+          draw(ctx, itemFrame(def, t), x, yy);
+        }
+        ctx.globalAlpha = 1;
+      },
+    });
+  };
+
+  for (const [slot, id] of Object.entries(outfit.equipped)) {
+    if (ghost && ghost.slot === slot) continue;
+    const def = itemById(id);
+    if (def) add(def);
   }
+  for (const id of outfit.pets) {
+    const def = itemById(id);
+    if (def?.pet === 'ride') add(def);
+  }
+  if (ghost && (ghost.slot !== 'pet' || ghost.pet === 'ride')) add(ghost, 0.6);
 
   layers.sort((l1, l2) => l1.z - l2.z);
   for (const l of layers) l.fn();

@@ -1,63 +1,61 @@
-import { items, ItemDef, itemById, Slot, SLOTS } from './art/items';
+import { items, ItemDef, Slot, SLOTS, itemById } from './art/items';
 import { spriteURL } from './art/sprite';
 import { worldArt } from './art/world';
-import { WORLD } from './art/palette';
-import { drawOtter, Equipped, IDLE_POSE, itemFrame, Pose } from './otterDraw';
+import { numberCanvas } from './numbers';
 import type { SaveData } from './state';
 
 interface ShopDeps {
   data: SaveData;
-  onBuy(item: ItemDef): void;
-  onEquip(item: ItemDef, on: boolean): void;
+  buy(item: ItemDef): boolean; // false when not affordable
+  toggle(item: ItemDef): void;
+  preview(item: ItemDef | null): void;
   click(): void;
+  seen(id: string): void;
 }
 
-const PREVIEW_W = 60;
-const PREVIEW_H = 72;
-
+/** The River Market: a dock that stays open while the otter keeps floating. */
 export class Shop {
   private tab: Slot = 'hat';
   private selected: string | null = null;
   private tabsEl = document.getElementById('shop-tabs')!;
   private gridEl = document.getElementById('shop-grid')!;
-  private nameEl = document.getElementById('preview-name')!;
+  private nameEl = document.getElementById('sel-name')!;
   private actionEl = document.getElementById('shop-action') as HTMLButtonElement;
-  private canvas = document.getElementById('preview') as HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
   private icons = new Map<string, string>();
   private shellURL: string;
+  private lockURL: string;
+  private denyTimer = 0;
 
   constructor(private deps: ShopDeps) {
-    this.canvas.width = PREVIEW_W;
-    this.canvas.height = PREVIEW_H;
-    this.ctx = this.canvas.getContext('2d')!;
-    this.shellURL = spriteURL(worldArt().shell, 4);
-    for (const it of items()) this.icons.set(it.id, spriteURL(it.frames[0], 4));
+    const art = worldArt();
+    this.shellURL = spriteURL(art.shell, 2);
+    this.lockURL = spriteURL(art.icons.lock, 3);
+    for (const it of items()) this.icons.set(it.id, spriteURL(it.frames[0], 3));
 
     for (const s of SLOTS) {
       const b = document.createElement('button');
       b.className = 'tab';
-      b.textContent = s.label;
       b.dataset.slot = s.id;
+      b.title = s.label;
+      b.setAttribute('aria-label', s.label);
+      b.innerHTML = `<img src="${spriteURL(art.icons[s.id], 3)}" alt="" /><span class="dot"></span>`;
       b.addEventListener('click', () => {
         this.deps.click();
         this.tab = s.id;
-        this.selected = null;
+        this.select(null);
+        document.getElementById('dock')!.classList.remove('collapsed');
         this.render();
       });
       this.tabsEl.appendChild(b);
     }
-
     this.actionEl.addEventListener('click', () => this.act());
   }
 
-  open() {
-    const firstAffordable = items().find((i) => !this.deps.data.owned.includes(i.id) && i.price <= this.deps.data.shells);
-    if (firstAffordable) {
-      this.tab = firstAffordable.slot;
-      this.selected = firstAffordable.id;
-    }
-    this.render();
+  private select(id: string | null) {
+    this.selected = id;
+    const it = itemById(id ?? undefined);
+    const owned = it && this.deps.data.owned.includes(it.id);
+    this.deps.preview(it && !owned ? it : null);
   }
 
   private act() {
@@ -65,38 +63,97 @@ export class Shop {
     if (!it) return;
     const d = this.deps.data;
     if (!d.owned.includes(it.id)) {
-      if (d.shells < it.price) return;
-      this.deps.onBuy(it);
+      if (!this.deps.buy(it)) {
+        this.deny(it.price - d.shells);
+        return;
+      }
+      this.select(it.id);
     } else {
-      this.deps.onEquip(it, d.equipped[it.slot] !== it.id);
+      this.deps.toggle(it);
     }
     this.render();
   }
 
+  private deny(short: number) {
+    const a = this.actionEl;
+    a.classList.remove('shake');
+    void a.offsetWidth; // restart the animation
+    a.classList.add('shake');
+    a.innerHTML = '';
+    a.append('Need ', numberCanvas(short, 2), ' more');
+    document.querySelectorAll('.wallet').forEach((w) => {
+      w.classList.remove('flash');
+      void (w as HTMLElement).offsetWidth;
+      w.classList.add('flash');
+    });
+    clearTimeout(this.denyTimer);
+    this.denyTimer = window.setTimeout(() => this.render(), 1600);
+  }
+
+  private isOn(it: ItemDef) {
+    const d = this.deps.data;
+    return it.slot === 'pet' ? d.pets.includes(it.id) : d.equipped[it.slot] === it.id;
+  }
+
   render() {
     const d = this.deps.data;
+    const fresh = new Set(d.fresh);
     for (const b of Array.from(this.tabsEl.children) as HTMLElement[]) {
       b.classList.toggle('active', b.dataset.slot === this.tab);
+      b.classList.toggle('has-new', items().some((i) => i.slot === b.dataset.slot && fresh.has(i.id)));
     }
+
     this.gridEl.innerHTML = '';
     for (const it of items().filter((i) => i.slot === this.tab)) {
+      const locked = it.unlockAt > d.total;
       const owned = d.owned.includes(it.id);
-      const wearing = d.equipped[it.slot] === it.id;
+      const on = this.isOn(it);
       const card = document.createElement('button');
       card.className = 'card';
       card.classList.toggle('selected', this.selected === it.id);
-      card.classList.toggle('wearing', wearing);
-      const priceHTML = owned
-        ? `<span class="price owned">${wearing ? 'Wearing' : 'Owned'}</span>`
-        : `<span class="price ${d.shells < it.price ? 'short' : ''}"><img src="${this.shellURL}" alt="" />${it.price}</span>`;
-      card.innerHTML = `<span class="icon"><img src="${this.icons.get(it.id)}" alt="" /></span><span class="name">${it.name}</span>${priceHTML}`;
+      card.classList.toggle('wearing', on);
+      card.classList.toggle('locked', locked);
+      const icon = document.createElement('span');
+      icon.className = 'icon';
+      icon.innerHTML = `<img src="${this.icons.get(it.id)}" alt="" />`;
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = locked ? '???' : it.name;
+      const price = document.createElement('span');
+      price.className = 'price';
+      if (locked) {
+        price.classList.add('lock');
+        price.append(Object.assign(document.createElement('img'), { src: this.lockURL, alt: '' }), numberCanvas(it.unlockAt, 2));
+        card.title = `Unlocks after collecting ${it.unlockAt} shells in total`;
+      } else if (owned) {
+        price.classList.add('owned');
+        price.textContent = on ? (it.slot === 'pet' ? 'With you' : 'Wearing') : 'Owned';
+      } else {
+        if (d.shells < it.price) price.classList.add('short');
+        price.append(Object.assign(document.createElement('img'), { src: this.shellURL, alt: '' }), numberCanvas(it.price, 2));
+      }
+      card.append(icon, name, price);
+      if (fresh.has(it.id) && !locked) {
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = 'NEW';
+        card.append(badge);
+      }
       card.addEventListener('click', () => {
         this.deps.click();
-        if (this.selected === it.id && owned) {
-          this.act();
+        if (fresh.has(it.id)) this.deps.seen(it.id);
+        if (locked) {
+          this.select(null);
+          this.render();
+          this.nameEl.textContent = 'Keep collecting to unlock!';
           return;
         }
-        this.selected = it.id;
+        if (owned) {
+          this.select(it.id);
+          this.deps.toggle(it);
+        } else {
+          this.select(this.selected === it.id ? null : it.id);
+        }
         this.render();
       });
       this.gridEl.appendChild(card);
@@ -104,61 +161,21 @@ export class Shop {
 
     const sel = itemById(this.selected ?? undefined);
     const a = this.actionEl;
-    a.classList.remove('buy', 'off');
+    a.classList.remove('buy', 'off', 'shake', 'hidden');
+    a.disabled = false;
     if (!sel) {
-      this.nameEl.textContent = 'Pick something nice';
-      a.textContent = 'Choose an item';
-      a.disabled = true;
+      this.nameEl.textContent = 'Tap an item to try it on. Owned items switch on and off instantly.';
+      a.classList.add('hidden');
     } else if (!d.owned.includes(sel.id)) {
-      this.nameEl.textContent = sel.name;
-      const short = sel.price - d.shells;
-      a.disabled = short > 0;
-      a.textContent = short > 0 ? `Need ${short} more` : `Buy for ${sel.price}`;
+      this.nameEl.textContent = `Trying on: ${sel.name}`;
+      a.innerHTML = '';
+      a.append('Buy ', Object.assign(document.createElement('img'), { src: this.shellURL, alt: 'shells' }), numberCanvas(sel.price, 2));
       a.classList.add('buy');
     } else {
+      const on = this.isOn(sel);
       this.nameEl.textContent = sel.name;
-      const wearing = d.equipped[sel.slot] === sel.id;
-      a.disabled = false;
-      a.textContent = wearing ? 'Take off' : sel.slot === 'pet' ? 'Bring along' : 'Wear';
-      if (wearing) a.classList.add('off');
-    }
-  }
-
-  /** Animated try-on preview, called every frame while the shop is open. */
-  draw(t: number) {
-    const ctx = this.ctx;
-    ctx.fillStyle = WORLD.water;
-    ctx.fillRect(0, 0, PREVIEW_W, PREVIEW_H);
-    ctx.fillStyle = WORLD.waterLight;
-    for (let i = 0; i < 7; i++) {
-      const y = (i * 11 + Math.floor(t * 6)) % PREVIEW_H;
-      ctx.fillRect((i * 17) % (PREVIEW_W - 6), y, 3 + (i % 3), 1);
-    }
-
-    const eq: Equipped = { ...this.deps.data.equipped };
-    const sel = itemById(this.selected ?? undefined);
-    if (sel) eq[sel.slot] = sel.id;
-
-    const breath = Math.sin((t * Math.PI * 2) / 2.8);
-    const pose: Pose = {
-      ...IDLE_POSE,
-      bob: Math.round(Math.sin((t * Math.PI * 2) / 3.4) * 1.2),
-      hb: breath > 0.35 ? 1 : 0,
-      pawL: breath < -0.35 ? -1 : 0,
-      pawR: breath < -0.35 ? -1 : 0,
-      tail: Math.round(Math.sin((t * Math.PI * 2) / 2.2)),
-      eyes: t % 4 < 0.14 ? 'closed' : 'open',
-    };
-    const ox = 28;
-    const oy = 52;
-    drawOtter(ctx, ox, oy, pose, eq, t);
-    const pet = itemById(eq.pet);
-    if (pet?.pet === 'follow') {
-      const f = itemFrame(pet, t);
-      ctx.drawImage(f.canvas, 49 - f.px, 62 - f.py + Math.round(Math.sin(t * 2.4)));
-    } else if (pet?.pet === 'fly') {
-      const f = itemFrame(pet, t);
-      ctx.drawImage(f.canvas, ox + Math.round(Math.sin(t * 0.9) * 16) - f.px, 18 + Math.round(Math.sin(t * 1.7) * 4) - f.py);
+      a.textContent = on ? (sel.slot === 'pet' ? 'Send home' : 'Take off') : sel.slot === 'pet' ? 'Bring along' : 'Wear';
+      if (on) a.classList.add('off');
     }
   }
 }

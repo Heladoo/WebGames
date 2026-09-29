@@ -114,3 +114,17 @@ export function spriteURL(s: Sprite, scale = 4): string {
   ctx.drawImage(s.canvas, 0, 0, c.width, c.height);
   return c.toDataURL();
 }
+
+/** Draws a sprite mirrored horizontally around its pivot. */
+export function drawFlip(ctx: CanvasRenderingContext2D, s: Sprite, x: number, y: number) {
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y) - s.py);
+  ctx.scale(-1, 1);
+  ctx.drawImage(s.canvas, -s.px - 1, 0);
+  ctx.restore();
+}
+
+/** Draws a sprite at an integer multiple of its size (for chunky readable numbers). */
+export function drawScaled(ctx: CanvasRenderingContext2D, s: Sprite, x: number, y: number, k: number) {
+  ctx.drawImage(s.canvas, Math.round(x) - s.px * k, Math.round(y) - s.py * k, s.w * k, s.h * k);
+}
