@@ -17,7 +17,7 @@ export interface ItemDef {
   frames: Sprite[];
   frameTime: number;
   pet?: PetMode;
-  special?: 'balloon' | 'bubbles';
+  special?: 'balloon' | 'bubbles' | 'lantern';
 }
 
 export const SLOTS: { id: Slot; label: string }[] = [
@@ -153,8 +153,8 @@ function pirateHat(): Grid {
 // ---------- Eyewear ----------
 function sunglasses(): Grid {
   const g = grid(30, 8);
-  for (const x0 of [1, 19]) ellipse(g, x0, 0, 10, 8, { fill: 'H', shade: 'H', power: 3 });
-  for (const x0 of [3, 21]) { put(g, x0, 2, 'I'); put(g, x0 + 1, 2, 'I'); put(g, x0, 3, 'I'); }
+  for (const x0 of [1, 19]) ellipse(g, x0, 0, 10, 8, { fill: 'Q', power: 3 });
+  for (const x0 of [3, 21]) { put(g, x0, 2, 'W'); put(g, x0 + 1, 2, 'W'); put(g, x0, 3, 'W'); }
   for (let x = 10; x < 20; x++) put(g, x, 2, 'O');
   put(g, 0, 2, 'O'); put(g, 29, 2, 'O');
   return done(g);
@@ -171,24 +171,24 @@ function roundSpecs(): Grid {
   return done(g);
 }
 
-function heartShape(g: Pix, x0: number, y0: number, w: number, h: number, fill: string, shade: string) {
+function heartShape(g: Pix, x0: number, y0: number, w: number, h: number, fill: string, outline: string) {
   shape(g, x0, y0, w, h, (x, y) => {
     const nx = (x + 0.5 - w / 2) / (w / 2) * 1.25;
     const ny = -((y + 0.5) / h * 2.4 - 1.3);
     return (nx * nx + ny * ny - 1) ** 3 - nx * nx * ny ** 3 <= 0;
-  }, { fill, shade });
+  }, { fill, outline });
 }
 
 function heartShades(): Grid {
   const g = grid(32, 10);
-  heartShape(g, 0, 0, 12, 10, 'K', 'k');
-  heartShape(g, 20, 0, 12, 10, 'K', 'k');
+  heartShape(g, 0, 0, 12, 10, 'J', 'k');
+  heartShape(g, 20, 0, 12, 10, 'J', 'k');
   put(g, 3, 2, 'W'); put(g, 23, 2, 'W');
   for (let x = 11; x < 21; x++) put(g, x, 3, 'k');
   return done(g);
 }
 
-function starShape(g: Pix, x0: number, y0: number, s: number, fill: string, shade: string) {
+function starShape(g: Pix, x0: number, y0: number, s: number, fill: string, outline: string) {
   shape(g, x0, y0, s, s, (x, y) => {
     const dx = x + 0.5 - s / 2;
     const dy = y + 0.5 - s / 2 - 0.4;
@@ -196,13 +196,13 @@ function starShape(g: Pix, x0: number, y0: number, s: number, fill: string, shad
     const r = Math.hypot(dx, dy) / (s / 2);
     const k = Math.cos((a * 5) % (Math.PI * 2) / 1) ;
     return r <= 0.55 + 0.45 * ((k + 1) / 2) ** 2;
-  }, { fill, shade });
+  }, { fill, outline });
 }
 
 function starGlasses(): Grid {
   const g = grid(32, 12);
-  starShape(g, 0, 0, 12, 'Y', 'y');
-  starShape(g, 20, 0, 12, 'Y', 'y');
+  starShape(g, 0, 0, 12, 'X', 'y');
+  starShape(g, 20, 0, 12, 'X', 'y');
   put(g, 5, 4, 'W'); put(g, 25, 4, 'W');
   for (let x = 11; x < 21; x++) put(g, x, 5, 'O');
   return done(g);
@@ -215,8 +215,8 @@ function snorkel(): Grid {
   for (let y = 0; y < 20; y++) { put(g, 30, y, 'O'); put(g, 34, y, 'O'); if (y % 4 === 0) put(g, 32, y, 'y'); }
   rect(g, 30, 0, 5, 2, 'F'); put(g, 30, 0, 'O'); put(g, 34, 0, 'O');
   // mask
-  ellipse(g, 3, 16, 28, 10, { fill: 'q', shade: 'U', power: 3.2 });
-  ellipse(g, 5, 18, 24, 6, { fill: 'q', light: 'W', outline: null, power: 3 });
+  ellipse(g, 3, 16, 28, 10, { fill: 'Z', outline: 'u', power: 3.2 });
+  put(g, 7, 18, 'W'); put(g, 8, 18, 'W'); put(g, 7, 19, 'W');
   rect(g, 0, 20, 3, 2, 'T'); rect(g, 31, 20, 5, 2, 'T');
   return done(g);
 }
@@ -515,6 +515,88 @@ function bee(up: boolean): Grid {
   return done(g);
 }
 
+// ---------- Premium items (v3) ----------
+function sailorCap(): Grid {
+  const g = grid(30, 14);
+  ellipse(g, 3, 0, 24, 10, { fill: 'W', shade: 'M', light: 'W', power: 2.4 });
+  rect(g, 4, 8, 22, 4, 'u');
+  for (let x = 4; x < 26; x++) { put(g, x, 8, 'O'); put(g, x, 12, 'O'); if (x % 4 === 0) put(g, x, 10, 'U'); }
+  put(g, 3, 9, 'O'); put(g, 3, 10, 'O'); put(g, 3, 11, 'O'); put(g, 26, 9, 'O'); put(g, 26, 10, 'O'); put(g, 26, 11, 'O');
+  // little golden anchor
+  stampRows(g, ['.Y.', 'YYY', '.Y.', 'YYY'], 13, 2);
+  put(g, 12, 5, 'Y'); put(g, 16, 5, 'Y');
+  // ribbons
+  stampRows(g, ['uu', 'u.', 'uu'], 26, 11);
+  return done(g);
+}
+
+function tiara(): Grid {
+  const g = grid(26, 12);
+  for (let x = 1; x < 25; x++) {
+    const y = 8 + Math.round(((x - 12.5) / 12) ** 2 * 3);
+    put(g, x, y, 'M'); put(g, x, y + 1, 'm');
+  }
+  shape(g, 5, 0, 16, 9, (x, y) => {
+    const peaks = [[2, 4], [8, 0], [14, 4]];
+    return peaks.some(([cx, top]) => y >= top && Math.abs(x - cx) <= (y - top) * 0.7 + 0.5);
+  }, { fill: 'M', shade: 'n', light: 'W' });
+  ellipse(g, 11, 3, 5, 5, { fill: 'K', shade: 'k', light: 'e' });
+  put(g, 7, 6, 'U'); put(g, 19, 6, 'U');
+  put(g, 13, 0, 'W'); put(g, 12, 1, 'W'); put(g, 14, 1, 'W');
+  return done(g);
+}
+
+function paperLantern(): Grid {
+  const g = grid(13, 26);
+  line(g, 6, 25, 6, 13, 'y');
+  ellipse(g, 0, 2, 13, 12, { fill: 'R', shade: 'r', light: 'F' });
+  for (const y of [5, 8, 11]) for (let x = 1; x < 12; x++) if (g[y][x] !== 'O' && g[y][x] !== '.') put(g, x, y, 'r');
+  rect(g, 3, 0, 7, 2, 'd'); rect(g, 3, 13, 7, 2, 'd');
+  put(g, 6, 15, 'Y'); put(g, 6, 16, 'Y');
+  put(g, 3, 5, 'j'); put(g, 3, 6, 'j');
+  return done(g);
+}
+
+const GOLDEN = () => suit(18, 29, (x, y) => {
+  const m = (x + (Math.floor(y / 2) % 2) * 2) % 4;
+  return m === 0 ? ['y', 'f'] : m === 1 ? ['j', 'Y'] : ['Y', 'y'];
+}, 'y');
+
+function swanFloat(): Grid {
+  const g = grid(52, 56);
+  ellipse(g, 0, 4, 52, 40, { fill: 'W', shade: 'M', light: 'W', lightAt: 0.4 });
+  shape(g, 11, 12, 30, 24, (x, y) => ((x + 0.5 - 15) / 15) ** 2 + ((y + 0.5 - 12) / 12) ** 2 <= 1, { fill: '.', outline: 'O' });
+  // wing feathers along the sides
+  for (const side of [0, 1]) for (let i = 0; i < 4; i++) {
+    const x = side ? 44 - i : 3 + i;
+    for (let y = 16 + i * 3; y < 20 + i * 3; y++) put(g, x, y, 'M');
+  }
+  // neck + head rising at the foot end
+  ellipse(g, 21, 38, 10, 14, { fill: 'W', shade: 'M' });
+  ellipse(g, 19, 44, 14, 11, { fill: 'W', shade: 'M', light: 'W' });
+  stampRows(g, ['OFFO', 'OfFO', '.OO.'], 24, 51);
+  put(g, 21, 47, 'E'); put(g, 30, 47, 'E'); put(g, 21, 46, 'W'); put(g, 30, 46, 'W');
+  put(g, 20, 49, 'P'); put(g, 31, 49, 'P');
+  ellipse(g, 22, 0, 8, 7, { fill: 'K', shade: 'k' });
+  return done(g);
+}
+
+function kittenCup(): Grid {
+  const g = grid(20, 20);
+  // teacup
+  shape(g, 1, 9, 17, 10, (x, y) => ((x + 0.5 - 8.5) / 8.5) ** 2 + ((y + 0.5) / 10) ** 2 <= 1, { fill: 'W', shade: 'q', light: 'W' });
+  ellipse(g, 15, 11, 5, 6, { fill: '.', outline: 'O' });
+  for (let x = 3; x < 16; x += 3) put(g, x, 13, 'K');
+  // kitten peeking out
+  ellipse(g, 3, 1, 13, 10, { fill: 'F', shade: 'f', light: 'j' });
+  shape(g, 3, 0, 4, 4, (x, y) => x <= y, { fill: 'F', shade: 'f' });
+  shape(g, 12, 0, 4, 4, (x, y) => 3 - x <= y, { fill: 'F', shade: 'f' });
+  put(g, 6, 5, 'E'); put(g, 12, 5, 'E'); put(g, 6, 4, 'W'); put(g, 12, 4, 'W');
+  put(g, 9, 6, 'N'); put(g, 5, 7, 'P'); put(g, 13, 7, 'P');
+  for (let x = 2; x < 17; x++) put(g, x, 9, 'O');
+  return done(g);
+}
+
 function item(
   id: string, name: string, slot: Slot, price: number, unlockAt: number,
   anchor: AnchorName, z: number, grids: Grid[], pivot: [number, number],
@@ -587,6 +669,14 @@ export function items(): ItemDef[] {
     item('snail', 'Snail', 'pet', 200, 800, 'belly', 0, [snail()], [8, 7], { pet: 'follow' }),
     item('bee', 'Bumblebee', 'pet', 260, 800, 'headTop', 0, [bee(true), bee(false)], [6, 5], { pet: 'fly', frameTime: 0.12 }),
     item('baby-otter', 'Baby Otter', 'pet', 350, 0, 'belly', 0, [babyOtter()], [9, 12], { pet: 'follow' }),
+
+    // premium (v3)
+    item('sailor-cap', 'Sailor Cap', 'hat', 480, 1500, 'headTop', Z.hat, [sailorCap()], [15, 11]),
+    item('tiara', 'Sparkle Tiara', 'hat', 560, 1500, 'headTop', Z.hat, [tiara()], [13, 9]),
+    item('paper-lantern', 'Paper Lantern', 'held', 620, 3000, 'pawR', Z.held, [paperLantern()], [6, 23], { special: 'lantern' }),
+    item('suit-golden', 'Golden Scales', 'suit', 680, 3000, 'body', Z.suit, [GOLDEN()], [0, 0]),
+    item('float-swan', 'Swan Float', 'float', 750, 3000, 'float', Z.float, [swanFloat()], [26, 26]),
+    item('kitten', 'Teacup Kitten', 'pet', 800, 3000, 'belly', 0, [kittenCup()], [10, 10], { pet: 'follow' }),
   ];
   return catalog;
 }

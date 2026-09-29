@@ -14,6 +14,7 @@ export interface SaveData {
   equipped: Equipped;
   pets: string[]; // friends that come along (several at once)
   fresh: string[]; // newly unlocked items not yet looked at ("NEW" badges)
+  announced: string[] | null; // items already announced with a NEW banner (null = old save, seed it)
   dockOpen: boolean;
   settings: Settings;
 }
@@ -28,6 +29,7 @@ export function defaults(): SaveData {
     equipped: {},
     pets: [],
     fresh: [],
+    announced: [],
     dockOpen: true,
     settings: { muted: false, music: true, sfx: true, volume: 0.7 },
   };
@@ -55,6 +57,7 @@ export function load(): SaveData {
       equipped: equipped as Equipped,
       pets,
       fresh: strings(s.fresh),
+      announced: Array.isArray(s.announced) ? strings(s.announced) : null,
       dockOpen: typeof s.dockOpen === 'boolean' ? s.dockOpen : true,
       settings: { ...d.settings, ...(s.settings ?? {}) },
     };

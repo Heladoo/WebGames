@@ -1,6 +1,6 @@
 import { worldArt } from './art/world';
 import { itemById, ItemDef } from './art/items';
-import { draw, Sprite } from './art/sprite';
+import { draw, drawFlip, Sprite } from './art/sprite';
 import { WORLD } from './art/palette';
 import { anchors, drawOtter, itemFrame, Outfit, Pose } from './otterDraw';
 import { River, hash, Biome, DecorKind } from './river';
@@ -22,6 +22,22 @@ interface Bubble { x: number; y: number; vx: number; life: number }
 interface Drop { x: number; y: number }
 interface Ripple { x: number; y: number; life: number }
 interface Fall { x: number; y: number; vx: number; vy: number; phase: number; kind: 'petal' | 'leaf'; tint: number }
+
+/** A tiny description of a moment, enough to re-render it as a postcard anywhere. */
+export interface Recipe {
+  d: number; // river distance
+  x: number; // otter x
+  w: number; // view size
+  h: number;
+  oy: number;
+  p: number; // day phase
+  r: number; // rain 0/1
+  e: Record<string, string>;
+  pets: string[];
+  a?: unknown; // passing animal snapshot
+  c?: string; // caption
+  at?: number; // timestamp
+}
 
 export interface GameEvents {
   collect(value: number): void;
@@ -79,7 +95,14 @@ export class Game {
   private ripples: Ripple[] = [];
   private falls: Fall[] = [];
   private lanterns: [number, number][] = [];
+  still = false; // postcard mode: nothing moves or spawns
+  damNear = 0;
   private spawnIn = 1;
+  private lastTrail = -1;
+  beaver = { u: 0.5, dir: 1, state: 'walk' as 'walk' | 'chew' | 'slap', timer: 3, side: -1 };
+  private photoCooldown = 20;
+  private seenNight = false;
+  private seenSunset = false;
   private logIn = 12;
   private rockIn = 5;
   private padIn = 2;
@@ -87,9 +110,9 @@ export class Game {
   private streamIn = 25;
   private bubbleIn = 0;
   rain = 0;
-  private rainTarget = 0;
+  rainTarget = 0;
   private rainIn = rand(120, 200);
-  private rainFor = 0;
+  rainFor = 0;
 
   constructor(private events: GameEvents) {
     for (let i = 0; i < 20; i++) {
@@ -97,8 +120,10 @@ export class Game {
     }
   }
 
+  /** Screen row of the otter; main.ts pins it so opening the drawer doesn't move it. */
+  fixedOtterY: number | null = null;
   get otterY() {
-    return Math.round(this.vh * 0.64);
+    return this.fixedOtterY ?? Math.round(this.vh * 0.64);
   }
 
   private get D() {
@@ -128,7 +153,7 @@ export class Game {
   // ---------- Update ----------
   update(dt: number) {
     this.t += dt;
-    this.dist += this.speed * dt;
+    if (!this.still) this.dist += this.speed * dt;
     const D = this.D;
     const o = this.otter;
     const oy = this.otterY;
@@ -149,7 +174,7 @@ export class Game {
     o.targetX = clamp(o.targetX, free.lo, free.hi);
     const prev = o.x;
     o.x += (o.targetX - o.x) * (1 - Math.exp(-dt * 4.5));
-    if (o.x < free.lo || o.x > free.hi) o.x += (clamp(o.x, free.lo, free.hi) - o.x) * (1 - Math.exp(-dt * 10));
+    o.x = clamp(o.x, free.lo, free.hi);
 
     this.resolveRocks(D);
     o.vx = (o.x - prev) / Math.max(dt, 1e-4);
@@ -160,11 +185,18 @@ export class Game {
     o.happyT = Math.max(0, o.happyT - dt);
     o.bumpT = Math.max(0, o.bumpT - dt);
 
+    this.updateBeaver(dt);
+    this.photoCooldown -= dt;
     this.updateFollowers(dt);
     this.updateWeather(dt);
-    if (this.playing) this.spawn(dt, D);
+    if (this.playing && !this.still) this.spawn(dt, D);
     this.updateThings(dt, D, o.x, oy);
-    this.fauna.update(dt, this.river, D, this.vw, this.vh, oy);
+    if (!this.still) this.fauna.update(dt, this.river, D, this.vw, this.vh, oy);
+    // how close the next dam is (for the rushing-water sound)
+    this.damNear = 0;
+    for (let k = 0; k < 320; k += 16) {
+      if (this.river.dam(owy - k)) { this.damNear = 1 - k / 320; break; }
+    }
   }
 
   private resolveRocks(D: number) {
@@ -267,7 +299,15 @@ export class Game {
   }
 
   private hasIslandNear(wy: number) {
-    return [-60, -30, 0, 30, 60].some((d) => this.river.channels(wy + d).length > 1);
+    return this.river.featureNear(wy);
+  }
+
+  /** A pickup x that the otter can actually reach at row wy. */
+  private reachableX(ch: { l: number; r: number }, wy: number) {
+    const f = this.river.freeRange((ch.l + ch.r) / 2, wy - 20, wy + 20, 15);
+    const lo = Math.max(ch.l + 12, f.lo - 8);
+    const hi = Math.min(ch.r - 12, f.hi + 8);
+    return hi > lo ? rand(lo, hi) : (ch.l + ch.r) / 2;
   }
 
   private spawn(dt: number, D: number) {
@@ -281,12 +321,22 @@ export class Game {
       const ch = pickChannel();
       const roll = Math.random();
       const kind: PickupKind = roll < 0.04 ? 'pearl' : roll < 0.12 ? 'gold' : roll < 0.3 ? 'fish' : 'shell';
-      const x = rand(ch.l + 14, ch.r - 14);
+      const x = this.reachableX(ch, wy);
       if (!this.rocks.some((r) => Math.abs(r.x - x) < 22 && Math.abs(r.wy - wy) < 20)) this.pickups.push({ kind, x, wy, phase: rand(0, 6.28) });
     }
 
+    // a trail of shells through a beaver dam's gap
+    const dam = this.river.dam(wy);
+    if (dam && dam.pos > 30 && Math.floor(dam.pos) % 26 === 0 && this.lastTrail !== Math.floor(dam.pos)) {
+      this.lastTrail = Math.floor(dam.pos);
+      const gc = (dam.gapL + dam.gapR) / 2;
+      const ch = chs[0];
+      const x = dam.f > 0.6 ? gc : (ch.l + ch.r) / 2 + (gc - (ch.l + ch.r) / 2) * dam.f;
+      this.pickups.push({ kind: dam.crest ? 'gold' : 'shell', x, wy, phase: dam.pos });
+    }
+
     this.streamIn -= dt;
-    if (this.streamIn <= 0 && chs.length === 1) {
+    if (this.streamIn <= 0 && chs.length === 1 && !this.river.featureNear(wy, 200)) {
       this.streamIn = rand(22, 36);
       const ch = chs[0];
       const cx = (ch.l + ch.r) / 2;
@@ -460,6 +510,8 @@ export class Game {
       pawL: moving && o.vx > 0 ? -paddle * 2 : breath < -0.35 ? -1 : 0,
       pawR: moving && o.vx < 0 ? -paddle * 2 : breath < -0.35 ? -1 : 0,
       tail: rm ? 0 : Math.round(Math.sin((t * Math.PI * 2) / 2.2) * 1.4),
+      footL: rm ? 0 : Math.round(Math.sin(t * (moving ? 9 : 2.6)) * 1.2),
+      footR: rm ? 0 : Math.round(Math.sin(t * (moving ? 9 : 2.6) + Math.PI) * 1.2),
       eyes: o.bumpT > 0 || o.blinkT > 0 ? 'closed' : o.happyT > 0 ? 'happy' : 'open',
     };
   }
@@ -523,6 +575,7 @@ export class Game {
       for (const tw of this.twinkles) ctx.fillRect(Math.round(tw.x) + 3, Math.round(tw.y) + 2, 2, 1);
     }
     this.fauna.renderLow(ctx, D);
+    this.renderBeaver(ctx, D);
     for (const r of this.rocks) {
       const y = r.wy + D;
       const [rx, ry] = ROCK_R[r.size];
@@ -614,6 +667,10 @@ export class Game {
     }
     if (sky.night > 0.02) {
       for (const [lx, ly] of this.lanterns) this.glow(ctx, lx, ly, sky.night, '#ffe3a0', 9);
+      if (itemById(this.outfit.equipped.held)?.special === 'lantern') {
+        const [px, py] = anchors(ox, oy, pose).pawR;
+        this.glow(ctx, px, py - 16, Math.max(0.5, sky.night), '#ffcf8a', 14);
+      }
       for (const f of this.fireflies) {
         const g = sky.night * (0.5 + 0.5 * Math.sin(t * 2 + f.phase * 3));
         if (g < 0.1) continue;
@@ -642,10 +699,11 @@ export class Game {
     const { vw, vh, t } = this;
     for (let y = 0; y < vh; y++) {
       const wy = y - D;
-      const chs = this.river.channels(wy);
+      const chs = this.river.water(wy);
       const biome = this.river.biome(wy);
       const h = hash(wy);
       const sand = biome.sand;
+      const dam = this.river.dam(wy);
 
       for (const ch of chs) {
         const w = ch.r - ch.l;
@@ -672,6 +730,41 @@ export class Game {
       this.bankRow(ctx, y, 0, L, biome, sand, h, 'right');
       this.bankRow(ctx, y, R, vw, biome, sand, h >>> 3, 'left');
       if (chs.length > 1) this.bankRow(ctx, y, chs[0].r, chs[1].l, biome, 3, h >>> 5, 'both');
+      if (dam) this.damRow(ctx, y, wy, L, R, dam);
+    }
+  }
+
+  /** One row of a beaver dam: stick walls outside the navigable funnel. */
+  private damRow(ctx: CanvasRenderingContext2D, y: number, wy: number, L: number, R: number, dam: NonNullable<ReturnType<River['dam']>>) {
+    const nav = this.river.channels(wy)[0];
+    const h = hash(wy * 7 + 3);
+    const stick = (x0: number, x1: number) => {
+      if (x1 <= x0) return;
+      ctx.fillStyle = '#7d4a36';
+      ctx.fillRect(x0, y, x1 - x0, 1);
+      for (let x = x0; x < x1; x++) {
+        const k = hash(x * 131 + wy * 17) % 7;
+        if (k === 0) { ctx.fillStyle = '#a86b4c'; ctx.fillRect(x, y, 1, 1); }
+        else if (k === 1) { ctx.fillStyle = '#5a3526'; ctx.fillRect(x, y, 1, 1); }
+        else if (k === 2 && h % 5 === 0) { ctx.fillStyle = '#8fd694'; ctx.fillRect(x, y, 1, 1); }
+      }
+      ctx.fillStyle = '#4b3040';
+      ctx.fillRect(x0, y, 1, 1);
+      ctx.fillRect(x1 - 1, y, 1, 1);
+    };
+    if (dam.crest) {
+      stick(L - 2, nav.l);
+      stick(nav.r, R + 2);
+      return;
+    }
+    if (dam.f < 0.02) return;
+    const thick = 7;
+    stick(Math.max(L - 2, nav.l - thick), nav.l);
+    stick(nav.r, Math.min(R + 2, nav.r + thick));
+    // rapids below the gap
+    if (dam.pos > 110 && !this.reducedMotion && Math.sin(this.t * 7 + wy) > 0.2) {
+      ctx.fillStyle = WORLD.foam;
+      for (let i = 0; i < 4; i++) ctx.fillRect(nav.l + 4 + ((h >>> (i * 3)) % Math.max(1, nav.r - nav.l - 8)), y, 2, 1);
     }
   }
 
@@ -721,7 +814,9 @@ export class Game {
       case 'lantern': return art.lantern;
       case 'fence': return art.fence;
       case 'reeds': return art.reeds;
-      case 'shell': return h % 3 ? art.shell : art.goldShell;
+      case 'starfish': return art.starfish;
+      case 'pebbles': return art.pebbles;
+      case 'sandcastle': return art.sandcastle;
     }
   }
 
@@ -738,7 +833,7 @@ export class Game {
       const wy = y - D;
       const h = hash(wy * 31 + 7);
       const b = this.river.biome(wy);
-      const chs = this.river.channels(wy);
+      const chs = this.river.water(wy);
       const L = chs[0].l;
       const R = chs[chs.length - 1].r;
 
@@ -769,13 +864,110 @@ export class Game {
       const s = this.decorSprite(k, b, h >>> 11);
       if (s.w + 4 > bank) continue;
       const pos = ((h >>> 13) % 1000) / 1000;
-      // shells sit on the sand; everything else on the grass
+      // beach bits sit on the sand; everything else on the grass
       let x: number;
-      if (k === 'shell') x = left ? L - b.sand / 2 : R + b.sand / 2;
+      if (k === 'starfish' || k === 'pebbles') x = left ? L - b.sand / 2 - 1 : R + b.sand / 2 + 1;
       else x = left ? 2 + s.px + pos * (bank - s.w - 4) : R + b.sand + 2 + s.px + pos * (bank - s.w - 4);
       draw(ctx, s, x, y);
       if (k === 'lantern') this.lanterns.push([Math.round(x), y - 16]);
     }
+  }
+
+  /** The dam visible on screen, if any: its start row and which wall the beaver uses. */
+  private visibleDam(D: number) {
+    for (let y = -40; y < this.vh + 200; y += 8) {
+      const d = this.river.dam(y - D);
+      if (d) return { start: -(y - D) - d.pos, side: d.seg % 2 ? 1 : -1 };
+    }
+    return null;
+  }
+
+  private updateBeaver(dt: number) {
+    const b = this.beaver;
+    b.timer -= dt;
+    if (b.state === 'walk') {
+      b.u += b.dir * 0.07 * dt;
+      if (b.u > 0.85) { b.u = 0.85; b.dir = -1; }
+      if (b.u < 0.2) { b.u = 0.2; b.dir = 1; }
+      if (b.timer <= 0) {
+        b.state = Math.random() < 0.3 ? 'slap' : 'chew';
+        b.timer = b.state === 'slap' ? 0.9 : rand(2, 4);
+      }
+    } else if (b.timer <= 0) {
+      b.state = 'walk';
+      b.timer = rand(3, 6);
+    }
+  }
+
+  private beaverPos(D: number) {
+    const v = this.visibleDam(D);
+    if (!v) return null;
+    const b = this.beaver;
+    const wy = -(v.start + b.u * 170);
+    const nav = this.river.channels(wy)[0];
+    const x = v.side < 0 ? nav.l - 4 : nav.r + 4;
+    const face = (v.side < 0 ? 1 : -1) * b.dir;
+    return { x, y: wy + D, face };
+  }
+
+  private renderBeaver(ctx: CanvasRenderingContext2D, D: number) {
+    const p = this.beaverPos(D);
+    if (!p) return;
+    const b = this.beaver;
+    const frames = worldArt().animals.beaver;
+    const f = b.state === 'walk' ? Math.floor(this.t * 4) % 2 : b.state === 'chew' ? 2 + (Math.floor(this.t * 5) % 2) : 4;
+    const s = frames[f];
+    if (b.state === 'slap' && b.timer < 0.5) draw(ctx, worldArt().splash[Math.floor(this.t * 8) % 2], p.x - p.face * 10, p.y + 4);
+    if (p.face < 0) drawFlip(ctx, s, p.x, p.y);
+    else draw(ctx, s, p.x, p.y);
+  }
+
+  /** A reason for a photo-op hint, at most every 45 s. */
+  photoMoment(): string | null {
+    if (!this.playing || this.photoCooldown > 0) return null;
+    const D = this.D;
+    const sky = this.sky();
+    let reason: string | null = null;
+    const v = this.fauna.visible(this.vh, D);
+    const names: Record<string, string> = { heron: 'A heron is flying by', deer: 'A deer came to drink', bunny: 'A bunny is visiting', ducks: 'A duck family!', kingfisher: 'A kingfisher!' };
+    if (v && names[v]) reason = names[v];
+    else if (this.beaverPos(D)) reason = 'A busy beaver!';
+    else if (sky.phase > 0.52 && sky.phase < 0.62 && !this.seenSunset) { reason = 'Golden sunset'; this.seenSunset = true; }
+    else if (sky.night > 0.85 && !this.seenNight) { reason = 'Starry night'; this.seenNight = true; }
+    else if (this.rain > 0.6) reason = 'Rainy river';
+    else if (this.river.water(Math.round(this.vh * 0.3) - D).length > 1) reason = 'A little island';
+    if (sky.phase < 0.3) { this.seenSunset = false; this.seenNight = false; }
+    if (reason) this.photoCooldown = 45;
+    return reason;
+  }
+
+  recipe(caption: string): Recipe {
+    return {
+      d: this.D, x: Math.round(this.otter.x), w: this.vw, h: this.vh, oy: this.otterY,
+      p: Math.round(this.dayPhase() * 1000) / 1000, r: this.rain > 0.3 ? 1 : 0,
+      e: { ...this.outfit.equipped } as Record<string, string>, pets: [...this.outfit.pets],
+      a: this.fauna.snapshot(this.vh, this.D) ?? undefined, c: caption, at: Date.now(),
+    };
+  }
+
+  /** Recreate a recipe's scene (for shared postcard links). */
+  applyRecipe(r: Recipe) {
+    this.still = true;
+    this.playing = true;
+    this.resize(r.w, r.h);
+    this.fixedOtterY = r.oy;
+    this.dist = r.d;
+    this.t = 0;
+    this.dayOffset = r.p;
+    this.otter.x = this.otter.targetX = r.x;
+    this.outfit = { equipped: r.e as Outfit['equipped'], pets: r.pets };
+    if (r.r) { this.rain = 1; this.rainTarget = 1; this.rainFor = 999; }
+    if (r.a) this.fauna.inject(r.a);
+    for (let i = 0; i < 120; i++) {
+      this.otter.targetX = r.x;
+      this.update(1 / 60);
+    }
+    this.t = 0;
   }
 
   private pickupSprite(kind: PickupKind): Sprite {

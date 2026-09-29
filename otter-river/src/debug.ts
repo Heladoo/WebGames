@@ -26,8 +26,8 @@ export function renderWardrobe(canvas: HTMLCanvasElement) {
   }
   const poses: Pose[] = [
     IDLE_POSE,
-    { ...IDLE_POSE, hb: 1, pawL: -1, pawR: -1 },
-    { ...IDLE_POSE, lean: 1, pawL: -1, tail: 1 },
+    { ...IDLE_POSE, hb: 1, pawL: -1, pawR: -1, footL: 1, footR: -1 },
+    { ...IDLE_POSE, lean: 1, pawL: -1, tail: 1, footL: -1, footR: 1 },
     { ...IDLE_POSE, lean: -1, pawR: -1, tail: -1, eyes: 'closed' },
     { ...IDLE_POSE, bob: 1, eyes: 'happy' },
   ];
@@ -40,6 +40,8 @@ export function renderWardrobe(canvas: HTMLCanvasElement) {
   canvas.style.height = `${canvas.height * 2}px`;
   document.body.style.overflow = 'auto';
   document.getElementById('app')!.style.position = 'static';
+  document.getElementById('stage')!.style.overflow = 'visible';
+  canvas.style.position = 'static';
   for (const id of ['title', 'hud', 'dock']) document.getElementById(id)?.classList.add('hidden');
   const ctx = canvas.getContext('2d')!;
   ctx.fillStyle = WORLD.water;
@@ -49,7 +51,7 @@ export function renderWardrobe(canvas: HTMLCanvasElement) {
   });
   const art = worldArt();
   const x0 = cw * cols + 10;
-  const strip = [art.shell, art.goldShell, art.fish, art.pearl, art.frog, art.lilyPad, art.log, ...art.rocks, art.mushroom, art.bush, art.reeds, ...art.flowers];
+  const strip = [art.shell, art.goldShell, art.fish, art.pearl, art.frog, art.lilyPad, art.log, ...art.rocks, art.mushroom, art.bush, art.reeds, art.starfish, art.pebbles, art.sandcastle, art.fence, ...art.flowers];
   let yy = 12;
   strip.forEach((s, i) => {
     draw(ctx, s, x0 + 20 + (i % 3) * 34, yy);

@@ -145,6 +145,145 @@ export class AudioEngine {
     hp.connect(this.rainGain);
     this.rainGain.connect(this.sfx);
     rsrc.start();
+
+    // ambience beds made from the same noise: wind, waves, rushing water
+    const bed = (rate: number, type: BiquadFilterType, freq: number, q: number) => {
+      const src2 = ctx.createBufferSource();
+      src2.buffer = buf;
+      src2.loop = true;
+      src2.playbackRate.value = rate;
+      const f = ctx.createBiquadFilter();
+      f.type = type;
+      f.frequency.value = freq;
+      f.Q.value = q;
+      const gn = ctx.createGain();
+      gn.gain.value = 0;
+      src2.connect(f);
+      f.connect(gn);
+      gn.connect(this.sfx);
+      src2.start(ctx.currentTime + Math.random());
+      return gn;
+    };
+    this.windGain = bed(1.3, 'bandpass', 520, 0.8);
+    this.waveGain = bed(0.8, 'lowpass', 650, 0.5);
+    this.rushGain = bed(2.2, 'bandpass', 1300, 0.45);
+  }
+
+  private windGain: GainNode | null = null;
+  private waveGain: GainNode | null = null;
+  private rushGain: GainNode | null = null;
+  private amb = { birds: 0, frogs: 0, crickets: 0 };
+  private nextCritter = 0;
+
+  /**
+   * Scene soundscape: called every frame with what the world looks like.
+   * Wind in the woods, waves at the cove, birds by day, frogs in the marsh,
+   * crickets at night, rushing water near a beaver dam.
+   */
+  ambience(a: { biome: string; night: number; rain: number; dam: number; t: number }) {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running' || !this.windGain) return;
+    const now = ctx.currentTime;
+    const day = 1 - a.night;
+    const gust = 0.55 + 0.45 * Math.sin(a.t * 0.23) * Math.sin(a.t * 0.61 + 1);
+    const wind = (a.biome === 'forest' ? 0.11 : a.biome === 'blossom' ? 0.05 : 0.025) * gust + a.rain * 0.04;
+    this.windGain.gain.setTargetAtTime(wind, now, 0.6);
+    const swell = 0.5 + 0.5 * Math.sin(a.t * 0.75);
+    this.waveGain!.gain.setTargetAtTime(a.biome === 'cove' ? 0.05 + 0.08 * swell : 0, now, 0.5);
+    this.rushGain!.gain.setTargetAtTime(a.dam * a.dam * 0.14, now, 0.4);
+    this.amb.birds = (a.biome === 'meadow' || a.biome === 'blossom' || a.biome === 'forest' ? 1 : 0.3) * day * (1 - a.rain);
+    this.amb.frogs = (a.biome === 'marsh' ? 1 : 0.15) * (0.4 + 0.6 * a.night);
+    this.amb.crickets = a.night * (1 - a.rain * 0.7);
+
+    if (now < this.nextCritter) return;
+    this.nextCritter = now + 0.6 + Math.random() * 1.6;
+    const r = Math.random();
+    if (r < this.amb.birds * 0.5) this.birdsong(now);
+    else if (r < 0.5 + this.amb.frogs * 0.3 && Math.random() < this.amb.frogs) this.croak(now);
+    else if (Math.random() < this.amb.crickets) this.cricket(now);
+  }
+
+  private birdsong(t: number) {
+    const ctx = this.ctx!;
+    const n = 2 + Math.floor(Math.random() * 4);
+    const base = 2300 + Math.random() * 1400;
+    for (let i = 0; i < n; i++) {
+      const at = t + i * (0.09 + Math.random() * 0.05);
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(base * (0.9 + Math.random() * 0.2), at);
+      o.frequency.exponentialRampToValueAtTime(base * (1.2 + Math.random() * 0.4), at + 0.07);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.linearRampToValueAtTime(0.018, at + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + 0.08);
+      o.connect(g);
+      g.connect(this.sfx);
+      o.start(at);
+      o.stop(at + 0.1);
+    }
+  }
+
+  private croak(t: number) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(150 + Math.random() * 60, t);
+    const am = ctx.createOscillator();
+    am.frequency.value = 22;
+    const amG = ctx.createGain();
+    amG.gain.value = 0.5;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.035, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    am.connect(amG);
+    amG.connect(g.gain);
+    o.connect(g);
+    g.connect(this.sfx);
+    o.start(t);
+    am.start(t);
+    o.stop(t + 0.35);
+    am.stop(t + 0.35);
+  }
+
+  private cricket(t: number) {
+    const ctx = this.ctx!;
+    for (let k = 0; k < 3; k++) {
+      const at = t + k * 0.12;
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = 4300 + Math.random() * 300;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at);
+      for (let i = 0; i < 4; i++) {
+        g.gain.linearRampToValueAtTime(0.006, at + i * 0.025 + 0.008);
+        g.gain.linearRampToValueAtTime(0.0001, at + i * 0.025 + 0.02);
+      }
+      o.connect(g);
+      g.connect(this.sfx);
+      o.start(at);
+      o.stop(at + 0.12);
+    }
+  }
+
+  /** Soft two-note chime for "NEW" news. */
+  chime() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    this.tone(midi(84), t, 0.5, { gain: 0.04 });
+    this.tone(midi(91), t + 0.12, 0.8, { gain: 0.035 });
+  }
+
+  /** Camera shutter: a soft click and a sparkle. */
+  shutter() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    this.tone(1800, t, 0.05, { type: 'square', gain: 0.02 });
+    this.tone(900, t + 0.05, 0.06, { type: 'square', gain: 0.015 });
+    [88, 91, 96].forEach((m, i) => this.tone(midi(m), t + 0.12 + i * 0.06, 0.4, { gain: 0.025 }));
   }
 
   private tone(freq: number, time: number, dur: number, o: ToneOpts = {}) {

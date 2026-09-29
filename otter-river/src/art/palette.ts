@@ -49,6 +49,11 @@ export const PALETTE: Record<string, string> = {
   e: '#ffc9dd', // pale pink
   i: '#e3d5f7', // pale lavender
   n: '#a4a9bd', // stone shade
+  // see-through lens tints (v3)
+  Q: 'rgba(58,53,82,0.45)',
+  J: 'rgba(255,140,190,0.45)',
+  X: 'rgba(255,208,90,0.45)',
+  Z: 'rgba(150,215,240,0.5)',
 };
 
 // World colors used for large fills (still from the same cozy family).

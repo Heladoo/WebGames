@@ -17,21 +17,23 @@ export interface Pose {
   pawL: number;
   pawR: number;
   tail: number; // tail tip sway (-1..1)
+  footL: number; // gentle paddle kick (-1..1)
+  footR: number;
   eyes: 'open' | 'closed' | 'happy';
 }
 
-export const IDLE_POSE: Pose = { bob: 0, hb: 0, lean: 0, pawL: 0, pawR: 0, tail: 0, eyes: 'open' };
+export const IDLE_POSE: Pose = { bob: 0, hb: 0, lean: 0, pawL: 0, pawR: 0, tail: 0, footL: 0, footR: 0, eyes: 'open' };
 
 export function anchors(ox: number, oy: number, p: Pose): Record<AnchorName, [number, number]> {
   const y = oy + p.bob;
   const hx = ox + p.lean;
   const hy = y + p.hb;
   return {
-    headTop: [hx, hy - 36],
+    headTop: [hx, hy - 37],
     eyes: [hx, hy - 28],
     ears: [hx, hy - 30],
     neck: [hx, hy - 16],
-    perch: [hx + 10, hy - 35],
+    perch: [hx + 10, hy - 36],
     body: [ox + PART.body.x, y + PART.body.y],
     pawR: [ox + 8, y - 8 + p.pawR],
     belly: [ox, y + 3],
@@ -72,6 +74,13 @@ export function drawOtter(
       },
     },
     { z: 10, fn: () => draw(ctx, art.body, ox + PART.body.x, y + PART.body.y) },
+    {
+      z: 22,
+      fn: () => {
+        draw(ctx, art.footL, ox + PART.footL.x - (p.footL > 0 ? 1 : 0), y + PART.footL.y + p.footL);
+        draw(ctx, art.footR, ox + PART.footR.x + (p.footR > 0 ? 1 : 0), y + PART.footR.y + p.footR);
+      },
+    },
     {
       z: 30,
       fn: () => {

@@ -38,7 +38,7 @@ export class Shop {
       b.dataset.slot = s.id;
       b.title = s.label;
       b.setAttribute('aria-label', s.label);
-      b.innerHTML = `<img src="${spriteURL(art.icons[s.id], 3)}" alt="" /><span class="dot"></span>`;
+      b.innerHTML = `<img src="${spriteURL(art.icons[s.id], 3)}" alt="" /><span class="tab-label">${s.label}</span><span class="dot"></span>`;
       b.addEventListener('click', () => {
         this.deps.click();
         this.tab = s.id;
@@ -49,6 +49,18 @@ export class Shop {
       this.tabsEl.appendChild(b);
     }
     this.actionEl.addEventListener('click', () => this.act());
+  }
+
+  /** Jump to an item (e.g. from a NEW banner). */
+  focus(id: string) {
+    const it = itemById(id);
+    if (!it) return;
+    this.tab = it.slot;
+    document.getElementById('dock')!.classList.remove('collapsed');
+    this.select(this.deps.data.owned.includes(id) ? null : id);
+    if (this.deps.data.fresh.includes(id)) this.deps.seen(id);
+    this.render();
+    this.gridEl.querySelector('.card.selected')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
   private select(id: string | null) {
@@ -104,7 +116,8 @@ export class Shop {
     }
 
     this.gridEl.innerHTML = '';
-    for (const it of items().filter((i) => i.slot === this.tab)) {
+    const list = items().filter((i) => i.slot === this.tab).sort((a, b) => (a.unlockAt - b.unlockAt) || (a.price - b.price));
+    for (const it of list) {
       const locked = it.unlockAt > d.total;
       const owned = d.owned.includes(it.id);
       const on = this.isOn(it);
@@ -122,9 +135,15 @@ export class Shop {
       const price = document.createElement('span');
       price.className = 'price';
       if (locked) {
+        const lock = document.createElement('img');
+        lock.className = 'lock-badge';
+        lock.src = this.lockURL;
+        lock.alt = 'Locked';
+        icon.append(lock);
         price.classList.add('lock');
         price.append(Object.assign(document.createElement('img'), { src: this.lockURL, alt: '' }), numberCanvas(it.unlockAt, 2));
-        card.title = `Unlocks after collecting ${it.unlockAt} shells in total`;
+        card.title = `Locked: unlocks after collecting ${it.unlockAt} shells in total`;
+        card.setAttribute('aria-label', card.title);
       } else if (owned) {
         price.classList.add('owned');
         price.textContent = on ? (it.slot === 'pet' ? 'With you' : 'Wearing') : 'Owned';
@@ -145,7 +164,7 @@ export class Shop {
         if (locked) {
           this.select(null);
           this.render();
-          this.nameEl.textContent = 'Keep collecting to unlock!';
+          this.nameEl.textContent = `Locked: collect ${it.unlockAt - d.total} more shells to unlock`;
           return;
         }
         if (owned) {
@@ -164,7 +183,7 @@ export class Shop {
     a.classList.remove('buy', 'off', 'shake', 'hidden');
     a.disabled = false;
     if (!sel) {
-      this.nameEl.textContent = 'Tap an item to try it on. Owned items switch on and off instantly.';
+      this.nameEl.textContent = 'Tap to try on!';
       a.classList.add('hidden');
     } else if (!d.owned.includes(sel.id)) {
       this.nameEl.textContent = `Trying on: ${sel.name}`;

@@ -1,4 +1,4 @@
-import { bake, Grid, outline, Sprite } from './sprite';
+import { bake, Grid, line, outline, Sprite } from './sprite';
 import { done, ellipse, grid, put, rect, recolor, shape, stampRows, Pix } from './shapes';
 
 // ---------- Collectibles ----------
@@ -318,6 +318,20 @@ const ICONS = {
     ellipse(g, 3, 5, 7, 7, { fill: 'B', shade: 'b', light: 'h' });
     for (const [x, y] of [[0, 2], [4, 0], [9, 2]]) ellipse(g, x, y, 4, 4, { fill: 'B', shade: 'b' });
   }),
+  camera: () => icon((g) => {
+    rect(g, 0, 3, 13, 9, 'O');
+    rect(g, 1, 4, 11, 7, 'M');
+    rect(g, 3, 1, 5, 3, 'O'); rect(g, 4, 2, 3, 2, 'M');
+    ellipse(g, 3, 4, 7, 7, { fill: 'U', shade: 'u', light: 'q' });
+    put(g, 5, 6, 'W'); put(g, 10, 5, 'R');
+  }),
+  album: () => icon((g) => {
+    rect(g, 1, 0, 11, 13, 'O');
+    rect(g, 2, 1, 9, 11, 'K');
+    rect(g, 4, 3, 5, 5, 'O'); rect(g, 5, 4, 3, 3, 'q');
+    put(g, 6, 5, 'Y');
+    for (let y = 1; y < 12; y++) put(g, 2, y, 'k');
+  }),
   lock: () => icon((g) => {
     ellipse(g, 3, 0, 7, 8, { fill: '.', outline: 'O' });
     rect(g, 1, 5, 11, 8, 'O');
@@ -396,19 +410,119 @@ function bunny(stretch: boolean): Grid {
   return done(g);
 }
 
-function deer(step: boolean): Grid {
-  const g = grid(26, 24);
-  for (const [x, dx] of step ? [[6, -1], [9, 1], [17, -1], [20, 1]] : [[6, 0], [9, 0], [17, 0], [20, 0]]) {
-    for (let y = 14; y < 23; y++) put(g, x + (y > 18 ? dx : 0), y, 'D');
-    put(g, x + dx, 23, 'O');
-  }
-  ellipse(g, 3, 8, 20, 10, { fill: 'F', shade: 'f', light: 'j' });
-  for (const [x, y] of [[8, 10], [12, 11], [15, 10], [10, 13]]) put(g, x, y, 'C');
-  rect(g, 18, 3, 3, 8, 'F');
-  ellipse(g, 17, 0, 9, 7, { fill: 'F', shade: 'f', light: 'j' });
-  put(g, 23, 2, 'E'); put(g, 25, 4, 'N'); put(g, 18, 0, 'D'); put(g, 17, 1, 'D');
-  ellipse(g, 1, 8, 4, 4, { fill: 'C' });
+function deer(frame: number): Grid {
+  // frame 0..2 = walk cycle, 3 = drinking (head down to the water)
+  const W = 30;
+  const H = 28;
+  const g = grid(W, H);
+  const drink = frame === 3;
+  const legShift = [[0, 0, 0, 0], [1, -1, -1, 1], [-1, 1, 1, -1], [0, 0, 0, 0]][frame];
+  const legs = [7, 10, 19, 22];
+  const inLeg = (x: number, y: number) => legs.some((lx, i) => {
+    if (y < 15 || y > 25) return false;
+    const off = y > 20 ? legShift[i] : 0;
+    return x >= lx + off - 1 && x <= lx + off;
+  });
+  const hx = drink ? 25 : 24;
+  const hy = drink ? 18 : 5;
+  const inside = (x: number, y: number) => {
+    if (((x + 0.5 - 14.5) / 9.5) ** 2 + ((y + 0.5 - 13) / 5.2) ** 2 <= 1) return true; // body
+    // neck: a thick line from shoulders to head
+    const nx0 = 20;
+    const ny0 = 11;
+    const t = Math.max(0, Math.min(1, ((x - nx0) * (hx - nx0) + (y - ny0) * (hy - ny0)) / ((hx - nx0) ** 2 + (hy - ny0) ** 2)));
+    const px = nx0 + (hx - nx0) * t;
+    const py = ny0 + (hy - ny0) * t;
+    if (Math.hypot(x + 0.5 - px, y + 0.5 - py) <= 2.4 - t * 0.6) return true;
+    if (((x + 0.5 - hx) / 3.6) ** 2 + ((y + 0.5 - hy) / 3) ** 2 <= 1) return true; // head
+    if (((x + 0.5 - (hx + 3)) / 2.2) ** 2 + ((y + 0.5 - (hy + 1.2)) / 1.7) ** 2 <= 1) return true; // muzzle
+    if (!drink && ((x + 0.5 - (hx - 3)) / 1.3) ** 2 + ((y + 0.5 - (hy - 3.5)) / 2.2) ** 2 <= 1) return true; // ear
+    if (drink && ((x + 0.5 - (hx - 3)) / 2.2) ** 2 + ((y + 0.5 - (hy - 2)) / 1.3) ** 2 <= 1) return true;
+    if (((x + 0.5 - 4.5) / 1.6) ** 2 + ((y + 0.5 - 10) / 1.8) ** 2 <= 1) return true; // tail
+    return inLeg(x, y);
+  };
+  shape(g, 0, 0, W, H, inside, { fill: 'F', shade: 'f', light: 'j', shadeAt: 0.5 });
+  // belly, spots, tail, face details
+  for (let y = 15; y < 18; y++) for (let x = 9; x < 21; x++) if (g[y][x] === 'F' || g[y][x] === 'f') g[y][x] = 'C';
+  for (const [x, y] of [[10, 10], [13, 9], [16, 10], [12, 12], [15, 12], [18, 12], [8, 12]]) if (g[y][x] !== 'O') put(g, x, y, 'C');
+  put(g, 4, 10, 'W'); put(g, 4, 9, 'W');
+  for (let y = 16; y < 26; y++) for (let x = 0; x < W; x++) if (g[y][x] === 'F' || g[y][x] === 'j') g[y][x] = 'f';
+  for (const [i, lx] of legs.entries()) { const off = legShift[i]; put(g, lx + off - 1, 25, 'd'); put(g, lx + off, 25, 'd'); }
+  put(g, hx + 1, hy - 1, 'E'); put(g, hx + 1, hy - 2, 'W');
+  put(g, hx + 5, hy + 1, 'N'); put(g, hx + 5, hy + 2, 'N');
+  if (!drink) put(g, hx - 3, hy - 3, 'P');
   return done(g);
+}
+
+function beaver(frame: number): Grid {
+  // 0,1 walk · 2,3 chew a stick · 4 tail slap
+  const g = grid(28, 16);
+  const slap = frame === 4;
+  const chew = frame === 2 || frame === 3;
+  // flat paddle tail
+  if (slap) shape(g, 0, 0, 8, 10, (x, y) => Math.abs(x - 3.5) <= 3.2 - Math.abs(y - 4.5) * 0.25, { fill: 'd', shade: 'd' });
+  else ellipse(g, 0, 9, 11, 5, { fill: 'd', shade: 'd' });
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 11; x++) if (g[y][x] === 'd' && (x + y) % 3 === 0) g[y][x] = 'o';
+  // body
+  ellipse(g, 6, 3, 17, 12, { fill: 'D', shade: 'd', light: 'B' });
+  ellipse(g, 17, 1, 10, 9, { fill: 'D', shade: 'd', light: 'B' });
+  ellipse(g, 23, 5, 5, 4, { fill: 'b', shade: 'D' });
+  put(g, 18, 1, 'O'); put(g, 19, 0, 'O'); put(g, 19, 1, 'D');
+  put(g, 22, 3, 'E'); put(g, 22, 2, 'W');
+  put(g, 27, 5, 'N'); put(g, 26, 5, 'N');
+  // big front teeth
+  put(g, 25, 8, 'W'); put(g, 26, 8, 'W'); put(g, 25, 9, chew && frame === 3 ? 'O' : 'W'); put(g, 26, 9, 'W');
+  put(g, 21, 6, 'P');
+  // feet
+  const step = frame === 1 ? 1 : 0;
+  ellipse(g, 9 + step, 12, 4, 4, { fill: 'd' });
+  ellipse(g, 17 - step, 12, 4, 4, { fill: 'd' });
+  if (chew) {
+    line(g, 20, 11, 27, 8, 'y');
+    line(g, 20, 12, 27, 9, 'y');
+    put(g, 27, 7, 'G'); put(g, 20, 10, 'G');
+    ellipse(g, 21, 9, 4, 4, { fill: 'D', shade: 'd' });
+  }
+  return done(g);
+}
+
+function starfish(): Grid {
+  const g = grid(9, 9);
+  shape(g, 0, 0, 9, 9, (x, y) => {
+    const dx = x + 0.5 - 4.5;
+    const dy = y + 0.5 - 4.8;
+    const a = Math.atan2(dy, dx) + Math.PI / 2;
+    const r = Math.hypot(dx, dy) / 4.5;
+    return r <= 0.38 + 0.62 * ((Math.cos(a * 5) + 1) / 2) ** 3;
+  }, { fill: 'F', shade: 'f', light: 'j' });
+  put(g, 4, 4, 'j');
+  return done(g);
+}
+
+function pebbles(): Grid {
+  const g = grid(11, 6);
+  ellipse(g, 0, 1, 5, 4, { fill: 'M', shade: 'n' });
+  ellipse(g, 4, 0, 5, 5, { fill: 'w', shade: 'M' });
+  ellipse(g, 7, 2, 4, 4, { fill: 'S', shade: 'l' });
+  return done(g);
+}
+
+function sandcastle(): Grid {
+  const g = grid(14, 14);
+  rect(g, 1, 7, 12, 7, 'j');
+  for (const x of [1, 9]) rect(g, x, 3, 4, 5, 'j');
+  rect(g, 5, 5, 4, 3, 'j');
+  for (let x = 1; x < 13; x += 2) put(g, x, 6, 'y');
+  for (const x of [1, 3, 9, 11]) put(g, x, 3, 'y');
+  rect(g, 6, 10, 2, 4, 'y');
+  const out = done(g);
+  const o = outline(out.map((r) => r), 'O');
+  const f = grid(o[0].length, o.length);
+  stampRows(f, o, 0, 0);
+  // flag
+  for (let y = 0; y < 4; y++) put(f, 4, y, 'd');
+  put(f, 5, 0, 'R'); put(f, 6, 0, 'R'); put(f, 5, 1, 'R');
+  return done(f);
 }
 
 function dragonfly(up: boolean): Grid {
@@ -456,7 +570,10 @@ export interface WorldArt {
   digits: Record<string, Sprite>;
   digitsDark: Record<string, Sprite>;
   icons: Record<keyof typeof ICONS, Sprite>;
-  animals: Record<'duck' | 'duckling' | 'heron' | 'kingfisher' | 'bunny' | 'deer' | 'dragonfly', Sprite[]>;
+  animals: Record<'duck' | 'duckling' | 'heron' | 'kingfisher' | 'bunny' | 'deer' | 'dragonfly' | 'beaver', Sprite[]>;
+  starfish: Sprite;
+  pebbles: Sprite;
+  sandcastle: Sprite;
 }
 
 let cache: WorldArt | null = null;
@@ -507,6 +624,9 @@ export function worldArt(): WorldArt {
     sparkle: [bake('sparkle.0', sparkle(true), [2, 2]), bake('sparkle.1', sparkle(false), [2, 2])],
     star: bake('star', star(), [1, 1]),
     splash: two('splash', splash, [4, 3]),
+    starfish: bake('starfish', starfish(), [4, 4]),
+    pebbles: bake('pebbles', pebbles(), [5, 4]),
+    sandcastle: bake('sandcastle', sandcastle(), [8, 15]),
     digits,
     digitsDark,
     icons,
@@ -516,7 +636,8 @@ export function worldArt(): WorldArt {
       heron: two('heron', heron, [17, 8]),
       kingfisher: two('kingfisher', kingfisher, [9, 5]),
       bunny: two('bunny', bunny, [9, 7]),
-      deer: two('deer', deer, [13, 23]),
+      deer: [0, 1, 2, 3].map((f) => bake(`deer.${f}`, deer(f), [15, 25])),
+      beaver: [0, 1, 2, 3, 4].map((f) => bake(`beaver.${f}`, beaver(f), [14, 14])),
       dragonfly: two('dragonfly', dragonfly, [6, 4]),
     },
   };

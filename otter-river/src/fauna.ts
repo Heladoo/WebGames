@@ -129,6 +129,29 @@ export class Fauna {
     }
   }
 
+  /** The kind of visitor currently on screen, if any. */
+  visible(vh: number, D: number): Kind | null {
+    for (const v of this.list) {
+      const sy = this.grounded(v) ? v.y + D : v.y;
+      if (sy > 10 && sy < vh - 10 && v.x > 0) return v.kind;
+    }
+    return null;
+  }
+
+  private grounded(v: Visitor) {
+    return v.kind === 'ducks' || v.kind === 'bunny' || v.kind === 'deer' || v.kind === 'fish';
+  }
+
+  snapshot(vh: number, D: number): Visitor | null {
+    const k = this.visible(vh, D);
+    const v = k && this.list.find((x) => x.kind === k);
+    return v ? { ...v } : null;
+  }
+
+  inject(v: unknown) {
+    if (v && typeof v === 'object' && 'kind' in v) this.list = [{ ...(v as Visitor) }];
+  }
+
   private put(ctx: CanvasRenderingContext2D, s: Sprite, x: number, y: number, dir: number) {
     if (dir < 0) drawFlip(ctx, s, x, y);
     else draw(ctx, s, x, y);
@@ -149,9 +172,13 @@ export class Fauna {
         }
       } else if (v.kind === 'bunny' || v.kind === 'deer') {
         const moving = v.state !== 'pause';
-        const fr = moving ? Math.floor(v.age / (v.kind === 'bunny' ? 0.16 : 0.35)) % 2 : 0;
-        const hop = v.kind === 'bunny' && moving && fr === 1 ? -2 : 0;
-        this.put(ctx, (v.kind === 'bunny' ? a.bunny : a.deer)[fr], v.x, v.y + D + hop, v.dir);
+        if (v.kind === 'deer') {
+          const fr = moving ? [0, 1, 0, 2][Math.floor(v.age / 0.3) % 4] : 3;
+          this.put(ctx, a.deer[fr], v.x, v.y + D, v.dir);
+        } else {
+          const fr = moving ? Math.floor(v.age / 0.16) % 2 : 0;
+          this.put(ctx, a.bunny[fr], v.x, v.y + D + (moving && fr === 1 ? -2 : 0), v.dir);
+        }
       } else if (v.kind === 'fish') {
         const t = Math.min(1, v.age / 0.9);
         const y = v.y + D;

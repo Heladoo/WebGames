@@ -7,7 +7,9 @@ A cozy pixel-art game: float down a calm river on your back, collect shells, fis
 - **Play:** ← → / A D on desktop, or drag on the river on mobile. P / Esc pauses, M mutes.
 - **The River Market is always open** (a side panel on desktop, a drawer on phones). Try items on while you swim; owned items switch on and off instantly, and several friends can come along at once. New items unlock as your lifetime shell total grows.
 - **A living river:** it splits around islands, passes through five biomes (meadow, blossom grove, pine woods, marsh, shell cove), and cycles through day, sunset and night with fireflies and lanterns. It rains now and then, and ducks, herons, kingfishers, bunnies, deer, jumping fish and dragonflies pass by.
-- **No game over.** Rocks, islands and banks are solid, so you slide around them, and logs only give you a gentle bump.
+- **No game over.** Rocks, islands, banks and beaver dams are solid, so you slide around them. Dams funnel you gently through their gap, and logs only give you a gentle bump.
+- **Photos:** a "Photo op!" hint appears when something lovely happens (a visitor, a sunset, a busy beaver). Press the camera button (or C) any time. Postcards collect in your album, and you can share one as an image or as a link. The link re-creates the scene in the recipient's browser and offers "Start your own float".
+- **Soundscapes:** generated wind in the woods, waves at the cove, birdsong by day, frogs in the marsh, crickets at night, rushing water at dams, and rain.
 - **Progress** saves in the browser (localStorage).
 
 ### Run locally
@@ -24,6 +26,7 @@ Open `/?debug=wardrobe` to see every outfit in every animation pose. Use it to c
 Other debug parameters:
 - `?time=0.75`: start at night (the value is a day phase from 0 to 1).
 - `?island=1`: put an island in every river section.
+- `?dam=1`: put a beaver dam in every river section.
 - `?skip=1150`: start further down the river.
 - `?animal=heron`: summon an animal.
 - `?rain=1`: start rain soon.

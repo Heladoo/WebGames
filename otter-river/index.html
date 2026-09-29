@@ -23,12 +23,41 @@
             <canvas class="num shells"></canvas>
           </div>
           <div class="hud-buttons">
+            <button id="btn-camera" class="icon-btn" aria-label="Take a photo (C)"><img alt="" /></button>
+            <button id="btn-album" class="icon-btn" aria-label="Photo album"><img alt="" /></button>
             <button id="btn-sound" class="icon-btn" aria-label="Mute sound (M)"><img alt="" /></button>
             <button id="btn-pause" class="icon-btn" aria-label="Pause (P)"><img alt="" /></button>
           </div>
         </div>
 
         <div id="place" class="place" aria-live="polite"></div>
+        <button id="news" class="news" aria-live="polite"></button>
+        <button id="photo-op" class="photo-op"><img alt="" /><span>Photo op!</span></button>
+        <div id="flash" class="flash"></div>
+
+        <div id="album" class="overlay hidden">
+          <div class="panel album-panel">
+            <header class="album-head">
+              <h2>My Photo Album</h2>
+              <button id="btn-close-album" class="close-btn" aria-label="Close album">✕</button>
+            </header>
+            <p id="album-empty" class="hint">No photos yet. Tap the camera when you see something lovely!</p>
+            <div id="album-grid" class="album-grid"></div>
+          </div>
+        </div>
+
+        <div id="viewer" class="overlay hidden">
+          <div class="panel viewer-panel">
+            <img id="viewer-img" alt="Postcard from Otter River" />
+            <div class="viewer-actions">
+              <button id="btn-share-image" class="big-btn">Share picture</button>
+              <button id="btn-share-link" class="big-btn buy">Share link</button>
+              <button id="btn-download" class="big-btn small-btn">Save</button>
+              <button id="btn-delete" class="big-btn small-btn off">Delete</button>
+              <button id="btn-back" class="big-btn small-btn">Back</button>
+            </div>
+          </div>
+        </div>
 
         <div id="title" class="overlay">
           <div class="panel title-panel">
@@ -73,6 +102,14 @@
           <button id="shop-action" class="big-btn">&nbsp;</button>
         </div>
       </aside>
+    </div>
+    <div id="postcard-page" class="postcard-page hidden">
+      <div class="panel postcard-panel">
+        <p class="subtitle">A postcard from Otter River</p>
+        <img id="postcard-img" alt="A postcard from Otter River" />
+        <p id="postcard-caption" class="hint"></p>
+        <a class="big-btn start-own" href="./">Start your own float</a>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
