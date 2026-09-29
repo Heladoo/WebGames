@@ -2,17 +2,63 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Otter River: a cozy pixel-art river game</title>
+    <meta name="description" content="Float down a calm river as a cute otter, collect shells, spot wildlife and dress up your otter. A free, relaxing browser game for kids and grown-ups, with no ads, no accounts and no cookies." />
     <meta name="theme-color" content="#7ccfd0" />
-    <meta name="description" content="Otter River: a cozy pixel-art game. Float down a calm river, collect shells and dress up your otter." />
+    <meta name="color-scheme" content="light" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="canonical" href="%SITE_URL%/" />
+
+    <!-- Link previews (Open Graph / social) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Otter River" />
+    <meta property="og:title" content="Otter River: a cozy float down the river" />
+    <meta property="og:description" content="A calm pixel-art game: float, collect shells, meet ducks, herons and beavers, and dress up your otter. Free, with no ads or accounts." />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A cute pixel-art otter in a straw hat floating down a river past blossom trees" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Otter River: a cozy float down the river" />
+    <meta name="twitter:description" content="A calm pixel-art game for kids and grown-ups. Free, with no ads or accounts." />
+    <meta name="twitter:image" content="%SITE_URL%/og-image.png" />
+
+    <!-- App / install -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦦</text></svg>" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Otter River" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
-    <title>Otter River</title>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "Otter River",
+        "url": "%SITE_URL%/",
+        "image": "%SITE_URL%/og-image.png",
+        "description": "A cozy pixel-art browser game: float down a calm river as an otter, collect shells, spot wildlife and dress up your otter.",
+        "genre": ["Casual", "Relaxing"],
+        "gamePlatform": ["Web browser", "Mobile", "Desktop"],
+        "playMode": "SinglePlayer",
+        "applicationCategory": "Game",
+        "operatingSystem": "Any",
+        "isFamilyFriendly": true,
+        "typicalAgeRange": "4-",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
   </head>
   <body>
+    <noscript><p style="padding:16px;font-family:sans-serif">Otter River is a relaxing browser game: please enable JavaScript to play.</p></noscript>
     <div id="app">
       <main id="stage">
         <canvas id="game" aria-label="Otter River game"></canvas>
@@ -34,6 +80,7 @@
         <button id="news" class="news" aria-live="polite"></button>
         <button id="photo-op" class="photo-op"><img alt="" /><span>Photo op!</span></button>
         <div id="flash" class="flash"></div>
+        <button id="snap" class="snap" aria-label="Open the photo you just took"><img alt="" /></button>
 
         <div id="album" class="overlay hidden">
           <div class="panel album-panel">
@@ -48,13 +95,18 @@
 
         <div id="viewer" class="overlay hidden">
           <div class="panel viewer-panel">
-            <img id="viewer-img" alt="Postcard from Otter River" />
+            <button id="btn-back" class="close-btn viewer-close" aria-label="Close photo">✕</button>
+            <div id="viewer-stage" class="viewer-stage">
+              <button id="btn-prev" class="nav-btn" aria-label="Previous photo">‹</button>
+              <img id="viewer-img" alt="Postcard from Otter River" draggable="false" />
+              <button id="btn-next" class="nav-btn" aria-label="Next photo">›</button>
+            </div>
+            <div id="viewer-count" class="viewer-count"></div>
             <div class="viewer-actions">
               <button id="btn-share-image" class="big-btn">Share picture</button>
               <button id="btn-share-link" class="big-btn buy">Share link</button>
               <button id="btn-download" class="big-btn small-btn">Save</button>
               <button id="btn-delete" class="big-btn small-btn off">Delete</button>
-              <button id="btn-back" class="big-btn small-btn">Back</button>
             </div>
           </div>
         </div>
@@ -79,6 +131,7 @@
               <label class="slider"><span>Volume</span><input type="range" id="opt-volume" min="0" max="100" /></label>
             </div>
             <p class="hint small stat">Shells collected so far: <canvas id="stat-total" class="num"></canvas></p>
+            <p class="hint small privacy">No accounts, no ads, no cookies. We only count plays and play time, anonymously.</p>
           </div>
         </div>
 

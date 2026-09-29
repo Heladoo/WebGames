@@ -122,8 +122,9 @@ export class Game {
 
   /** Screen row of the otter; main.ts pins it so opening the drawer doesn't move it. */
   fixedOtterY: number | null = null;
+  private oyNow = 0; // glides when the stage height changes (drawer open/closed)
   get otterY() {
-    return this.fixedOtterY ?? Math.round(this.vh * 0.64);
+    return this.fixedOtterY ?? Math.round(this.oyNow || this.vh * 0.64);
   }
 
   private get D() {
@@ -154,6 +155,8 @@ export class Game {
   update(dt: number) {
     this.t += dt;
     if (!this.still) this.dist += this.speed * dt;
+    const oyTarget = this.vh * 0.64;
+    this.oyNow = this.oyNow ? this.oyNow + (oyTarget - this.oyNow) * (1 - Math.exp(-dt * 3)) : oyTarget;
     const D = this.D;
     const o = this.otter;
     const oy = this.otterY;

@@ -69,3 +69,54 @@ export function renderWardrobe(canvas: HTMLCanvasElement) {
   const digits = '0123456789+';
   [...digits].forEach((d, i) => draw(ctx, art.digits[d], x0 + 4 + i * 9, yy));
 }
+
+/** ?debug=assets&kind=icon|og — renders the app icon / social preview image from game art. */
+export async function renderAssets(canvas: HTMLCanvasElement, kind: string, makeScene: (w: number, h: number) => HTMLCanvasElement) {
+  const { otterArt } = await import('./art/otter');
+  document.getElementById('app')!.style.position = 'static';
+  document.getElementById('stage')!.style.overflow = 'visible';
+  for (const id of ['title', 'hud', 'dock']) document.getElementById(id)?.classList.add('hidden');
+  canvas.style.position = 'static';
+  const ctx = canvas.getContext('2d')!;
+  if (kind === 'icon') {
+    // 42×42 pixel icon, scaled up crisply by the caller
+    canvas.width = 42;
+    canvas.height = 42;
+    ctx.fillStyle = WORLD.water;
+    ctx.fillRect(0, 0, 42, 42);
+    ctx.fillStyle = WORLD.waterLight;
+    for (const [x, y] of [[3, 5], [28, 8], [5, 36], [26, 38]]) ctx.fillRect(x, y, 7, 1);
+    const head = otterArt().head;
+    ctx.drawImage(head.canvas, Math.round(21 - head.w / 2), Math.round(21 - head.h / 2));
+    canvas.style.width = '512px';
+    canvas.style.height = '512px';
+  } else {
+    // 1200×630 preview: a game scene (pixel-scaled ×3) with the title
+    const scene = makeScene(400, 210);
+    canvas.width = 1200;
+    canvas.height = 630;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(scene, 0, 0, 1200, 630);
+    await document.fonts?.ready;
+    ctx.fillStyle = 'rgba(255,246,230,0.92)';
+    ctx.strokeStyle = '#4b3040';
+    ctx.lineWidth = 8;
+    const w = 620;
+    const h = 170;
+    const x = 290;
+    const y = 36;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 28);
+    ctx.fill();
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#3f9fa8';
+    ctx.font = "700 86px 'Pixelify Sans', sans-serif";
+    ctx.fillText('Otter River', 600, 134);
+    ctx.fillStyle = '#d8709e';
+    ctx.font = "600 34px 'Pixelify Sans', sans-serif";
+    ctx.fillText('a cozy float down the river', 600, 184);
+    canvas.style.width = '1200px';
+    canvas.style.height = '630px';
+  }
+}

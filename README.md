@@ -38,6 +38,26 @@ Other debug parameters:
 2. Set **Root Directory** to `otter-river`. The framework is detected as **Vite** from `otter-river/vercel.json`.
 3. Click **Deploy**. Every push to the production branch redeploys automatically.
 
+### Play statistics (anonymous)
+
+The game counts plays, estimated unique players and play time. It uses no cookies, no accounts and no personal data. Setup takes about 3 minutes in Vercel:
+
+1. In the Vercel project, open **Storage → Create / Connect → Upstash for Redis** (the free plan is fine) and connect it to this project. This adds the `KV_REST_API_*` environment variables.
+2. Under **Settings → Environment Variables**, add `STATS_KEY` with any secret phrase you choose.
+3. Redeploy, then open **`/stats.html`** and enter your `STATS_KEY`. You'll see total plays, players, total and average play time, and 30-day charts.
+
+Until storage is connected, the game works normally and simply doesn't count anything.
+
+### Sharing, SEO and safety
+
+- **Link previews and search:** the page has a proper title and description, an Open Graph and Twitter card image (`public/og-image.png`), structured data, and an installable web-app manifest with icons. The build also generates `robots.txt` and `sitemap.xml`.
+- **Web address:** absolute URLs use Vercel's production address automatically. If you add a custom domain, set `SITE_URL` (for example `https://otterriver.com`) in Vercel's environment variables and redeploy.
+- **Security headers** (`vercel.json`): a strict Content-Security-Policy (the page can load only its own scripts, plus Google Fonts for text), no framing by other sites, `nosniff`, a strict referrer policy, and a permissions policy that blocks the camera, microphone and location.
+- **Shared postcard links are treated as untrusted:**
+  - Numbers are clamped.
+  - Only known item and animal names are accepted.
+  - Captions in links are ignored and rebuilt locally.
+
 ### How the art works
 
 All art is pixel art written as text in code. Nothing is loaded from image files.

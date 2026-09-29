@@ -7,8 +7,9 @@ import { items, ItemDef } from './art/items';
 import { worldArt } from './art/world';
 import { spriteURL } from './art/sprite';
 import { paintNumber } from './numbers';
-import { renderWardrobe } from './debug';
+import { renderAssets, renderWardrobe } from './debug';
 import { makePostcard } from './postcard';
+import { stats } from './stats';
 import { addPhoto, decodeRecipe, deletePhoto, download, listPhotos, Photo, shareImage, shareLink } from './album';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -19,6 +20,17 @@ const ctx = canvas.getContext('2d')!;
 
 if (params.get('debug') === 'wardrobe') {
   renderWardrobe(canvas);
+} else if (params.get('debug') === 'assets') {
+  void renderAssets(canvas, params.get('kind') ?? 'og', (w, h) => {
+    const g = new Game({ collect() {}, bump() {} });
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    g.applyRecipe({ d: 2400, x: w * 0.55, w, h, oy: Math.round(h * 0.78), p: 0.2, r: 0, e: { hat: 'sun-hat', eyes: 'sunglasses', held: 'lily', float: 'float-donut' }, pets: ['duckling', 'butterfly'] });
+    const cx = c.getContext('2d')!;
+    g.render(cx);
+    return c;
+  });
 } else if (params.has('photo')) {
   showPostcardPage(params.get('photo') ?? '');
 } else {
@@ -70,14 +82,13 @@ function start() {
     const winW = window.innerWidth * dpr;
     const winH = window.innerHeight * dpr;
     const portrait = mobileDock();
+    // phones upright: ~240 px across · phones sideways: ~290 px tall · desktops: ~340 px tall
+    const shortScreen = window.innerHeight < 500;
     const scale = portrait
-      ? Math.max(2, Math.round(winW / 200))
-      : Math.max(2, Math.round(winH / 290));
+      ? Math.max(2, Math.round(winW / 240))
+      : Math.max(2, Math.round(winH / (shortScreen ? 290 : 340)));
     const vw = Math.ceil(devW / scale);
     const vh = Math.ceil(devH / scale);
-    // keep the otter where it sits with the drawer open
-    const openH = portrait ? winH * 0.58 : devH;
-    game.fixedOtterY = Math.round((openH / scale) * 0.64);
     canvas.width = vw;
     canvas.height = vh;
     canvas.style.width = `${(vw * scale) / dpr}px`;
@@ -258,6 +269,7 @@ function start() {
     hud.classList.remove('hidden');
     game.playing = true;
     game.welcome();
+    stats.start();
     lastPlace = game.river.biomeName(game.otterY - Math.floor(game.dist));
     showPlace(lastPlace);
   }
@@ -354,6 +366,7 @@ function start() {
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
+      stats.flush(true);
       audio.suspend();
       setPaused(true);
       save(data);
@@ -361,7 +374,7 @@ function start() {
       audio.resume();
     }
   });
-  window.addEventListener('pagehide', () => save(data));
+  window.addEventListener('pagehide', () => { save(data); stats.flush(true); });
 
   // ---------- Photos ----------
   const photoOp = $('photo-op');
@@ -384,33 +397,67 @@ function start() {
     const png = makePostcard(canvas, caption, at).toDataURL('image/png');
     const photo: Photo = { id: `${at.getTime()}`, png, recipe: game.recipe(caption), caption, at: at.getTime() };
     await addPhoto(photo);
-    showToast('Saved to your album 📷');
+    showSnap(photo);
   }
   $('btn-camera').addEventListener('click', () => void takePhoto());
   photoOp.addEventListener('click', () => void takePhoto());
 
+  // a little postcard slides in after each photo; tap it to view
+  const snap = $('snap');
+  let snapTimer = 0;
+  let snapPhoto: Photo | null = null;
+  function showSnap(p: Photo) {
+    snapPhoto = p;
+    (snap.querySelector('img') as HTMLImageElement).src = p.png;
+    snap.classList.add('show');
+    clearTimeout(snapTimer);
+    snapTimer = window.setTimeout(() => snap.classList.remove('show'), 4200);
+  }
+  snap.addEventListener('click', async () => {
+    snap.classList.remove('show');
+    if (snapPhoto) await openAlbum(snapPhoto.id);
+  });
+
   const albumEl = $('album');
   const viewer = $('viewer');
-  let viewing: Photo | null = null;
-  async function openAlbum() {
+  const viewerImg = $<HTMLImageElement>('viewer-img');
+  let photos: Photo[] = [];
+  let index = -1;
+  const viewing = () => photos[index] ?? null;
+
+  function showPhoto(i: number, dir = 0) {
+    if (i < 0 || i >= photos.length) return;
+    index = i;
+    viewerImg.style.transform = `translateX(${dir * 24}px)`;
+    viewerImg.style.opacity = '0';
+    requestAnimationFrame(() => {
+      viewerImg.src = photos[i].png;
+      viewerImg.alt = photos[i].caption;
+      viewerImg.style.transform = 'translateX(0)';
+      viewerImg.style.opacity = '1';
+    });
+    $('viewer-count').textContent = `${i + 1} / ${photos.length}`;
+    ($('btn-prev') as HTMLButtonElement).disabled = i === 0;
+    ($('btn-next') as HTMLButtonElement).disabled = i === photos.length - 1;
+    viewer.classList.remove('hidden');
+  }
+
+  async function openAlbum(focusId?: string) {
     audio.click();
-    const photos = await listPhotos();
+    photos = await listPhotos();
     const grid = $('album-grid');
     grid.innerHTML = '';
     $('album-empty').classList.toggle('hidden', photos.length > 0);
-    for (const p of photos) {
+    photos.forEach((p, i) => {
       const b = document.createElement('button');
       b.setAttribute('aria-label', p.caption);
       b.append(Object.assign(document.createElement('img'), { src: p.png, alt: p.caption }));
-      b.addEventListener('click', () => {
-        viewing = p;
-        ($('viewer-img') as HTMLImageElement).src = p.png;
-        viewer.classList.remove('hidden');
-      });
+      b.addEventListener('click', () => showPhoto(i));
       grid.append(b);
-    }
+    });
     albumEl.classList.remove('hidden');
     if (game.playing && !paused) { albumPaused = true; setPaused(true); pauseEl.classList.add('hidden'); }
+    if (focusId) showPhoto(photos.findIndex((p) => p.id === focusId));
   }
   let albumPaused = false;
   function closeAlbum() {
@@ -418,23 +465,57 @@ function start() {
     viewer.classList.add('hidden');
     if (albumPaused) { albumPaused = false; setPaused(false); }
   }
+  const viewerOpen = () => !viewer.classList.contains('hidden');
+  const albumOpen = () => !albumEl.classList.contains('hidden');
   $('btn-album').addEventListener('click', () => void openAlbum());
   $('btn-close-album').addEventListener('click', closeAlbum);
   $('btn-back').addEventListener('click', () => viewer.classList.add('hidden'));
+  $('btn-prev').addEventListener('click', () => showPhoto(index - 1, -1));
+  $('btn-next').addEventListener('click', () => showPhoto(index + 1, 1));
+
+  // swipe between photos
+  let swipeX: number | null = null;
+  const vstage = $('viewer-stage');
+  vstage.addEventListener('pointerdown', (e) => { swipeX = e.clientX; });
+  vstage.addEventListener('pointerup', (e) => {
+    if (swipeX === null) return;
+    const dx = e.clientX - swipeX;
+    swipeX = null;
+    if (dx < -40) showPhoto(index + 1, 1);
+    else if (dx > 40) showPhoto(index - 1, -1);
+  });
+  vstage.addEventListener('pointercancel', () => { swipeX = null; });
+  window.addEventListener('keydown', (e) => {
+    if (viewerOpen()) {
+      if (e.key === 'ArrowLeft') showPhoto(index - 1, -1);
+      else if (e.key === 'ArrowRight') showPhoto(index + 1, 1);
+      else if (e.key === 'Escape') viewer.classList.add('hidden');
+      else return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    } else if (albumOpen() && e.key === 'Escape') {
+      closeAlbum();
+      e.stopImmediatePropagation();
+    }
+  }, { capture: true });
+
   $('btn-share-image').addEventListener('click', async () => {
-    if (!viewing) return;
-    const r = await shareImage(viewing);
+    const v = viewing();
+    if (!v) return;
+    const r = await shareImage(v);
     if (r === 'downloaded') showToast('Picture saved to your device');
   });
   $('btn-share-link').addEventListener('click', async () => {
-    if (!viewing) return;
-    const r = await shareLink(viewing);
+    const v = viewing();
+    if (!v) return;
+    const r = await shareLink(v);
     if (r === 'copied') showToast('Link copied: send it to a friend!');
   });
-  $('btn-download').addEventListener('click', () => viewing && download(viewing));
+  $('btn-download').addEventListener('click', () => { const v = viewing(); if (v) download(v); });
   $('btn-delete').addEventListener('click', async () => {
-    if (!viewing) return;
-    await deletePhoto(viewing.id);
+    const v = viewing();
+    if (!v) return;
+    await deletePhoto(v.id);
     viewer.classList.add('hidden');
     await openAlbum();
   });
@@ -451,6 +532,7 @@ function start() {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     if (!paused) {
+      if (game.playing && !document.hidden) stats.tick(dt);
       acc += dt;
       while (acc >= STEP) {
         game.update(STEP);
@@ -495,7 +577,7 @@ function start() {
 
 /** A shared postcard link: re-render the scene from its recipe, then invite a new game. */
 function showPostcardPage(code: string) {
-  const r = decodeRecipe(code);
+  const r = decodeRecipe(code, new Set(items().map((i) => i.id)));
   const page = $('postcard-page');
   page.classList.remove('hidden');
   $('app').classList.add('hidden');
@@ -511,6 +593,10 @@ function showPostcardPage(code: string) {
   const cx = c.getContext('2d')!;
   cx.imageSmoothingEnabled = false;
   g.applyRecipe(r);
+  // caption is rebuilt locally, never taken from the link
+  const ph = g.dayPhase();
+  const tod = ph < 0.08 ? 'morning' : ph < 0.48 ? 'day' : ph < 0.62 ? 'sunset' : ph < 0.9 ? 'night' : 'dawn';
+  r.c = `${g.river.biomeName(g.otterY - Math.floor(g.dist))} · ${tod}`;
   const draw = () => {
     g.render(cx);
     ($('postcard-img') as HTMLImageElement).src = makePostcard(c, r.c ?? 'Otter River', new Date(r.at ?? Date.now())).toDataURL();

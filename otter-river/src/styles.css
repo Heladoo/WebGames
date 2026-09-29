@@ -439,7 +439,8 @@ h2 { margin: 0; font-size: 24px; }
   position: absolute;
   top: 10px;
   left: 50%;
-  transform: translate(-50%, -80px);
+  transform: translate(-50%, calc(-100% - 90px));
+  visibility: hidden;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -452,10 +453,10 @@ h2 { margin: 0; font-size: 24px; }
   font-size: 16px;
   font-weight: 600;
   white-space: nowrap;
-  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.3, 1);
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.3, 1), visibility 0s linear 0.6s;
   z-index: 3;
 }
-.news.show { transform: translate(-50%, 0); }
+.news.show { transform: translate(-50%, 0); visibility: visible; transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.3, 1); }
 .news img { width: 32px; height: 32px; object-fit: contain; }
 .news .chip {
   background: var(--coral);
@@ -547,3 +548,43 @@ h2 { margin: 0; font-size: 24px; }
   .news { max-width: calc(100% - 20px); top: 60px; font-size: 14px; }
   .photo-op { top: 110px; }
 }
+
+/* ---------- v4: photo viewer navigation + snapshot preview ---------- */
+.viewer-panel { position: relative; }
+.viewer-close { position: absolute; top: -14px; right: -14px; z-index: 2; }
+.viewer-stage { position: relative; display: flex; align-items: center; justify-content: center; touch-action: pan-y; }
+#viewer-img { transition: transform 0.25s ease, opacity 0.25s ease; user-select: none; -webkit-user-drag: none; }
+.nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 52px;
+  font-size: 34px;
+  line-height: 1;
+  background: var(--yellow);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 0 3px 0 var(--shadow);
+}
+#btn-prev { left: 6px; }
+#btn-next { right: 6px; }
+.nav-btn:disabled { opacity: 0.3; cursor: default; }
+.viewer-count { font-size: 15px; opacity: 0.8; }
+
+.snap {
+  position: absolute;
+  left: 14px;
+  bottom: 18px;
+  width: 96px;
+  padding: 4px;
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 0 4px 0 var(--shadow);
+  transform: translateX(-160%) rotate(-6deg);
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.3, 1);
+  z-index: 3;
+}
+.snap.show { transform: translateX(0) rotate(-6deg); }
+.snap img { width: 100%; display: block; border-radius: 4px; }

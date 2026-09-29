@@ -51,7 +51,15 @@ export class AudioEngine {
     const ctx = new AC();
     this.ctx = ctx;
     this.master = ctx.createGain();
-    this.master.connect(ctx.destination);
+    // a gentle limiter so no sound can ever spike
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -14;
+    limiter.knee.value = 12;
+    limiter.ratio.value = 6;
+    limiter.attack.value = 0.005;
+    limiter.release.value = 0.25;
+    this.master.connect(limiter);
+    limiter.connect(ctx.destination);
     this.music = ctx.createGain();
     this.music.connect(this.master);
     this.sfx = ctx.createGain();
@@ -224,27 +232,29 @@ export class AudioEngine {
     }
   }
 
+  /** A soft two-pulse "rib-bit": low sine through a lowpass, no audio-rate gain modulation. */
   private croak(t: number) {
     const ctx = this.ctx!;
-    const o = ctx.createOscillator();
-    o.type = 'triangle';
-    o.frequency.setValueAtTime(150 + Math.random() * 60, t);
-    const am = ctx.createOscillator();
-    am.frequency.value = 22;
-    const amG = ctx.createGain();
-    amG.gain.value = 0.5;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(0.035, t + 0.03);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-    am.connect(amG);
-    amG.connect(g.gain);
-    o.connect(g);
-    g.connect(this.sfx);
-    o.start(t);
-    am.start(t);
-    o.stop(t + 0.35);
-    am.stop(t + 0.35);
+    const base = 130 + Math.random() * 40;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 420;
+    lp.connect(this.sfx);
+    for (const [dt, len] of [[0, 0.09], [0.14, 0.12]]) {
+      const at = t + dt;
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(base * 1.15, at);
+      o.frequency.exponentialRampToValueAtTime(base, at + len);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.linearRampToValueAtTime(0.02, at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+      o.connect(g);
+      g.connect(lp);
+      o.start(at);
+      o.stop(at + len + 0.02);
+    }
   }
 
   private cricket(t: number) {
@@ -281,8 +291,8 @@ export class AudioEngine {
     const ctx = this.ctx;
     if (!ctx) return;
     const t = ctx.currentTime;
-    this.tone(1800, t, 0.05, { type: 'square', gain: 0.02 });
-    this.tone(900, t + 0.05, 0.06, { type: 'square', gain: 0.015 });
+    this.tone(1400, t, 0.05, { type: 'triangle', gain: 0.02 });
+    this.tone(800, t + 0.05, 0.06, { type: 'triangle', gain: 0.015 });
     [88, 91, 96].forEach((m, i) => this.tone(midi(m), t + 0.12 + i * 0.06, 0.4, { gain: 0.025 }));
   }
 
