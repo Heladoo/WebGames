@@ -1,0 +1,17 @@
+{
+  "name": "Word Trail",
+  "short_name": "Word Trail",
+  "description": "An endless, gentle English word adventure for young children.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#bfe6f5",
+  "theme_color": "#bfe6f5",
+  "categories": ["games", "kids", "education"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
