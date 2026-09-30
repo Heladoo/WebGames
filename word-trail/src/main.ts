@@ -1,3 +1,7 @@
+import '@fontsource/andika/400.css';
+import '@fontsource/andika/700.css';
+import '@fontsource/fredoka/500.css';
+import '@fontsource/fredoka/600.css';
 import './styles.css';
 import { heroArt } from './art/characters';
 import { WEAR_SLOT } from './art/wearables';
@@ -11,8 +15,9 @@ import { speech } from './speech';
 import { load, newTrip, save, SaveData } from './state';
 import { tapWord } from './tapLetters';
 import { traceWord } from './trace';
-import { $, anyOverlayOpen, confetti, flash, h, ICONS, sleep, toast } from './ui';
+import { $, anyOverlayOpen, celebrate, flash, h, ICONS, sleep, toast } from './ui';
 import { runDebug } from './debug';
+import { installDefs } from './art/paper';
 
 const params = new URLSearchParams(location.search);
 const s: SaveData = load();
@@ -28,6 +33,7 @@ const show = (w: string) => (s.settings.letterCase === 'upper' ? w.toUpperCase()
 
 if (params.get('debug')) {
   runDebug(params.get('debug')!);
+  installDefs();
 } else {
   boot();
 }
@@ -55,6 +61,7 @@ function applyDebugParams() {
 // ---------------------------------------------------------------------------
 
 function boot() {
+  installDefs();
   // the app never scrolls (a focused or animated element must not nudge it)
   const app = $('app');
   app.addEventListener('scroll', () => { app.scrollTop = 0; app.scrollLeft = 0; });
@@ -127,7 +134,7 @@ async function run() {
     await sleep(2200);
     for (const b of checkBadges(s)) {
       save(s);
-      await showBadge(b.label, b.say, b.icon);
+      await showBadge(b.label, b.say, b.icon, !!b.party);
     }
     await walk(9000);
   }
@@ -247,7 +254,7 @@ async function learn(word: string) {
   s.rounds++;
   save(s);
   sfx.success();
-  confetti();
+  celebrate('word', title);
   title.classList.add('cheer');
   await speech.spell(word);
   await speech.say(CHEERS[Math.floor(Math.random() * CHEERS.length)], { queue: true, pitch: 1.25 });
@@ -306,11 +313,11 @@ async function walk(ms: number) {
   }
 }
 
-async function showBadge(label: string, say: string, icon: string) {
+async function showBadge(label: string, say: string, icon: string, party: boolean) {
   sfx.success();
-  confetti(50);
-  const b = h('div', 'badge-pop', `<div class="medal">${picture(icon)}</div><b>${label}</b>`);
+  const b = h('div', 'badge-pop', `<div class="badge-star">${ICONS.burst}</div><div class="medal">${picture(icon)}</div><b>${label}</b>`);
   document.body.appendChild(b);
+  celebrate(party ? 'party' : 'badge', b.querySelector('.medal'));
   await speech.say(say, { pitch: 1.2 });
   await sleep(900);
   b.classList.add('out');

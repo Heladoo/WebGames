@@ -5,7 +5,7 @@ import { sfx } from './sfx';
 // Tapping any bubble says its letter name; the right one flies into its slot.
 // Level 0: bubbles in order · 1: shuffled · 2 and 3: one or two extra letters.
 
-const COLORS = ['#ff8fb0', '#7fc8f0', '#9ed98b', '#ffc15e', '#b8a3f0', '#ff9f7a', '#7cc9a8'];
+const COLORS = ['#e3685b', '#3f8f8a', '#e8a93c', '#6c7fc4', '#d9788f', '#5f9e6e', '#c98a4b'];
 // letters that look clearly different from most others, for extra bubbles
 const EXTRAS = 'abdefhkmnrstuwxz';
 

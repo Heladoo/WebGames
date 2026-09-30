@@ -1,7 +1,8 @@
-import { INK, OUT, THIN } from './palette';
+import { C, ell, flat, line, piece, shade } from './paper';
 
-// Vehicles wrap around a seated hero drawn in the same 200×200 box.
-// `under` is drawn before the hero, `over` after it; `dy` lifts the hero.
+// Paper vehicles wrap around a seated hero drawn in the same 200×200 box
+// (the hero faces right). `under` is drawn before the hero, `over` after it,
+// and `dy` lifts the hero into its seat. Wheels and hulls sit on y≈192.
 
 export interface Ride {
   under: string;
@@ -9,62 +10,61 @@ export interface Ride {
   dy: number;
 }
 
-const wheel = (x: number, y: number, r = 15) => `<g class="wheel" style="transform-origin:${x}px ${y}px">
-  <circle cx="${x}" cy="${y}" r="${r}" fill="#6b5a70" ${OUT}/><circle cx="${x}" cy="${y}" r="${r * 0.45}" fill="#e9e3ef"/>
-  <path d="M${x - r * 0.45} ${y} L${x + r * 0.45} ${y}" stroke="${INK}" stroke-width="2"/></g>`;
+const wheel = (x: number, y: number, r = 14) => `<g class="wheel" style="transform-origin:${x}px ${y}px" data-part="wheel">
+  ${piece(ell(x, y, r, r), '#4a3f47', { lift: 1.2 })}${flat(ell(x, y, r * 0.5, r * 0.5), '#e9e2d6')}
+  ${line(`M${x - r * 0.5} ${y} L${x + r * 0.5} ${y} M${x} ${y - r * 0.5} L${x} ${y + r * 0.5}`, '#4a3f47', 2)}</g>`;
 
 export const RIDES: Record<string, Ride> = {
   car: {
-    dy: -4,
+    dy: -8,
     under: '',
-    over: `<g data-word="car">
-      <path d="M150 124 L166 102 L172 104 L160 128" fill="#dff3ff" fill-opacity="0.8" ${THIN}/>
-      <path d="M18 150 Q20 128 44 128 L150 128 Q176 128 188 146 Q196 150 194 170 Q194 184 180 184 L26 184 Q14 184 16 170 Z" fill="#ff7a7a" ${OUT}/>
-      <path d="M26 148 L186 148" stroke="#ffb0a8" stroke-width="4"/>
-      <circle cx="186" cy="160" r="6" fill="#fff4b0" ${THIN}/>
-      ${wheel(54, 186)}${wheel(158, 186)}</g>`,
+    over: `<g data-word="car" data-item="vehicle">
+      ${piece('M150 126 L162 104 L168 106 L160 130 Z', '#e9f5f4', { lift: 0.6 })}
+      ${piece('M16 150 C18 130 40 128 56 128 L148 128 C172 128 184 138 190 150 C196 154 196 174 188 178 L22 178 C14 176 14 160 16 150 Z', C.coral, { lift: 2 })}
+      ${piece('M22 150 L190 150 L190 158 L20 158 Z', shade(C.coral, 0.25), { lift: 0.4 })}
+      ${piece(ell(186, 158, 5, 5), C.butter, { lift: 0.4 })}
+      ${wheel(52, 178)}${wheel(156, 178)}</g>`,
   },
   bus: {
-    dy: -6,
-    under: `<rect x="4" y="18" width="192" height="168" rx="22" fill="#fff3c4"/>`,
-    over: `<g data-word="bus">
-      <path fill-rule="evenodd" d="M4 40 Q4 16 28 16 L172 16 Q196 16 196 40 L196 172 Q196 184 184 184 L16 184 Q4 184 4 172 Z M52 30 L148 30 L148 132 L52 132 Z" fill="#ffd45c" ${OUT}/>
-      <rect x="12" y="34" width="30" height="36" rx="7" fill="#dff3ff" ${THIN}/><rect x="158" y="34" width="30" height="36" rx="7" fill="#dff3ff" ${THIN}/>
-      <path d="M4 148 L196 148" stroke="#f0a830" stroke-width="5"/>
-      <circle cx="188" cy="160" r="6" fill="#fff" ${THIN}/>
-      ${wheel(44, 186, 16)}${wheel(156, 186, 16)}</g>`,
+    dy: -10,
+    under: piece('M8 44 C8 24 20 18 34 18 L170 18 C184 18 194 26 194 44 L194 176 L8 176 Z', '#f6ead3', { lift: 0 }),
+    over: `<g data-word="bus" data-item="vehicle">
+      ${piece('M8 44 C8 24 20 18 34 18 L170 18 C184 18 194 26 194 44 L194 170 C194 176 188 180 182 180 L20 180 C12 180 8 176 8 170 Z M56 34 L56 140 L160 140 L160 34 Z', C.mustard, { lift: 2 })}
+      ${piece('M16 38 L46 38 L46 74 L16 74 Z', '#e9f5f4', { lift: 0.5 })}${piece('M168 38 L188 38 L188 74 L168 74 Z', '#e9f5f4', { lift: 0.5 })}
+      ${piece('M8 150 L194 150 L194 158 L8 158 Z', shade(C.mustard, -0.18), { lift: 0.4 })}
+      ${piece(ell(188, 166, 4.5, 4.5), C.white, { lift: 0.4 })}
+      ${wheel(46, 180, 15)}${wheel(156, 180, 15)}</g>`,
   },
   boat: {
-    dy: -2,
-    under: `<g data-word="boat"><path d="M40 150 L40 22" stroke="#a8744f" stroke-width="5" stroke-linecap="round"/>
-      <path d="M44 26 Q70 70 44 132 Z" fill="#fff8ee" ${OUT}/><path d="M40 22 L20 30 L40 38 Z" fill="#ff8fb0" ${THIN}/></g>`,
-    over: `<g data-word="boat">
-      <path d="M12 142 L192 142 Q180 186 150 188 L52 188 Q22 186 12 142 Z" fill="#7fb8f0" ${OUT}/>
-      <path d="M20 156 L186 156" stroke="#fff" stroke-width="5"/>
-      <circle cx="160" cy="170" r="6" fill="#fff" ${THIN}/>
-      <path class="waves" d="M-20 190 q15 -8 30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0" fill="none" stroke="#7fd0f0" stroke-width="6" stroke-linecap="round"/></g>`,
+    dy: -6,
+    under: `<g data-word="boat">${line('M40 146 L40 26', C.bark, 5)}
+      ${piece('M44 30 C70 70 70 104 44 136 Z', C.white, { lift: 1.2 })}${piece('M40 26 L20 34 L40 42 Z', C.coral, { lift: 0.6 })}</g>`,
+    over: `<g data-word="boat" data-item="vehicle">
+      ${piece('M10 140 L194 140 C184 176 164 190 146 190 L56 190 C36 190 18 176 10 140 Z', C.teal, { lift: 2 })}
+      ${piece('M16 152 L190 152 L187 160 L19 160 Z', C.butter, { lift: 0.4 })}
+      ${piece(ell(160, 172, 5, 5), C.white, { lift: 0.4 })}
+      <g class="waves">${piece('M-30 186 q15 -10 30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 L230 198 L-30 198 Z', '#8ecfd6', { lift: 0.8 })}</g></g>`,
   },
   train: {
-    dy: -6,
-    under: `<g data-word="train"><path d="M50 24 L50 134 M150 24 L150 134" stroke="#8a5c42" stroke-width="6" stroke-linecap="round"/>
-      <rect x="40" y="14" width="120" height="16" rx="6" fill="#ff7a7a" ${OUT}/>
-      <circle class="smoke" cx="186" cy="60" r="10" fill="#fff" opacity="0.8"/><circle class="smoke s2" cx="176" cy="40" r="13" fill="#fff" opacity="0.7"/></g>`,
-    over: `<g data-word="train">
-      <rect x="150" y="100" width="46" height="62" rx="12" fill="#7cc9a8" ${OUT}/>
-      <rect x="170" y="70" width="16" height="32" rx="4" fill="#6b5a70" ${OUT}/>
-      <rect x="40" y="132" width="122" height="44" rx="8" fill="#ff7a7a" ${OUT}/>
-      <path d="M40 150 L196 150" stroke="#ffd45c" stroke-width="5"/>
-      ${wheel(66, 180, 14)}${wheel(118, 180, 14)}${wheel(172, 176, 18)}</g>`,
+    dy: -10,
+    under: `<g data-word="train">${line('M50 30 L50 134 M148 30 L148 134', C.bark, 6)}
+      ${piece('M38 16 L160 16 L160 32 L38 32 Z', C.coral, { lift: 1.2 })}
+      ${piece(ell(186, 58, 10, 10), C.white, { lift: 0, cls: 'smoke' })}${piece(ell(176, 38, 13, 13), C.white, { lift: 0, cls: 'smoke s2' })}</g>`,
+    over: `<g data-word="train" data-item="vehicle">
+      ${piece('M150 98 L196 98 L196 166 L150 166 Z', C.teal, { lift: 1.6 })}
+      ${piece('M170 68 L186 68 L186 100 L170 100 Z', '#4a3f47', { lift: 1 })}
+      ${piece('M38 130 L160 130 L160 174 L38 174 Z', C.coral, { lift: 2 })}
+      ${piece('M38 146 L196 146 L196 154 L38 154 Z', C.butter, { lift: 0.4 })}
+      ${wheel(64, 176, 13)}${wheel(116, 176, 13)}${wheel(172, 174, 18)}</g>`,
   },
   bike: {
-    dy: -14,
+    dy: -16,
     under: '',
-    over: `<g data-word="bike">
-      ${wheel(44, 172, 22)}${wheel(162, 172, 22)}
-      <path d="M44 172 L84 136 L128 136 L162 172 M84 136 L100 172 L128 136 M100 172 L96 128 M150 120 L128 136" fill="none" stroke="#ff8fb0" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M86 126 L108 126" stroke="${INK}" stroke-width="7" stroke-linecap="round"/>
-      <path d="M142 116 L160 112" stroke="${INK}" stroke-width="6" stroke-linecap="round"/>
-      <circle cx="100" cy="172" r="7" fill="#6b5a70"/></g>`,
+    over: `<g data-word="bike" data-item="vehicle">
+      ${wheel(44, 170, 22)}${wheel(162, 170, 22)}
+      ${line('M44 170 L84 134 L128 134 L162 170 M84 134 L100 170 L128 134 M100 170 L96 124 M150 116 L128 134', C.rose, 6)}
+      ${line('M86 122 L108 122', C.ink, 7)}${line('M142 112 L160 108', C.ink, 6)}
+      ${flat(ell(100, 170, 7, 7), '#4a3f47')}</g>`,
   },
 };
 
@@ -74,7 +74,6 @@ export const RIDE_IDS = Object.keys(RIDES);
 export function rideIcon(id: string): string {
   const r = RIDES[id];
   if (!r) return '';
-  if (id === 'bus') return r.under + r.over.replace('fill-rule="evenodd"', '').replace(/ M52 30 L148 30 L148 132 L52 132 Z/, '') +
-    `<rect x="54" y="34" width="92" height="40" rx="8" fill="#dff3ff" ${THIN}/>`;
+  if (id === 'bus') return r.under + r.over.replace(' M56 34 L56 140 L160 140 L160 34 Z', '') + piece('M56 38 L160 38 L160 80 L56 80 Z', '#e9f5f4', { lift: 0.5 });
   return r.under + r.over;
 }

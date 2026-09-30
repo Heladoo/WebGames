@@ -1,6 +1,7 @@
 import { picture, WORDS } from './content';
 import { sceneMarkup } from './scene';
 import { GROUND } from './art/places';
+import { FILTER_DEFS } from './art/paper';
 import type { SaveData, Trip } from './state';
 
 // Badges, trip postcards (kept in IndexedDB) and sharing.
@@ -10,19 +11,21 @@ export interface Badge {
   label: string;
   say: string;
   icon: string; // a word whose picture is the badge
+  party?: boolean; // a milestone: celebrate with a full paper party
 }
 
 export const BADGES: Badge[] = [
   { id: 'words-1', label: 'First word', say: 'Your first word!', icon: 'star' },
   { id: 'words-5', label: '5 words', say: 'Wow! Five words!', icon: 'balloon' },
-  { id: 'words-10', label: '10 words', say: 'Ten words! Amazing!', icon: 'crown' },
-  { id: 'words-25', label: '25 words', say: 'Twenty-five words! Super star!', icon: 'rainbow' },
-  { id: 'words-50', label: '50 words', say: 'Fifty words! Hooray!', icon: 'cake' },
-  { id: 'words-all', label: 'Every word', say: 'You found every word!', icon: 'sun' },
+  { id: 'words-10', label: '10 words', say: 'Ten words! Amazing!', icon: 'crown', party: true },
+  { id: 'words-25', label: '25 words', say: 'Twenty-five words! Super star!', icon: 'rainbow', party: true },
+  { id: 'words-50', label: '50 words', say: 'Fifty words! Hooray!', icon: 'cake', party: true },
+  { id: 'words-all', label: 'Every word', say: 'You found every word!', icon: 'sun', party: true },
   { id: 'letters-10', label: '10 letters', say: 'Ten different letters!', icon: 'kite' },
   { id: 'letters-20', label: '20 letters', say: 'Twenty different letters!', icon: 'ball' },
+  { id: 'letters-26', label: 'A to Z', say: 'Every letter from A to Z! Wow!', icon: 'star', party: true },
   { id: 'places-4', label: '4 places', say: 'Four places visited!', icon: 'boat' },
-  { id: 'places-all', label: 'Every place', say: 'You went everywhere!', icon: 'train' },
+  { id: 'places-all', label: 'Every place', say: 'You went everywhere!', icon: 'train', party: true },
 ];
 
 const ALL_COUNT = new Set(Object.values(WORDS).flat()).size;
@@ -39,6 +42,7 @@ export function checkBadges(s: SaveData): Badge[] {
     'words-all': words >= ALL_COUNT,
     'letters-10': s.letters.length >= 10,
     'letters-20': s.letters.length >= 20,
+    'letters-26': s.letters.length >= 26,
     'places-4': s.places.length >= 4,
     'places-all': s.places.length >= WORDS.place.length,
   };
@@ -69,8 +73,9 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+// rasterized pictures carry their own copy of the paper filters
 const svgUrl = (inner: string, viewBox: string, w: number, h: number) =>
-  'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="${w}" height="${h}">${inner}</svg>`);
+  'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="${w}" height="${h}"><defs>${FILTER_DEFS}</defs>${inner}</svg>`);
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -97,10 +102,10 @@ export async function makePostcard(t: Trip): Promise<{ png: string; caption: str
   c.width = W;
   c.height = IH + foot - pad;
   const ctx = c.getContext('2d')!;
-  ctx.fillStyle = '#fff8ee';
+  ctx.fillStyle = '#fbf5ea';
   ctx.fillRect(0, 0, c.width, c.height);
   // scalloped stamp edge
-  ctx.fillStyle = '#ffd9e3';
+  ctx.fillStyle = '#e6dccb';
   for (let x = 12; x < c.width; x += 24) {
     ctx.beginPath(); ctx.arc(x, 0, 8, 0, Math.PI); ctx.fill();
     ctx.beginPath(); ctx.arc(x, c.height, 8, Math.PI, 0); ctx.fill();
@@ -111,11 +116,11 @@ export async function makePostcard(t: Trip): Promise<{ png: string; caption: str
   ctx.drawImage(img, pad, pad, W - pad * 2, IH - pad * 2);
   ctx.restore();
   ctx.lineWidth = 6;
-  ctx.strokeStyle = '#5a4658';
+  ctx.strokeStyle = '#3f3238';
   roundRect(ctx, pad, pad, W - pad * 2, IH - pad * 2, 28);
   ctx.stroke();
   const text = caption(t);
-  ctx.fillStyle = '#5a4658';
+  ctx.fillStyle = '#3f3238';
   ctx.textBaseline = 'middle';
   let size = 38;
   do {
@@ -124,7 +129,7 @@ export async function makePostcard(t: Trip): Promise<{ png: string; caption: str
   } while (ctx.measureText(text).width > W - pad * 2 - 230 && size > 18);
   ctx.fillText(text, pad + 6, IH - pad + foot / 2 - 4);
   ctx.font = `400 26px ${FONT}`;
-  ctx.fillStyle = '#d8709e';
+  ctx.fillStyle = '#e3685b';
   const brand = 'Word Trail';
   ctx.fillText(brand, W - pad - ctx.measureText(brand).width, IH - pad + foot / 2 - 4);
   return { png: c.toDataURL('image/png'), caption: text };
@@ -141,9 +146,9 @@ export async function makeStickerSheet(s: SaveData, upper: boolean): Promise<str
   c.width = cols * cell + 60;
   c.height = head + rows * cell + 60;
   const ctx = c.getContext('2d')!;
-  ctx.fillStyle = '#fff8ee';
+  ctx.fillStyle = '#fbf5ea';
   ctx.fillRect(0, 0, c.width, c.height);
-  ctx.fillStyle = '#5a4658';
+  ctx.fillStyle = '#3f3238';
   ctx.font = `700 44px ${FONT}`;
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
@@ -152,7 +157,7 @@ export async function makeStickerSheet(s: SaveData, upper: boolean): Promise<str
     const w = words[i];
     const x = 30 + (i % cols) * cell;
     const y = head + Math.floor(i / cols) * cell;
-    ctx.fillStyle = ['#ffe3ea', '#e3f3ff', '#e9f8e2', '#fff3d6', '#efe8ff'][i % 5];
+    ctx.fillStyle = ['#f8e1d8', '#dcecea', '#f7ead0', '#e3e6f4', '#e6efd9'][i % 5];
     roundRect(ctx, x + 8, y + 8, cell - 16, cell - 16, 24);
     ctx.fill();
     const svg = picture(w);
@@ -164,7 +169,7 @@ export async function makeStickerSheet(s: SaveData, upper: boolean): Promise<str
     } catch {
       // skip a picture that fails to draw
     }
-    ctx.fillStyle = '#5a4658';
+    ctx.fillStyle = '#3f3238';
     ctx.font = `700 30px ${FONT}`;
     ctx.fillText(upper ? w.toUpperCase() : w, x + cell / 2, y + cell - 34);
   }

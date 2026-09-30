@@ -11,7 +11,7 @@ const NS = 'http://www.w3.org/2000/svg';
 const GAP = 22;
 const TOL = 17; // how close (in letter units, letters are 100 tall) a touch must be
 const STEP = 5; // sample spacing along each stroke
-const COLORS = ['#ff8fb0', '#7fc8f0', '#9ed98b', '#ffc15e', '#b8a3f0', '#ff9f7a', '#7cc9a8'];
+const COLORS = ['#e3685b', '#3f8f8a', '#e8a93c', '#6c7fc4', '#d9788f', '#5f9e6e', '#c98a4b'];
 
 interface Sample { x: number; y: number; hit: boolean }
 interface Stroke { el: SVGPathElement; pts: Sample[] }

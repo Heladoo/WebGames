@@ -1,198 +1,269 @@
-import { BLUSH, INK, OUT, THIN } from './palette';
-import { carryArt, wearBack, wearFace, wearFeet, wearFront, wearHead, wearNeck } from './wearables';
+import { C, ell, eye, flat, line, piece, shade } from './paper';
+import { carryArt, wearBack, wearBackTop, wearFace, wearFeet, wearHead, wearNeck } from './wearables';
 
-// Every hero shares one skeleton in a 200×200 box, so any wearable fits any hero:
-//   head centre (100,78) · top of head y≈42 · eyes (90,76) (116,76)
-//   neck y≈108 · body centre (100,142) · feet bottom y≈192 · right hand (140,150)
+// Every hero is a small rig: named paper parts plus anchor points, facing
+// right in a 3/4 view, in a 200×200 box with the ground at y=192.
+//
+// The 3/4 view rules are shared by all animals: the far eye sits nearer the
+// snout and is drawn smaller and a little narrower; the near eye is bigger
+// and nearer the middle of the head; both sit on one eye line, above the snout.
+// tests/anatomy.spec.ts checks these rules (and many more) for every hero.
 
 export type HeroId = 'dog' | 'cat' | 'fox' | 'bear' | 'duck' | 'pig' | 'frog' | 'owl';
+export type Pt = [number, number];
+
+export interface Anchors {
+  headTop: Pt; // where hats sit
+  bow: Pt; // where a bow is pinned
+  neck: Pt; // centre of the scarf
+  back: Pt; // top of the back (bags, capes, carried things)
+  eyeNear: [number, number, number];
+  eyeFar: [number, number, number];
+  legs: { part: string; x: number; near: boolean }[];
+  tail: Pt; // where the tail meets the body
+}
 
 export interface Look {
-  worn?: Partial<Record<string, string>>; // slot -> wearable id
+  worn?: Partial<Record<string, string>>;
   carry?: string | null;
-  seated?: boolean; // riding: hide the legs
+  seated?: boolean;
 }
 
 interface Spec {
   fur: string;
-  light: string;
-  dark: string;
-  head?: (s: Spec) => string; // replaces the default round head
-  behindHead?: (s: Spec) => string;
-  ears?: (s: Spec) => string;
-  face: (s: Spec) => string;
-  tail?: (s: Spec) => string;
-  wings?: boolean;
-  legColor?: string;
+  deep: string; // far-side / shadow colour
+  light: string; // muzzle, belly
+  accent: string; // ears, nose details
+  anchors: Anchors;
+  body: string;
+  head: string;
+  legs: 'paw' | 'bird' | 'frog';
+  earFar?: string; // behind the head
+  earNear?: string; // in front of the head
+  tail?: string;
+  muzzle?: string; // snout / beak
+  nose?: string;
+  noseColor?: string;
+  mouth?: string;
+  extras?: (s: Spec) => string; // markings drawn on top of body/head
+  back?: (s: Spec) => string; // markings under the head (belly, wings)
+  face?: (s: Spec) => string; // extra face detail after the eyes (whiskers, discs)
+  underEyes?: (s: Spec) => string; // drawn before the eyes (facial discs)
+  eyesOnTop?: boolean; // frogs
 }
 
-const eyes = (lx = 90, rx = 116, y = 76) => `
-  <ellipse cx="${lx}" cy="${y}" rx="4.6" ry="5.6" fill="${INK}"/><circle cx="${lx + 1.6}" cy="${y - 2}" r="1.7" fill="#fff"/>
-  <ellipse cx="${rx}" cy="${y}" rx="4.6" ry="5.6" fill="${INK}"/><circle cx="${rx + 1.6}" cy="${y - 2}" r="1.7" fill="#fff"/>`;
-const blush = (y = 90) => `
-  <ellipse cx="78" cy="${y}" rx="7" ry="4.5" fill="${BLUSH}" opacity="0.7"/>
-  <ellipse cx="128" cy="${y}" rx="7" ry="4.5" fill="${BLUSH}" opacity="0.7"/>`;
-const smile = (x = 104, y = 97, w = 6) => `<path d="M${x - w} ${y} Q${x} ${y + 5} ${x + w} ${y}" fill="none" ${THIN}/>`;
-const strokeTail = (d: string, fill: string) =>
-  `<g class="tail"><path d="${d}" fill="none" stroke="${INK}" stroke-width="15" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${fill}" stroke-width="9" stroke-linecap="round"/></g>`;
+// ---------- shared shapes ----------
+
+const BODY = 'M70 136C68 112 90 98 114 100C138 102 150 118 148 140C146 160 128 170 106 169C84 168 71 156 70 136 Z';
+const HEAD = 'M84 76 C82 50 102 34 124 35 C148 36 162 54 160 78 C158 100 140 114 120 114 C100 114 86 100 84 76 Z';
+const PAW_LEGS = [
+  { part: 'legBackFar', x: 84, near: false },
+  { part: 'legFrontFar', x: 130, near: false },
+  { part: 'legBackNear', x: 95, near: true },
+  { part: 'legFrontNear', x: 141, near: true },
+];
+const quadAnchors = (o: Partial<Anchors> = {}): Anchors => ({
+  headTop: [122, 38],
+  bow: [102, 44],
+  neck: [114, 112],
+  back: [96, 102],
+  eyeNear: [118, 70, 7.4],
+  eyeFar: [143, 68, 6.6],
+  legs: PAW_LEGS,
+  tail: [74, 126],
+  ...o,
+});
 
 const SPECS: Record<HeroId, Spec> = {
   dog: {
-    fur: '#eab98b',
-    light: '#fbe6cf',
-    dark: '#a8744f',
-    ears: (s) => `
-      <ellipse cx="62" cy="82" rx="12" ry="25" transform="rotate(18 62 82)" fill="${s.dark}" ${OUT}/>
-      <ellipse cx="142" cy="82" rx="12" ry="25" transform="rotate(-18 142 82)" fill="${s.dark}" ${OUT}/>`,
-    face: (s) => `${eyes()}${blush()}
-      <ellipse cx="104" cy="92" rx="16" ry="11" fill="${s.light}" ${THIN}/>
-      <ellipse cx="104" cy="87" rx="6" ry="4.4" fill="${INK}"/>
-      <path d="M104 91 L104 95 M98 96 Q104 101 110 96" fill="none" ${THIN}/>`,
-    tail: (s) => strokeTail('M70 146 Q48 140 46 114', s.fur),
+    fur: '#dfa36b', deep: '#c4844f', light: '#fbe8cf', accent: '#9a5f3f',
+    anchors: quadAnchors({ bow: [104, 46] }),
+    body: BODY, head: HEAD, legs: 'paw',
+    earFar: 'M140 42 C150 32 166 36 168 50 C169 60 162 68 154 64 Z',
+    earNear: 'M100 44 C86 42 76 56 78 78 C80 96 90 104 98 96 C106 88 110 62 108 52 C107 47 104 44 100 44 Z',
+    tail: 'M76 130C62 124 54 110 57 96C58 91 64 90 66 95C68 106 74 116 82 120 Z',
+    muzzle: 'M128 96 C128 84 146 78 158 85 C167 91 166 104 154 108 C141 112 128 107 128 96 Z',
+    nose: 'M156 84 C160 80 170 81 171 87 C171 93 164 96 160 95 C156 94 153 89 156 84 Z',
+    mouth: 'M145 104 C148 109 155 109 158 103',
+    back: (s) => piece('M122 122C134 118 146 126 146 142C146 156 134 164 122 162C114 154 112 134 122 122 Z', s.light, { lift: 0.8 }),
+    extras: (s) => flat('M116 38 C122 34 132 34 138 38 C132 42 122 42 116 38 Z', s.deep, 'opacity="0.35"'),
   },
   cat: {
-    fur: '#cfc6dd',
-    light: '#f4f0fa',
-    dark: '#ffc2d1',
-    ears: (s) => `
-      <path d="M64 62 L68 28 L92 44 Z" fill="${s.fur}" ${OUT}/><path d="M70 54 L72 38 L84 46 Z" fill="${s.dark}"/>
-      <path d="M110 44 L134 28 L138 62 Z" fill="${s.fur}" ${OUT}/><path d="M118 46 L131 38 L132 54 Z" fill="${s.dark}"/>`,
-    face: (s) => `${eyes()}${blush()}
-      <path d="M100 87 L108 87 L104 92 Z" fill="${s.dark}" ${THIN}/>
-      <path d="M97 95 Q100.5 99 104 95 Q107.5 99 111 95" fill="none" ${THIN}/>
-      <path d="M86 90 L70 87 M86 94 L71 96 M122 90 L138 87 M122 94 L137 96" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`,
-    tail: (s) => strokeTail('M68 160 Q40 152 42 124 Q44 106 56 104', s.fur),
+    fur: '#b9b0c9', deep: '#978cad', light: '#f3eef8', accent: '#f0a3b4',
+    anchors: quadAnchors({ headTop: [124, 38], bow: [108, 40] }),
+    body: 'M72 138C70 116 92 104 114 104C138 104 148 120 146 140C144 160 126 168 106 167C86 166 73 156 72 138 Z',
+    head: HEAD, legs: 'paw',
+    earFar: 'M134 42 C140 32 150 24 158 20 C160 34 158 46 152 54 Z',
+    earNear: 'M94 58 C92 44 96 30 102 22 C112 30 120 38 122 44 Z',
+    tail: 'M74 134C56 130 48 114 52 98C54 88 62 80 70 82C74 84 72 89 68 90C62 92 60 102 62 110C64 120 72 124 82 126 Z',
+    muzzle: 'M132 96 C134 86 150 82 158 88 C164 94 160 104 150 106 C140 107 132 103 132 96 Z',
+    nose: 'M155 86 L165 86 L160 92 Z', noseColor: '#e98c9c',
+    mouth: 'M150 97 C152 101 156 101 158 97',
+    extras: (s) => flat('M118 38 L122 50 L126 38 Z M108 42 L114 52 L116 40 Z', s.deep, 'opacity="0.5"') +
+      flat('M100 112 C104 118 104 126 100 132 M90 114 C94 122 94 130 90 136', 'none', `stroke="${s.deep}" stroke-width="4" stroke-linecap="round" opacity="0.6"`) +
+      piece('M104 26 L108 34 L114 38 Z', s.accent, { lift: 0 }),
+    face: () => line('M150 100 L170 96 M150 103 L170 104', C.ink, 1.3, 'opacity="0.55"'),
   },
   fox: {
-    fur: '#f5965a',
-    light: '#fff3e6',
-    dark: '#6b4a5a',
-    ears: (s) => `
-      <path d="M62 64 L64 22 L92 44 Z" fill="${s.fur}" ${OUT}/><path d="M66 38 L64 22 L76 30 Z" fill="${s.dark}"/>
-      <path d="M110 44 L138 20 L140 64 Z" fill="${s.fur}" ${OUT}/><path d="M131 26 L138 20 L139 36 Z" fill="${s.dark}"/>`,
-    face: (s) => `
-      <path d="M62 84 Q80 82 100 100 Q104 106 108 100 Q126 82 142 84 Q138 112 104 116 Q66 112 62 84 Z" fill="${s.light}"/>
-      ${eyes()}${blush(92)}
-      <ellipse cx="104" cy="96" rx="5.5" ry="4" fill="${INK}"/>${smile(104, 104, 5)}`,
-    tail: (s) => `<g class="tail">
-      <path d="M72 158 Q30 170 24 128 Q24 110 36 104 Q50 130 74 140 Z" fill="${s.fur}" ${OUT}/>
-      <path d="M24 128 Q24 110 36 104 Q40 116 44 122 Q32 124 24 128 Z" fill="${s.light}"/></g>`,
+    fur: '#e0874a', deep: '#c26a33', light: '#fbf1e6', accent: '#4a3334',
+    anchors: quadAnchors({ headTop: [120, 38] }),
+    body: BODY, head: HEAD, legs: 'paw',
+    earFar: 'M136 42 C140 28 148 16 156 10 C160 26 158 40 152 52 Z',
+    earNear: 'M92 58 C88 40 92 22 98 12 C110 22 118 32 122 42 Z',
+    tail: 'M78 134C56 140 32 126 34 104C36 90 50 86 56 94C60 108 70 118 86 122 Z',
+    muzzle: 'M128 94 C130 82 150 80 172 90 C162 100 146 108 134 106 C130 104 128 100 128 94 Z',
+    nose: 'M166 86 C170 84 176 87 175 91 C174 95 168 95 166 93 Z',
+    mouth: 'M150 101 C154 104 158 103 161 100',
+    back: (s) => piece('M124 118C136 114 148 124 146 142C144 154 134 160 124 158C116 148 114 130 124 118 Z', s.light, { lift: 0.8 }) +
+      piece('M34 104C36 90 50 86 56 94C54 102 50 106 44 106C40 106 36 106 34 104 Z', s.light, { lift: 0.6 }),
+    extras: (s) => flat('M96 16 L98 12 L106 20 Z M152 12 L156 10 L157 22 Z', s.accent) +
+      piece('M104 84 C108 98 120 108 134 106 C130 100 128 94 128 90 C120 92 110 90 104 84 Z', s.light, { lift: 0.6 }),
   },
   bear: {
-    fur: '#b88462',
-    light: '#efd3b8',
-    dark: '#8a5c42',
-    behindHead: (s) => `
-      <circle cx="66" cy="46" r="14" fill="${s.fur}" ${OUT}/><circle cx="66" cy="46" r="7" fill="${s.light}"/>
-      <circle cx="136" cy="46" r="14" fill="${s.fur}" ${OUT}/><circle cx="136" cy="46" r="7" fill="${s.light}"/>`,
-    face: (s) => `${eyes()}${blush()}
-      <ellipse cx="104" cy="93" rx="17" ry="12" fill="${s.light}" ${THIN}/>
-      <ellipse cx="104" cy="88" rx="6.5" ry="4.6" fill="${INK}"/>
-      <path d="M104 92 L104 96 M98 97 Q104 102 110 97" fill="none" ${THIN}/>`,
-    tail: (s) => `<circle cx="66" cy="164" r="9" fill="${s.fur}" ${OUT}/>`,
+    fur: '#a8744f', deep: '#8a5b3c', light: '#ead0ae', accent: '#6f4630',
+    anchors: quadAnchors({ bow: [100, 44] }),
+    body: 'M66 136C64 108 88 94 114 96C140 98 154 116 152 140C150 162 130 172 106 171C82 170 67 158 66 136 Z',
+    head: HEAD, legs: 'paw',
+    earFar: ell(148, 42, 12, 12),
+    earNear: ell(100, 44, 14, 14),
+    tail: ell(68, 124, 9, 9),
+    muzzle: ell(146, 95, 19, 14),
+    nose: ell(160, 88, 7, 5),
+    mouth: 'M146 101 C149 106 155 106 158 101',
+    extras: (s) => flat(ell(100, 44, 7, 7), s.light) + flat(ell(148, 42, 5.5, 5.5), shade(s.light, -0.15)),
   },
   duck: {
-    fur: '#ffd86b',
-    light: '#fff1b8',
-    dark: '#ff9f45',
-    legColor: '#ff9f45',
-    wings: true,
-    ears: () => `<path d="M94 44 Q98 28 104 40 Q110 30 112 44" fill="#ffd86b" ${OUT}/>`,
-    face: (s) => `${eyes(88, 118, 74)}${blush(88)}
-      <ellipse cx="104" cy="92" rx="18" ry="8.5" fill="${s.dark}" ${OUT}/>
-      <path d="M88 92 Q104 96 120 92" fill="none" ${THIN}/>`,
-    tail: (s) => `<path d="M68 150 L50 140 L60 160 Z" fill="${s.fur}" ${OUT}/>`,
+    fur: '#f3cf5a', deep: '#d8ae3c', light: '#fff3c4', accent: '#e8883c',
+    anchors: {
+      headTop: [128, 48], bow: [112, 52], neck: [126, 106], back: [96, 106],
+      eyeNear: [124, 74, 6.4], eyeFar: [146, 72, 5.6],
+      legs: [{ part: 'legFar', x: 100, near: false }, { part: 'legNear', x: 114, near: true }],
+      tail: [70, 120],
+    },
+    body: 'M64 124 C56 104 70 96 84 106 C100 116 120 108 138 112 C158 118 160 142 150 160 C138 178 104 182 86 172 C70 164 64 146 64 124 Z',
+    head: ell(128, 80, 30, 29), legs: 'bird',
+    muzzle: 'M152 82 C160 78 174 80 179 86 C173 94 160 96 150 92 Z',
+    mouth: 'M154 88 C162 90 170 89 177 86',
+    earNear: 'M120 52 C118 42 124 38 128 44 C130 38 138 40 134 50 Z',
+    back: (s) => piece('M84 126 C100 116 124 122 128 138 C118 150 96 150 84 140 C80 134 80 130 84 126 Z', s.deep, { part: 'wing', lift: 1.2 }),
   },
   pig: {
-    fur: '#f9b8c9',
-    light: '#ffdbe4',
-    dark: '#f08ea9',
-    ears: (s) => `
-      <path d="M64 58 L64 32 L88 46 Z" fill="${s.fur}" ${OUT}/><path d="M69 50 L69 39 L80 46 Z" fill="${s.dark}"/>
-      <path d="M114 46 L138 32 L138 58 Z" fill="${s.fur}" ${OUT}/><path d="M122 46 L133 39 L133 50 Z" fill="${s.dark}"/>`,
-    face: (s) => `${eyes(88, 118, 74)}${blush(92)}
-      <ellipse cx="104" cy="92" rx="15" ry="10.5" fill="${s.dark}" ${OUT}/>
-      <ellipse cx="99" cy="92" rx="2.6" ry="3.6" fill="${INK}"/><ellipse cx="109" cy="92" rx="2.6" ry="3.6" fill="${INK}"/>
-      ${smile(104, 106, 5)}`,
-    tail: () => `<path class="tail" d="M68 152 Q56 150 58 142 Q62 134 67 142 Q70 150 60 154" fill="none" ${OUT}/>`,
+    fur: '#f2a9b5', deep: '#d88796', light: '#fcd5dc', accent: '#c96f82',
+    anchors: quadAnchors({ bow: [104, 44] }),
+    body: 'M68 136C66 110 90 98 114 100C140 102 152 118 150 140C148 160 130 170 106 169C84 168 69 156 68 136 Z',
+    head: HEAD, legs: 'paw',
+    earFar: 'M136 40 C144 30 156 30 162 36 C158 46 150 52 144 52 Z',
+    earNear: 'M98 54 C94 40 98 30 104 26 C114 32 122 40 122 48 C114 50 104 54 98 54 Z',
+    tail: 'M76 128C66 130 60 124 62 118C64 112 72 114 70 120C68 124 62 122 64 118',
+    muzzle: ell(151, 92, 11, 13),
+    nose: ell(160, 92, 6.5, 11.5), noseColor: '#f7bfc9',
+    mouth: 'M140 106 C144 110 150 110 153 106',
+    extras: () => flat(ell(158, 88, 1.8, 3), '#c96f82') + flat(ell(161.5, 96, 1.8, 3), '#c96f82'),
   },
   frog: {
-    fur: '#9ad48f',
-    light: '#e8f7d8',
-    dark: '#6fb566',
-    head: (s) => `
-      <ellipse cx="100" cy="82" rx="48" ry="34" fill="${s.fur}" ${OUT}/>
-      <circle cx="80" cy="54" r="15" fill="${s.fur}" ${OUT}/><circle cx="122" cy="54" r="15" fill="${s.fur}" ${OUT}/>`,
-    face: () => `
-      <circle cx="80" cy="54" r="9" fill="#fff"/><circle cx="122" cy="54" r="9" fill="#fff"/>
-      ${eyes(82, 124, 55)}${blush(90)}
-      <path d="M78 92 Q102 108 126 92" fill="none" ${OUT}/>`,
+    fur: '#7fb87a', deep: '#5f9a5c', light: '#dcefc6', accent: '#4f8a52',
+    anchors: {
+      headTop: [128, 46], bow: [112, 50], neck: [120, 118], back: [98, 118],
+      eyeNear: [113, 60, 6.6], eyeFar: [143, 57, 5.8],
+      legs: [
+        { part: 'legBackFar', x: 86, near: false }, { part: 'legFrontFar', x: 128, near: false },
+        { part: 'legBackNear', x: 98, near: true }, { part: 'legFrontNear', x: 140, near: true },
+      ],
+      tail: [76, 146],
+    },
+    body: 'M72 150 C70 126 92 116 116 118 C140 120 152 134 150 154 C148 172 130 180 108 179 C86 178 73 168 72 150 Z',
+    head: `M86 90 C84 72 98 62 110 60 C106 50 110 44 114 46 C118 46 126 48 128 58 C132 50 138 44 144 44 C152 46 156 54 154 62 C162 70 166 80 164 92 C162 110 144 120 124 120 C102 120 88 108 86 90 Z`,
+    legs: 'frog',
+    mouth: 'M112 96 C126 106 146 104 158 90',
+    back: (s) => piece('M100 124 C116 118 138 124 144 142 C140 160 120 166 104 160 C96 150 94 134 100 124 Z', s.light, { lift: 0.8 }),
+    underEyes: () => flat(ell(113, 60, 10.5, 10.5), '#fffdf6') + flat(ell(143, 57, 8.6, 9.4), '#fffdf6'),
+    eyesOnTop: true,
   },
   owl: {
-    fur: '#b9a3d6',
-    light: '#efe6fa',
-    dark: '#ffb45e',
-    wings: true,
-    legColor: '#ffb45e',
-    ears: (s) => `
-      <path d="M62 56 L62 30 L82 46 Z" fill="${s.fur}" ${OUT}/>
-      <path d="M120 46 L140 30 L140 56 Z" fill="${s.fur}" ${OUT}/>`,
-    face: (s) => `
-      <circle cx="88" cy="76" r="15" fill="${s.light}" ${THIN}/><circle cx="118" cy="76" r="15" fill="${s.light}" ${THIN}/>
-      ${eyes(90, 120, 76)}
-      <path d="M98 88 L110 88 L104 98 Z" fill="${s.dark}" ${THIN}/>`,
-    tail: (s) => `<path d="M72 164 L56 172 L60 160 L52 158 L70 150 Z" fill="${s.fur}" ${OUT}/>`,
+    fur: '#9d88c9', deep: '#8270b0', light: '#efe6fa', accent: '#e8a93c',
+    anchors: {
+      headTop: [122, 39], bow: [102, 48], neck: [120, 116], back: [96, 110],
+      eyeNear: [116, 78, 7.4], eyeFar: [142, 76, 6.6],
+      legs: [{ part: 'legFar', x: 104, near: false }, { part: 'legNear', x: 120, near: true }],
+      tail: [76, 164],
+    },
+    body: 'M74 150 C70 120 86 100 110 100 C134 100 150 120 146 150 C144 172 128 182 110 182 C92 182 76 172 74 150 Z',
+    head: HEAD.replace('M84 76', 'M82 80'), legs: 'bird',
+    earFar: 'M138 42 L152 22 L156 46 Z',
+    earNear: 'M92 52 L88 28 L110 42 Z',
+    tail: 'M80 160 L62 176 L66 162 L58 160 L78 150 Z',
+    muzzle: 'M150 86 C156 86 161 90 159 96 C156 101 152 103 148 99 C146 94 146 88 150 86 Z',
+    back: (s) => piece('M102 124 C114 118 134 124 138 144 C136 164 118 172 104 166 C96 154 94 134 102 124 Z', s.light, { lift: 0.8 }) +
+      flat('M108 136 q4 4 8 0 M120 136 q4 4 8 0 M112 148 q4 4 8 0 M124 148 q4 4 8 0', 'none', `stroke="${s.deep}" stroke-width="2" stroke-linecap="round"`) +
+      piece('M78 124 C86 112 98 116 100 130 C100 146 92 160 82 162 C74 150 74 134 78 124 Z', s.deep, { part: 'wing', lift: 1.2 }),
+    underEyes: (s) => flat(ell(116, 78, 14, 14), s.light) + flat(ell(142, 76, 11.5, 13), s.light),
   },
 };
 
 export const HEROES = Object.keys(SPECS) as HeroId[];
 export const heroColor = (id: HeroId) => SPECS[id].fur;
+export const anchorsOf = (id: HeroId): Anchors => SPECS[id].anchors;
+export const eyesOnTop = (id: HeroId) => !!SPECS[id].eyesOnTop;
 
-function legs(s: Spec, look: Look) {
-  if (look.seated) return '';
-  const c = s.legColor ?? s.fur;
-  const boots = look.worn?.feet ? wearFeet(look.worn.feet) : ['', ''];
-  const leg = (x: number, cls: string, boot: string) => `<g class="${cls}">
-      <rect x="${x}" y="158" width="20" height="34" rx="10" fill="${c}" ${OUT}/>${boot}</g>`;
-  return leg(78, 'leg-l', boots[0]) + leg(104, 'leg-r', boots[1]);
-}
-
-function arms(s: Spec) {
-  const c = s.fur;
-  if (s.wings)
-    return `<path d="M68 122 Q50 140 60 162 Q70 150 72 132 Z" fill="${c}" ${OUT}/>
-      <path d="M132 122 Q152 138 142 160 Q132 150 130 132 Z" fill="${c}" ${OUT}/>`;
-  return `<ellipse cx="68" cy="140" rx="10" ry="17" transform="rotate(16 68 140)" fill="${c}" ${OUT}/>
-    <ellipse cx="134" cy="140" rx="10" ry="17" transform="rotate(-24 134 140)" fill="${c}" ${OUT}/>`;
+function leg(s: Spec, l: Anchors['legs'][number], boots: string | undefined) {
+  const x = l.x;
+  const fill = l.near ? s.fur : s.deep;
+  let d: string;
+  let hip: Pt;
+  if (s.legs === 'bird') {
+    d = `M${x - 3} 164 L${x + 3} 164 L${x + 3} 185 L${x + 11} 189 L${x + 11} 192 L${x - 8} 192 L${x - 3} 187 Z`;
+    hip = [x, 164];
+    return `<g class="leg ${l.part}" style="transform-origin:${hip[0]}px ${hip[1]}px">
+      ${piece(d, l.near ? s.accent : shade(s.accent, -0.15), { part: l.part, lift: 0.8 })}${boots ?? ''}</g>`;
+  }
+  if (s.legs === 'frog') {
+    d = `M${x - 9} 156 L${x + 8} 156 L${x + 7} 184 L${x + 14} 187 C${x + 15} 191 ${x + 12} 192 ${x + 10} 192 L${x - 10} 192 C${x - 12} 192 ${x - 12} 188 ${x - 9} 186 Z`;
+  } else {
+    d = `M${x - 8} 142 L${x + 8} 142 L${x + 7.5} 185 C${x + 7.5} 190 ${x + 4} 192 ${x} 192 C${x - 5} 192 ${x - 8} 190 ${x - 8} 185 Z`;
+  }
+  hip = [x, 146];
+  const paw = s.legs === 'paw' ? flat(`M${x - 3} 189 L${x - 3} 192 M${x + 2} 189 L${x + 2} 192`, 'none', `stroke="${shade(fill, -0.25)}" stroke-width="1.4" stroke-linecap="round"`) : '';
+  return `<g class="leg ${l.part}" style="transform-origin:${hip[0]}px ${hip[1]}px">
+    ${piece(d, fill, { part: l.part, lift: l.near ? 1.4 : 0.8 })}${paw}${boots ?? ''}</g>`;
 }
 
 /** The hero's drawing (an SVG fragment in the 200×200 box). */
 export function heroArt(id: HeroId, look: Look = {}): string {
   const s = SPECS[id];
+  const a = s.anchors;
   const w = look.worn ?? {};
-  const head = s.head ? s.head(s) : `<ellipse cx="100" cy="78" rx="43" ry="38" fill="${s.fur}" ${OUT}/>`;
-  const belly = id === 'owl'
-    ? `<ellipse cx="102" cy="148" rx="23" ry="25" fill="${s.light}"/>
-       <path d="M90 140 q4 4 8 0 M104 140 q4 4 8 0 M96 152 q4 4 8 0 M110 152 q4 4 8 0" fill="none" ${THIN}/>`
-    : `<ellipse cx="102" cy="150" rx="22" ry="24" fill="${s.light}"/>`;
-  return `<g class="hero" data-word="${id}">
-    ${w.back ? wearBack(w.back) : ''}
-    ${s.tail ? s.tail(s) : ''}
-    ${legs(s, look)}
-    <ellipse cx="100" cy="142" rx="36" ry="38" fill="${s.fur}" ${OUT}/>
-    ${belly}
-    ${arms(s)}
-    ${s.behindHead ? s.behindHead(s) : ''}
-    ${head}
-    ${s.ears ? s.ears(s) : ''}
-    ${w.neck ? wearNeck(w.neck) : ''}
-    ${s.face(s)}
-    ${w.face ? wearFace(w.face) : ''}
-    ${w.head ? wearHead(w.head) : ''}
-    ${look.carry ? carryArt(look.carry) : ''}
-    ${w.back ? wearFront(w.back) : ''}
+  const legs = look.seated ? [] : a.legs;
+  const boots = (l: Anchors['legs'][number]) => (w.feet ? wearFeet(w.feet, l.x, s.legs === 'bird') : undefined);
+  const [nx, ny, nr] = a.eyeNear;
+  const [fx, fy, fr] = a.eyeFar;
+  const tail = s.tail
+    ? (id === 'pig' ? `<g data-part="tail" class="tail" style="transform-origin:${a.tail[0]}px ${a.tail[1]}px">${line(s.tail, s.deep, 4.5)}</g>`
+      : `<g class="tail" style="transform-origin:${a.tail[0]}px ${a.tail[1]}px">${piece(s.tail, s.fur, { part: 'tail', lift: 1 })}</g>`)
+    : '';
+  return `<g class="hero" data-word="${id}" data-hero="${id}">
+    ${w.back === 'cape' ? wearBack(w.back, a, 'under') : ''}
+    ${legs.filter((l) => !l.near).map((l) => leg(s, l, boots(l))).join('')}
+    ${tail}
+    ${s.earFar ? piece(s.earFar, shade(s.fur, -0.12), { part: 'earFar', lift: 0.8 }) : ''}
+    ${piece(s.body, s.fur, { part: 'body', lift: 1.2 })}
+    ${s.back ? s.back(s) : ''}
+    ${legs.filter((l) => l.near).map((l) => leg(s, l, boots(l))).join('')}
+    ${w.back ? wearBack(w.back, a, 'over') : ''}
+    ${look.carry ? carryArt(look.carry, w.back === 'bag' ? [a.back[0], a.back[1] - 12] : a.back) : ''}
+    ${w.neck ? wearNeck(w.neck, a) : ''}
+    ${piece(s.head, s.fur, { part: 'head', lift: 1.6 })}
+    ${s.extras ? s.extras(s) : ''}
+    ${s.muzzle ? piece(s.muzzle, id === 'duck' || id === 'owl' ? s.accent : s.light, { part: 'muzzle', lift: 1 }) : ''}
+    ${s.nose ? piece(s.nose, s.noseColor ?? C.ink, { part: 'nose', lift: 0.6 }) : ''}
+    ${s.mouth ? line(s.mouth, id === 'duck' ? shade(s.accent, -0.3) : C.ink, 1.8) : ''}
+    ${s.underEyes ? s.underEyes(s) : ''}
+    ${flat(ell(nx + 8, ny + 20, 7, 4.4), C.blush, 'data-part="cheek" opacity="0.85"')}
+    ${eye(nx, ny, nr, 'eyeNear')}
+    ${eye(fx, fy, fr, 'eyeFar', 0.9)}
+    ${s.face ? s.face(s) : ''}
+    ${s.earNear ? piece(s.earNear, id === 'duck' ? s.fur : shade(s.fur, id === 'dog' ? -0.3 : -0.06), { part: 'earNear', lift: 1.2 }) : ''}
+    ${w.face ? wearFace(w.face, a) : ''}
+    ${w.head ? wearHead(w.head, a) : ''}
+    ${w.back ? wearBackTop(w.back, a) : ''}
   </g>`;
 }
-
-
-

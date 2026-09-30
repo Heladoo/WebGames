@@ -1,6 +1,6 @@
 import { heroArt, HeroId } from './art/characters';
 import { friendArt, isFlying } from './art/friends';
-import { cloudArt, GROUND, moonArt, PlaceId, placeLayers, rainbowArt, SkyId, skyColors, sunArt, TILE } from './art/places';
+import { cloudArt, GROUND, moonArt, PlaceId, placeLayers, rainbowArt, SkyId, skyBands, sunArt, TILE } from './art/places';
 import { RIDES } from './art/rides';
 import type { Trip } from './state';
 
@@ -26,7 +26,7 @@ function heroGroup(t: Trip, heroX: number) {
   return `<g class="walker${ride ? ' riding' : ''}" transform="translate(${heroX - 100 * s} ${GROUND + 44 - 194 * s}) scale(${s})">
     <g class="bob">
       ${ride ? ride.under : ''}
-      <g transform="translate(0 ${dy})">${heroArt(t.hero as HeroId, look)}</g>
+      <g transform="translate(0 ${dy})" filter="url(#pc)">${heroArt(t.hero as HeroId, look)}</g>
       ${ride ? ride.over : ''}
     </g></g>`;
 }
@@ -45,11 +45,9 @@ function friendsGroup(t: Trip, heroX: number) {
 
 function skyGroup(t: Trip, v: View) {
   const sky = t.sky as SkyId;
-  const [top, bottom] = skyColors(sky);
   const sx = v.x0 + v.w * 0.8;
   const sy = Math.max(v.y0 + 90, 70);
-  let s = `<defs><linearGradient id="sky-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient></defs>
-    <rect x="${v.x0 - 10}" y="${v.y0 - 10}" width="${v.w + 20}" height="${GROUND - v.y0 + 20}" fill="url(#sky-g)"/>`;
+  let s = skyBands(sky, v.x0, v.y0, v.w);
   if (sky === 'sun' || sky === 'rainbow') s += sunArt(sx, sy);
   if (sky === 'rainbow') s += rainbowArt(v.x0 + v.w * 0.45, GROUND - 20, Math.min(v.w * 0.4, 260));
   if (sky === 'moon') {
@@ -61,7 +59,7 @@ function skyGroup(t: Trip, v: View) {
     s += moonArt(sx, sy);
   }
   const clouds = sky === 'cloud' || sky === 'rain' ? 7 : sky === 'moon' ? 2 : 3;
-  const fill = sky === 'rain' ? '#e9eef5' : sky === 'moon' ? '#8c8ac0' : '#fff';
+  const fill = sky === 'rain' ? '#eef1f2' : sky === 'moon' ? '#7c7cb4' : '#fffdf6';
   s += `<g class="clouds">`;
   for (let i = 0; i < clouds; i++) {
     const x = v.x0 + ((i * 263 + 80) % 1000) / 1000 * v.w;

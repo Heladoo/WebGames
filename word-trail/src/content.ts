@@ -3,7 +3,7 @@ import { friendIcon, SMALL_FRIENDS } from './art/friends';
 import { PLACE_IDS, placeIcon, SkyId, skyIcon, PlaceId } from './art/places';
 import { rideIcon, RIDE_IDS } from './art/rides';
 import { CARRY, ITEM_BOX, itemArt, WEAR_SLOT } from './art/wearables';
-import { svgBox } from './art/palette';
+import { svgBox } from './art/paper';
 
 // The word bank: every word is short, concrete and has its own picture.
 
@@ -56,12 +56,12 @@ export function categoryOf(word: string): Category {
 
 /** The picture of any word as a standalone SVG string. */
 export function picture(word: string, cls = 'pic'): string {
-  if ((HEROES as string[]).includes(word)) return svgBox(heroArt(word as HeroId), '0 0 200 200', cls);
+  if ((HEROES as string[]).includes(word)) return svgBox(`<g filter="url(#pc)">${heroArt(word as HeroId)}</g>`, '0 0 200 200', cls);
   if (SMALL_FRIENDS.includes(word)) return svgBox(friendIcon(word), '0 0 200 200', cls);
   if ((PLACE_IDS as string[]).includes(word)) return svgBox(placeIcon(word as PlaceId), '0 0 200 200', cls);
   if (WORDS.sky.includes(word)) return svgBox(skyIcon(word as SkyId), '0 0 200 200', cls);
-  if (RIDE_IDS.includes(word)) return svgBox(rideIcon(word), '0 0 200 200', cls);
-  if (word in ITEM_BOX) return svgBox(itemArt(word), ITEM_BOX[word], cls);
+  if (RIDE_IDS.includes(word)) return svgBox(`<g filter="url(#pc)">${rideIcon(word)}</g>`, '0 0 200 200', cls);
+  if (word in ITEM_BOX) return svgBox(`<g filter="url(#pc)">${itemArt(word)}</g>`, ITEM_BOX[word], cls);
   return svgBox('', '0 0 200 200', cls);
 }
 

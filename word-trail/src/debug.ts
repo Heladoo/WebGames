@@ -1,14 +1,16 @@
 import { heroArt, HEROES } from './art/characters';
-import { svgBox } from './art/palette';
+import { svgBox } from './art/paper';
 import { RIDES } from './art/rides';
 import { WEAR_SLOT } from './art/wearables';
 import { ALL_WORDS, picture } from './content';
 import { LOWER, UPPER } from './glyphs';
 import { sceneMarkup } from './scene';
 import { newTrip } from './state';
+import { runRig, runTiles } from './rig';
 
 // Debug pages for checking art: ?debug=wardrobe, ?debug=words, ?debug=glyphs,
-// plus ?debug=icon and ?debug=og, which draw the app icon and link-preview image.
+// ?debug=icon and ?debug=og (app icon and link-preview image), plus
+// ?debug=rig and ?debug=tiles, which the anatomy tests read.
 
 export function runDebug(kind: string) {
   document.body.innerHTML = '';
@@ -22,14 +24,17 @@ export function runDebug(kind: string) {
     wrap.appendChild(d);
   };
 
+  if (kind === 'rig') return runRig();
+  if (kind === 'tiles') return void runTiles();
+
   if (kind === 'icon' || kind === 'og') {
     // app icons and the link-preview image, drawn from the game's own art
     document.body.className = 'debug-art';
     const trip = { ...newTrip(), hero: 'dog', worn: { head: 'hat' as const }, friends: ['bee'], place: 'park' };
     const heroX = 430;
     document.body.innerHTML = kind === 'icon'
-      ? `<svg viewBox="0 0 200 200" style="width:100vmin;height:100vmin;display:block"><rect width="200" height="200" fill="#bfe6f5"/>
-          <circle cx="100" cy="112" r="84" fill="#fffaf4"/><g transform="translate(14 22) scale(0.86)">${heroArt('dog', { worn: { head: 'hat' } })}</g></svg>`
+      ? `<svg viewBox="0 0 200 200" style="width:100vmin;height:100vmin;display:block"><rect width="200" height="200" fill="#9fd0d6"/>
+          <circle cx="100" cy="106" r="86" fill="#fffdf8"/><g transform="translate(4 8) scale(0.92)" filter="url(#pc)">${heroArt('dog', { worn: { head: 'hat' } })}</g></svg>`
       : `<svg viewBox="${heroX - 470} 20 800 420" style="width:100vw;height:100vh;display:block" preserveAspectRatio="xMidYMid slice">${sceneMarkup(trip, { x0: heroX - 470, y0: 20, w: 800, h: 420 }, heroX)}</svg>
           <div class="og-title">Word Trail</div>`;
     wrap.remove();
