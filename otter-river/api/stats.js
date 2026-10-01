@@ -1,9 +1,11 @@
 // Anonymous play statistics for Otter River (Vercel serverless function).
 //
-// Storage: Upstash Redis over its REST API (add "Upstash for Redis" in the
-// Vercel dashboard under Storage; it injects the env vars below). No personal
-// data is stored: only counters, plus a HyperLogLog of random anonymous ids
-// to estimate unique players.
+// Storage: Upstash Redis over its REST API. The free plan is plenty. Create a
+// database at console.upstash.com and put its REST URL and token into Vercel
+// as UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN (the Vercel Marketplace
+// names KV_REST_API_URL / KV_REST_API_TOKEN work too). See the README.
+// No personal data is stored: only counters, plus a HyperLogLog of random
+// anonymous ids to estimate unique players.
 //
 //   POST {type:"start", id}      → one more play
 //   POST {type:"time", id, s}    → add s seconds of play (1..120)
@@ -11,14 +13,21 @@
 
 import { timingSafeEqual } from 'node:crypto';
 
-const URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-const DAY_TTL = 60 * 60 * 24 * 400;
+const MAX_SECONDS = 180; // per report (the game reports every 2 minutes)
 
-export async function redis(commands, fetchImpl = fetch) {
-  const r = await fetchImpl(`${URL}/pipeline`, {
+// Read at call time so tests and redeploys see the current environment.
+function creds(env = process.env) {
+  return {
+    url: (env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL || '').replace(/\/+$/, ''),
+    token: env.UPSTASH_REDIS_REST_TOKEN || env.KV_REST_API_TOKEN || '',
+  };
+}
+
+export async function redis(commands, fetchImpl = fetch, env = process.env) {
+  const { url, token } = creds(env);
+  const r = await fetchImpl(`${url}/pipeline`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(commands),
   });
   if (!r.ok) throw new Error(`redis ${r.status}`);
@@ -45,30 +54,31 @@ function parseBody(body) {
 export function commandsFor(msg, today = day()) {
   if (!msg || typeof msg.id !== 'string' || !/^[a-z0-9]{8,32}$/.test(msg.id)) return null;
   if (msg.type === 'start') {
+    // 4 commands per play (the free plan allows 500,000 a month)
     return [
       ['INCR', 'or:plays'],
-      ['INCR', `or:plays:${today}`], ['EXPIRE', `or:plays:${today}`, DAY_TTL],
+      ['INCR', `or:plays:${today}`],
       ['PFADD', 'or:players', msg.id],
-      ['PFADD', `or:players:${today}`, msg.id], ['EXPIRE', `or:players:${today}`, DAY_TTL],
+      ['PFADD', `or:players:${today}`, msg.id],
     ];
   }
   if (msg.type === 'time') {
     const s = Math.round(Number(msg.s));
-    if (!Number.isFinite(s) || s < 1 || s > 120) return null;
+    if (!Number.isFinite(s) || s < 1 || s > MAX_SECONDS) return null;
     return [
       ['INCRBY', 'or:seconds', s],
-      ['INCRBY', `or:seconds:${today}`, s], ['EXPIRE', `or:seconds:${today}`, DAY_TTL],
+      ['INCRBY', `or:seconds:${today}`, s],
     ];
   }
   return null;
 }
 
-export async function summary(fetchImpl = fetch, now = new Date()) {
+export async function summary(fetchImpl = fetch, now = new Date(), env = process.env) {
   const days = [];
   for (let i = 29; i >= 0; i--) days.push(day(new Date(now.getTime() - i * 864e5)));
   const cmds = [['GET', 'or:plays'], ['GET', 'or:seconds'], ['PFCOUNT', 'or:players']];
   for (const d of days) cmds.push(['GET', `or:plays:${d}`], ['GET', `or:seconds:${d}`], ['PFCOUNT', `or:players:${d}`]);
-  const res = await redis(cmds, fetchImpl);
+  const res = await redis(cmds, fetchImpl, env);
   const n = (v) => Number(v) || 0;
   return {
     plays: n(res[0]),
@@ -78,24 +88,32 @@ export async function summary(fetchImpl = fetch, now = new Date()) {
   };
 }
 
-export default async function handler(req, res) {
+export default async function handler(req, res, env = process.env, fetchImpl = fetch) {
   res.setHeader('Cache-Control', 'no-store');
-  if (!URL || !TOKEN) return res.status(204).end(); // stats not set up yet: never break the game
+  const { url, token } = creds(env);
+  const connected = Boolean(url && token);
   try {
     if (req.method === 'POST') {
+      // The game never sees errors: when stats aren't set up, it's a quiet no-op.
+      if (!connected) return res.status(204).end();
       const cmds = commandsFor(parseBody(req.body));
       if (!cmds) return res.status(400).end();
-      await redis(cmds);
+      await redis(cmds, fetchImpl, env);
       return res.status(204).end();
     }
     if (req.method === 'GET') {
-      const key = process.env.STATS_KEY;
-      if (!key || !sameKey(req.query?.key ?? '', key)) return res.status(401).json({ error: 'wrong key' });
-      return res.status(200).json(await summary());
+      // The dashboard, on the other hand, says exactly what is missing.
+      if (!env.STATS_KEY) return res.status(503).json({ error: 'STATS_KEY is not set in Vercel yet.', step: 'key' });
+      if (!sameKey(req.query?.key ?? '', env.STATS_KEY)) return res.status(401).json({ error: 'That key does not match STATS_KEY.' });
+      if (!connected) {
+        return res.status(503).json({ error: 'Redis is not connected: add UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in Vercel, then redeploy.', step: 'redis' });
+      }
+      return res.status(200).json(await summary(fetchImpl, new Date(), env));
     }
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).end();
-  } catch {
+  } catch (e) {
+    if (req.method === 'GET') return res.status(502).json({ error: 'Redis did not answer. Check the URL and token, and that the free plan limit has not been reached.', step: 'redis' });
     return res.status(502).end();
   }
 }

@@ -38,15 +38,42 @@ Other debug parameters:
 2. Set **Root Directory** to `otter-river`. The framework is detected as **Vite** from `otter-river/vercel.json`.
 3. Click **Deploy**. Every push to the production branch redeploys automatically.
 
-### Play statistics (anonymous)
+### Play statistics (optional, anonymous, free)
 
-The game counts plays, estimated unique players and play time. It uses no cookies, no accounts and no personal data. Setup takes about 3 minutes in Vercel:
+The game can count plays, estimated unique players and play time. It uses no cookies, no accounts and no personal data. It stores only counters, plus a random anonymous id per device to estimate unique players. **It's optional:** until you set it up the game works exactly the same and simply doesn't count anything.
 
-1. In the Vercel project, open **Storage → Create / Connect → Upstash for Redis** (the free plan is fine) and connect it to this project. This adds the `KV_REST_API_*` environment variables.
-2. Under **Settings → Environment Variables**, add `STATS_KEY` with any secret phrase you choose.
-3. Redeploy, then open **`/stats.html`** and enter your `STATS_KEY`. You'll see total plays, players, total and average play time, and 30-day charts.
+The counters live in a small Redis database. **You don't need anything from Vercel's Storage tab.** Upstash has a permanent free plan that is enough for a game like this, and you create the database on Upstash's own site:
 
-Until storage is connected, the game works normally and simply doesn't count anything.
+1. **Create a free Upstash account** at [console.upstash.com](https://console.upstash.com) (sign up with Google, GitHub or email; the Free plan needs no credit card).
+2. In the **Redis** tab, click **Create Database**. Give it any name (for example `otter-river`), choose the **region closest to your players**, and choose the **Free** plan (not "Pay as you go" or "Fixed").
+3. Open the new database. In its **REST API** section, copy two values:
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+4. In **Vercel**, open your project → **Settings → Environment Variables** and add three variables (tick Production, Preview and Development for each):
+
+   | Name | Value |
+   |---|---|
+   | `UPSTASH_REDIS_REST_URL` | the URL you copied |
+   | `UPSTASH_REDIS_REST_TOKEN` | the token you copied |
+   | `STATS_KEY` | any secret phrase you choose (this is your dashboard password) |
+
+5. **Redeploy.** Variables only apply to new deployments: Deployments → the latest one → **⋯ → Redeploy**.
+6. Open `https://<your-site>/stats.html`, enter your `STATS_KEY`, and play the game once. You'll see total plays, players, total and average play time, and 30-day charts (refresh the page to update).
+
+**If you prefer Vercel's own Storage tab:** you may find **Upstash** listed under the Marketplace providers. If it offers a Free plan, connect it to the project; it adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`, which the game understands automatically (you still add `STATS_KEY`). If you only see a paid "Redis" product, use steps 1 to 5 above instead.
+
+**What it costs:** nothing, on Upstash's Free plan (256 MB and 500,000 commands a month, according to Upstash's published pricing; please check their page for current limits). A play uses 4 commands and every 2 minutes of play uses 2 more, so a 10-minute session is about 14 commands, which is roughly 35,000 sessions a month. If the monthly limit is ever reached, counting pauses and the game keeps working normally.
+
+**Troubleshooting** (the dashboard shows these messages itself):
+
+| What you see | What to do |
+|---|---|
+| "STATS_KEY is not set in Vercel yet" | Add `STATS_KEY` (step 4) and redeploy. |
+| "That key does not match STATS_KEY" | Re-enter the phrase exactly; check for spaces. |
+| "Redis is not connected" | Add the two Upstash variables (step 4) and redeploy. |
+| "Redis did not answer" | Re-copy the URL and token; check the database isn't deleted or over its free limit. |
+| "The stats function was not found" | In Vercel, set the project's **Root Directory** to `otter-river`, then redeploy. |
+| Dashboard works but shows 0 | Counting is off on `localhost` and on `?debug=` pages. Play on the real site, then refresh. |
 
 ### Sharing, SEO and safety
 

@@ -42,6 +42,9 @@
       th, td { text-align: right; padding: 3px 8px; border-bottom: 1px solid var(--grid); }
       th:first-child, td:first-child { text-align: left; }
       .msg { color: var(--muted); }
+      ol { margin: 0 0 10px; padding-left: 22px; line-height: 1.5; }
+      code { background: #fff; border: 1px solid var(--grid); border-radius: 4px; padding: 0 4px; font-size: 13px; }
+      a { color: #1f6f78; }
       .hidden { display: none; }
     </style>
   </head>
@@ -55,6 +58,18 @@
           <button>Show stats</button>
         </form>
         <p id="status" class="msg"></p>
+      </section>
+      <section class="panel hidden" id="help">
+        <h2>Set up statistics (free, about 5 minutes)</h2>
+        <ol>
+          <li>Create a free account at <a href="https://console.upstash.com" target="_blank" rel="noopener">console.upstash.com</a>.</li>
+          <li>In the <b>Redis</b> tab choose <b>Create Database</b>, pick the <b>Free</b> plan and the region closest to your players.</li>
+          <li>Open the database and copy <code>UPSTASH_REDIS_REST_URL</code> and <code>UPSTASH_REDIS_REST_TOKEN</code> from its <b>REST API</b> section.</li>
+          <li>In Vercel: your project → <b>Settings → Environment Variables</b>. Add those two, plus <code>STATS_KEY</code> with a secret phrase of your choice (all environments).</li>
+          <li><b>Redeploy</b> (Deployments → ⋯ → Redeploy). Variables only apply to new deployments.</li>
+          <li>Come back to this page and enter your <code>STATS_KEY</code>.</li>
+        </ol>
+        <p class="msg">No accounts, cookies or personal data are involved: only counts of plays and minutes played.</p>
       </section>
       <div id="out" class="hidden">
         <section class="panel tiles" id="tiles"></section>

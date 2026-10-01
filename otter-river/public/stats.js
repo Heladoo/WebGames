@@ -67,16 +67,24 @@
   }
   function load(key) {
     $('status').textContent = 'Loading…';
+    $('help').classList.add('hidden');
     fetch('api/stats?key=' + encodeURIComponent(key), { cache: 'no-store' }).then(function (r) {
-      if (r.status === 204) throw new Error('Stats storage is not connected yet: add Upstash Redis in Vercel → Storage, then redeploy.');
-      if (r.status === 401) throw new Error('That key did not match STATS_KEY.');
-      if (!r.ok) throw new Error('Could not load stats (' + r.status + ').');
-      return r.json();
-    }).then(function (s) {
-      try { localStorage.setItem('otter-stats-key', key); } catch (e) {}
-      $('status').textContent = 'Updated ' + new Date().toLocaleTimeString();
-      render(s);
-    }).catch(function (e) { $('status').textContent = e.message; });
+      return r.json().catch(function () { return {}; }).then(function (body) { return { r: r, body: body }; });
+    }).then(function (x) {
+      if (x.r.status === 200) {
+        try { localStorage.setItem('otter-stats-key', key); } catch (e) {}
+        $('status').textContent = 'Updated ' + new Date().toLocaleTimeString();
+        render(x.body);
+        return;
+      }
+      if (x.r.status === 404) throw { msg: 'The stats function was not found. Make sure the api folder is part of the deployment (Root Directory = otter-river).', help: true };
+      var msg = x.body && x.body.error ? x.body.error : 'Could not load stats (' + x.r.status + ').';
+      throw { msg: msg, help: x.r.status === 503 };
+    }).catch(function (e) {
+      $('out').classList.add('hidden');
+      $('status').textContent = e && e.msg ? e.msg : 'Could not load stats. Are you online?';
+      if (e && e.help) $('help').classList.remove('hidden');
+    });
   }
   $('login').addEventListener('submit', function (e) { e.preventDefault(); load($('key').value); });
   try { var k = localStorage.getItem('otter-stats-key'); if (k) { $('key').value = k; load(k); } } catch (e) {}

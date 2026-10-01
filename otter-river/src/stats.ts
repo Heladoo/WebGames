@@ -41,10 +41,10 @@ export const stats = {
   /** Call every frame with the real elapsed time while the game is actually being played. */
   tick(dt: number) {
     pending += dt;
-    if (pending >= 60) this.flush();
+    if (pending >= 120) this.flush();
   },
   flush(beacon = false) {
-    const s = Math.min(120, Math.round(pending));
+    const s = Math.min(180, Math.round(pending));
     pending = 0;
     if (s >= 1) send({ type: 'time', s }, beacon);
   },
