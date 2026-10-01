@@ -12,6 +12,7 @@ import { addPhoto, checkBadges, makePostcard } from './rewards';
 import { Scene } from './scene';
 import { sfx } from './sfx';
 import { music } from './music';
+import { stats } from './stats';
 import { speech } from './speech';
 import { load, newTrip, save, SaveData } from './state';
 import { tapWord } from './tapLetters';
@@ -114,6 +115,11 @@ function boot() {
     }
     $('title').classList.add('hidden');
     $('topbar').classList.remove('hidden');
+    // anonymous play statistics: one play, then seconds while the game is on screen
+    stats.start();
+    window.setInterval(() => { if (!document.hidden) stats.tick(1); }, 1000);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stats.flush(true); });
+    window.addEventListener('pagehide', () => stats.flush(true));
     run();
   }, { once: true });
 }
