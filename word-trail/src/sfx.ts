@@ -12,6 +12,12 @@ class Sfx {
     return this.ctx;
   }
 
+  /** Where music connects: the shared limiter, so no sound can spike. */
+  get output(): AudioNode | null {
+    return this.limiter;
+  }
+  private limiter: DynamicsCompressorNode | null = null;
+
   unlock() {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') this.ctx.resume();
@@ -20,9 +26,18 @@ class Sfx {
     try {
       const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new AC();
+      // everything (effects and music) ends in one gentle compressor/limiter
+      const lim = this.ctx.createDynamicsCompressor();
+      lim.threshold.value = -14;
+      lim.knee.value = 8;
+      lim.ratio.value = 12;
+      lim.attack.value = 0.003;
+      lim.release.value = 0.25;
+      lim.connect(this.ctx.destination);
+      this.limiter = lim;
       this.out = this.ctx.createGain();
       this.out.gain.value = 0.35;
-      this.out.connect(this.ctx.destination);
+      this.out.connect(lim);
     } catch {
       this.ctx = null;
     }

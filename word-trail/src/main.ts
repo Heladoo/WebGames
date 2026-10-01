@@ -109,9 +109,10 @@ function boot() {
     sfx.unlock();
     sfx.pop();
     const ctx = sfx.context;
-    if (ctx) {
+    const out = sfx.output;
+    if (ctx && out) {
       music.setScene(s.trip.place, s.trip.sky);
-      music.start(ctx, ctx.destination);
+      music.start(ctx, out);
     }
     $('title').classList.add('hidden');
     $('topbar').classList.remove('hidden');

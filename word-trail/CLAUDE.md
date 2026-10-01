@@ -104,7 +104,8 @@ You can also set up a scene directly from the URL: `?hero=fox&wear=cap,glasses&f
 
 - **Speech** (`speech.ts`, Web Speech): the default voice is a British female voice (`PREFERRED_GB`). The grown-ups menu (hold ⚙️) lists every English voice on the device. Letters are spoken as capitals, with an override for `a`.
 - **Music** (`music.ts`): generative notes and nature sounds per place and sky (birds, waves, wind, brook, frogs, crickets at night, rain). Polled every 200 ms, it ducks while `speechSynthesis.speaking`. It is started from the Start tap with `sfx.context`.
-- **Sound effects** (`sfx.ts`): effects, plus the shared `AudioContext`.
+- **Sound effects** (`sfx.ts`): effects, plus the shared `AudioContext` and the master limiter (`sfx.output`, a `DynamicsCompressorNode`). Effects and music both end in it.
+- Ambience swells (waves, wind, brook) are scheduled gain ramps on a timer, never an oscillator on a gain (the root `CLAUDE.md` rule). The flute vibrato modulates `frequency`, which is allowed.
 
 ## Stats
 
