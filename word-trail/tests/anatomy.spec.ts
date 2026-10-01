@@ -46,3 +46,18 @@ test('scenery tiles repeat without a seam', async () => {
   const bad = res.filter((r) => r.diff > 40).map((r) => `${r.place} ${r.layer}: ${r.diff} mismatched pixels at the seam`);
   expect(bad, bad.join('\n')).toEqual([]);
 });
+
+test('every card picture fits inside its frame (nothing is cut off)', async () => {
+  await page.goto('/?debug=frames');
+  await page.waitForFunction(() => (window as unknown as { __frames?: unknown }).__frames);
+  const frames = await page.evaluate(() => (window as unknown as { __frames: { word: string; over: number; box: string; drawn: string }[] }).__frames);
+  expect(frames.length).toBeGreaterThan(40);
+  const cut = frames.filter((f) => f.over > 1.5).map((f) => `${f.word}: drawing (${f.drawn}) reaches ${f.over} past its frame (${f.box})`);
+  expect(cut, cut.join('\n')).toEqual([]);
+});
+
+test('the rules catch a part that does not move with its group', () => {
+  const fox = structuredClone(cases.find((c) => c.id === 'fox')!);
+  fox.detached = ['a shape at (34, 86) sits on the tail tail but doesn\'t move with it'];
+  expect(checkCase(fox).length).toBeGreaterThan(0);
+});

@@ -52,12 +52,12 @@ export function checkBadges(s: SaveData): Badge[] {
 }
 
 const list = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
-const a = (w: string) => (w === 'boots' || w === 'glasses' ? w : `${/^[aeiou]/.test(w) ? 'an' : 'a'} ${w}`);
+const a = (w: string) => (['boots', 'glasses', 'shoes', 'socks'].includes(w) ? w : `${/^[aeiou]/.test(w) ? 'an' : 'a'} ${w}`);
 
 /** "The dog in the snow with a hat and a bee" */
 export function caption(t: Trip): string {
   if (!t.hero) return 'Word Trail';
-  const things = [...Object.values(t.worn), t.carry].filter((x): x is string => !!x).map(a);
+  const things = [...Object.values(t.worn), t.carry, t.air].filter((x): x is string => !!x).map(a);
   const all = [...things, ...t.friends.map((f) => `a ${f}`)];
   let s = `The ${t.hero} ${t.place === 'sea' ? 'by the sea' : t.place === 'snow' ? 'in the snow' : t.place === 'sand' ? 'in the sand' : `in the ${t.place}`}`;
   if (all.length) s += ` with ${list(all)}`;

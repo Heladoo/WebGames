@@ -43,7 +43,7 @@ export const RIDES: Record<string, Ride> = {
       ${piece('M10 140 L194 140 C184 176 164 190 146 190 L56 190 C36 190 18 176 10 140 Z', C.teal, { lift: 2 })}
       ${piece('M16 152 L190 152 L187 160 L19 160 Z', C.butter, { lift: 0.4 })}
       ${piece(ell(160, 172, 5, 5), C.white, { lift: 0.4 })}
-      <g class="waves">${piece('M-30 186 q15 -10 30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 L230 198 L-30 198 Z', '#8ecfd6', { lift: 0.8 })}</g></g>`,
+      <g class="waves">${piece('M4 186 q16 -10 32 0 t32 0 t32 0 t32 0 t32 0 t32 0 L196 198 L4 198 Z', '#8ecfd6', { lift: 0.8 })}</g></g>`,
   },
   train: {
     dy: -10,

@@ -7,6 +7,11 @@ class Sfx {
   private ctx: AudioContext | null = null;
   private out!: GainNode;
 
+  /** The shared audio context (after the first tap). */
+  get context() {
+    return this.ctx;
+  }
+
   unlock() {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') this.ctx.resume();

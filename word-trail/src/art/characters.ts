@@ -1,5 +1,5 @@
 import { C, ell, eye, flat, line, piece, shade } from './paper';
-import { carryArt, wearBack, wearBackTop, wearFace, wearFeet, wearHead, wearNeck } from './wearables';
+import { carryArt, wearBack, wearBackTop, wearBody, wearFace, wearFeet, wearHead, wearNeck } from './wearables';
 
 // Every hero is a small rig: named paper parts plus anchor points, facing
 // right in a 3/4 view, in a 200×200 box with the ground at y=192.
@@ -16,7 +16,8 @@ export interface Anchors {
   headTop: Pt; // where hats sit
   bow: Pt; // where a bow is pinned
   neck: Pt; // centre of the scarf
-  back: Pt; // top of the back (bags, capes, carried things)
+  back: Pt; // top of the back (bags and capes)
+  pack: Pt; // rear of the back, where carried things rest (clear of head and ears)
   eyeNear: [number, number, number];
   eyeFar: [number, number, number];
   legs: { part: string; x: number; near: boolean }[];
@@ -25,7 +26,8 @@ export interface Anchors {
 
 export interface Look {
   worn?: Partial<Record<string, string>>;
-  carry?: string | null;
+  carry?: string | null; // a thing resting on the back
+  air?: string | null; // a kite or balloon on a string
   seated?: boolean;
 }
 
@@ -41,6 +43,7 @@ interface Spec {
   earFar?: string; // behind the head
   earNear?: string; // in front of the head
   tail?: string;
+  tailTip?: string; // a lighter tip that moves with the tail
   muzzle?: string; // snout / beak
   nose?: string;
   noseColor?: string;
@@ -67,6 +70,7 @@ const quadAnchors = (o: Partial<Anchors> = {}): Anchors => ({
   bow: [102, 44],
   neck: [114, 112],
   back: [96, 102],
+  pack: [72, 116],
   eyeNear: [118, 70, 7.4],
   eyeFar: [143, 68, 6.6],
   legs: PAW_LEGS,
@@ -99,8 +103,8 @@ const SPECS: Record<HeroId, Spec> = {
     muzzle: 'M132 96 C134 86 150 82 158 88 C164 94 160 104 150 106 C140 107 132 103 132 96 Z',
     nose: 'M155 86 L165 86 L160 92 Z', noseColor: '#e98c9c',
     mouth: 'M150 97 C152 101 156 101 158 97',
+    back: (s) => flat('M100 112 C104 118 104 126 100 132 M90 114 C94 122 94 130 90 136', 'none', `stroke="${s.deep}" stroke-width="4" stroke-linecap="round" opacity="0.6"`),
     extras: (s) => flat('M118 38 L122 50 L126 38 Z M108 42 L114 52 L116 40 Z', s.deep, 'opacity="0.5"') +
-      flat('M100 112 C104 118 104 126 100 132 M90 114 C94 122 94 130 90 136', 'none', `stroke="${s.deep}" stroke-width="4" stroke-linecap="round" opacity="0.6"`) +
       piece('M104 26 L108 34 L114 38 Z', s.accent, { lift: 0 }),
     face: () => line('M150 100 L170 96 M150 103 L170 104', C.ink, 1.3, 'opacity="0.55"'),
   },
@@ -114,8 +118,8 @@ const SPECS: Record<HeroId, Spec> = {
     muzzle: 'M128 94 C130 82 150 80 172 90 C162 100 146 108 134 106 C130 104 128 100 128 94 Z',
     nose: 'M166 86 C170 84 176 87 175 91 C174 95 168 95 166 93 Z',
     mouth: 'M150 101 C154 104 158 103 161 100',
-    back: (s) => piece('M124 118C136 114 148 124 146 142C144 154 134 160 124 158C116 148 114 130 124 118 Z', s.light, { lift: 0.8 }) +
-      piece('M34 104C36 90 50 86 56 94C54 102 50 106 44 106C40 106 36 106 34 104 Z', s.light, { lift: 0.6 }),
+    tailTip: 'M34 104C36 90 50 86 56 94C54 102 50 106 44 106C40 106 36 106 34 104 Z',
+    back: (s) => piece('M124 118C136 114 148 124 146 142C144 154 134 160 124 158C116 148 114 130 124 118 Z', s.light, { lift: 0.8 }),
     extras: (s) => flat('M96 16 L98 12 L106 20 Z M152 12 L156 10 L157 22 Z', s.accent) +
       piece('M104 84 C108 98 120 108 134 106 C130 100 128 94 128 90 C120 92 110 90 104 84 Z', s.light, { lift: 0.6 }),
   },
@@ -135,7 +139,7 @@ const SPECS: Record<HeroId, Spec> = {
   duck: {
     fur: '#f3cf5a', deep: '#d8ae3c', light: '#fff3c4', accent: '#e8883c',
     anchors: {
-      headTop: [128, 48], bow: [112, 52], neck: [126, 106], back: [96, 106],
+      headTop: [128, 48], bow: [112, 52], neck: [126, 106], back: [96, 106], pack: [78, 104],
       eyeNear: [124, 74, 6.4], eyeFar: [146, 72, 5.6],
       legs: [{ part: 'legFar', x: 100, near: false }, { part: 'legNear', x: 114, near: true }],
       tail: [70, 120],
@@ -163,7 +167,7 @@ const SPECS: Record<HeroId, Spec> = {
   frog: {
     fur: '#7fb87a', deep: '#5f9a5c', light: '#dcefc6', accent: '#4f8a52',
     anchors: {
-      headTop: [128, 46], bow: [112, 50], neck: [120, 118], back: [98, 118],
+      headTop: [128, 46], bow: [112, 50], neck: [120, 118], back: [98, 118], pack: [80, 132],
       eyeNear: [113, 60, 6.6], eyeFar: [143, 57, 5.8],
       legs: [
         { part: 'legBackFar', x: 86, near: false }, { part: 'legFrontFar', x: 128, near: false },
@@ -180,23 +184,26 @@ const SPECS: Record<HeroId, Spec> = {
     eyesOnTop: true,
   },
   owl: {
-    fur: '#9d88c9', deep: '#8270b0', light: '#efe6fa', accent: '#e8a93c',
+    fur: '#b58a62', deep: '#93693f', light: '#f4e6cc', accent: '#e8a93c',
     anchors: {
-      headTop: [122, 39], bow: [102, 48], neck: [120, 116], back: [96, 110],
-      eyeNear: [116, 78, 7.4], eyeFar: [142, 76, 6.6],
-      legs: [{ part: 'legFar', x: 104, near: false }, { part: 'legNear', x: 120, near: true }],
-      tail: [76, 164],
+      headTop: [120, 42], bow: [100, 50], neck: [120, 120], back: [96, 112], pack: [70, 150],
+      eyeNear: [113, 82, 8.2], eyeFar: [140, 80, 7.2],
+      legs: [{ part: 'legFar', x: 108, near: false }, { part: 'legNear', x: 124, near: true }],
+      tail: [78, 160],
     },
-    body: 'M74 150 C70 120 86 100 110 100 C134 100 150 120 146 150 C144 172 128 182 110 182 C92 182 76 172 74 150 Z',
-    head: HEAD.replace('M84 76', 'M82 80'), legs: 'bird',
-    earFar: 'M138 42 L152 22 L156 46 Z',
-    earNear: 'M92 52 L88 28 L110 42 Z',
-    tail: 'M80 160 L62 176 L66 162 L58 160 L78 150 Z',
-    muzzle: 'M150 86 C156 86 161 90 159 96 C156 101 152 103 148 99 C146 94 146 88 150 86 Z',
-    back: (s) => piece('M102 124 C114 118 134 124 138 144 C136 164 118 172 104 166 C96 154 94 134 102 124 Z', s.light, { lift: 0.8 }) +
-      flat('M108 136 q4 4 8 0 M120 136 q4 4 8 0 M112 148 q4 4 8 0 M124 148 q4 4 8 0', 'none', `stroke="${s.deep}" stroke-width="2" stroke-linecap="round"`) +
-      piece('M78 124 C86 112 98 116 100 130 C100 146 92 160 82 162 C74 150 74 134 78 124 Z', s.deep, { part: 'wing', lift: 1.2 }),
-    underEyes: (s) => flat(ell(116, 78, 14, 14), s.light) + flat(ell(142, 76, 11.5, 13), s.light),
+    body: 'M72 142 C68 108 88 84 116 84 C146 84 164 108 160 142 C157 170 138 186 116 186 C94 186 75 170 72 142 Z',
+    head: 'M78 90 C74 60 94 40 120 40 C148 40 166 60 162 90 C160 112 142 124 120 124 C98 124 80 112 78 90 Z',
+    legs: 'bird',
+    earFar: 'M138 50 C144 40 152 32 160 30 C162 42 158 54 150 60 Z',
+    earNear: 'M86 64 C80 50 82 36 88 28 C96 38 104 46 108 52 Z',
+    tail: 'M84 160 L62 174 L68 162 L58 158 L80 150 Z',
+    muzzle: 'M127 90 C133 88 139 91 138 97 C137 103 132 107 129 103 C126 99 125 93 127 90 Z',
+    back: (s) => piece(ell(126, 152, 23, 27), s.light, { lift: 0.8 }) +
+      flat('M112 140 q5 5 10 0 M126 140 q5 5 10 0 M118 153 q5 5 10 0 M132 153 q5 5 10 0 M120 166 q5 5 10 0', 'none', `stroke="${shade(s.light, -0.25)}" stroke-width="2" stroke-linecap="round"`) +
+      piece('M86 116 C76 128 74 152 84 172 C98 166 106 146 104 126 C102 116 92 112 86 116 Z', s.deep, { part: 'wing', lift: 1.4 }) +
+      flat('M88 132 q6 4 12 0 M86 146 q7 4 14 0 M88 160 q6 4 11 0', 'none', `stroke="${shade(s.deep, -0.2)}" stroke-width="1.6" stroke-linecap="round"`),
+    underEyes: (s) => piece(`${ell(113, 83, 17, 18)} ${ell(140, 81, 14, 16.5)}`, shade(s.light, 0.3), { lift: 0.8 }) +
+      line('M98 66 C104 62 112 62 118 66 M130 64 C136 61 144 61 150 65', s.deep, 3),
   },
 };
 
@@ -238,7 +245,7 @@ export function heroArt(id: HeroId, look: Look = {}): string {
   const [fx, fy, fr] = a.eyeFar;
   const tail = s.tail
     ? (id === 'pig' ? `<g data-part="tail" class="tail" style="transform-origin:${a.tail[0]}px ${a.tail[1]}px">${line(s.tail, s.deep, 4.5)}</g>`
-      : `<g class="tail" style="transform-origin:${a.tail[0]}px ${a.tail[1]}px">${piece(s.tail, s.fur, { part: 'tail', lift: 1 })}</g>`)
+      : `<g class="tail" style="transform-origin:${a.tail[0]}px ${a.tail[1]}px">${piece(s.tail, s.fur, { part: 'tail', lift: 1 })}${s.tailTip ? piece(s.tailTip, s.light, { lift: 0.6 }) : ''}</g>`)
     : '';
   return `<g class="hero" data-word="${id}" data-hero="${id}">
     ${w.back === 'cape' ? wearBack(w.back, a, 'under') : ''}
@@ -247,9 +254,11 @@ export function heroArt(id: HeroId, look: Look = {}): string {
     ${s.earFar ? piece(s.earFar, shade(s.fur, -0.12), { part: 'earFar', lift: 0.8 }) : ''}
     ${piece(s.body, s.fur, { part: 'body', lift: 1.2 })}
     ${s.back ? s.back(s) : ''}
+    ${w.body ? wearBody(w.body, s.body, a) : ''}
     ${legs.filter((l) => l.near).map((l) => leg(s, l, boots(l))).join('')}
     ${w.back ? wearBack(w.back, a, 'over') : ''}
-    ${look.carry ? carryArt(look.carry, w.back === 'bag' ? [a.back[0], a.back[1] - 12] : a.back) : ''}
+    ${look.air ? carryArt(look.air, a.pack) : ''}
+    ${look.carry ? carryArt(look.carry, w.back === 'bag' ? [a.pack[0], a.pack[1] - 8] : a.pack) : ''}
     ${w.neck ? wearNeck(w.neck, a) : ''}
     ${piece(s.head, s.fur, { part: 'head', lift: 1.6 })}
     ${s.extras ? s.extras(s) : ''}

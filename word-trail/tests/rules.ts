@@ -77,7 +77,7 @@ export function checkCase(c: RigCase): string[] {
   // ---- items ----
   const one = (name: string) => c.items[name]?.[0];
   const w = c.wear;
-  if (w === 'hat' || w === 'cap' || w === 'crown') {
+  if (w === 'hat' || w === 'cap' || w === 'crown' || w === 'helmet') {
     const it = one(w);
     if (!it) fail(`${w} not drawn`);
     else {
@@ -94,12 +94,21 @@ export function checkCase(c: RigCase): string[] {
     if (!n || dist(n, eyeNear) > 6) fail('near lens must be centred on the near eye');
     if (!fr || dist(fr, eyeFar) > 6) fail('far lens must be centred on the far eye');
   }
-  if (w === 'scarf') {
-    const it = one('scarf');
-    if (!it || !overlaps(it, head) || !overlaps(it, body)) fail('scarf must wrap the neck (touch both head and body)');
+  if (w === 'scarf' || w === 'tie') {
+    const it = one(w);
+    if (!it || !overlaps(it, head) || !overlaps(it, body)) fail(`${w} must sit at the neck (touch both head and body)`);
   }
-  if (w === 'boots') {
-    const boots = c.items.boots ?? [];
+  if (w === 'coat') {
+    const it = one('coat');
+    if (!it || it.x > body.x + 3 || right(it) < right(body) - 3 || it.y > body.y + 6 || bottom(it) < bottom(body) - 3) fail('coat must cover the body');
+  }
+  if (c.air) {
+    const it = one('air');
+    const [ax, ay] = c.anchors.pack;
+    if (!it || ax < it.x - 4 || ax > right(it) + 4 || ay < it.y - 4 || ay > bottom(it) + 4) fail(`${c.air} string must be tied to the back`);
+  }
+  if (w === 'boots' || w === 'shoes' || w === 'socks') {
+    const boots = c.items[w] ?? [];
     for (const [k, b] of legs) {
       const ok = boots.some((bt) => bottom(bt) >= bottom(b) - 1 && bt.x <= cx(b) && cx(b) <= right(bt));
       if (!ok) fail(`${k} needs a boot on its foot`);
@@ -109,10 +118,17 @@ export function checkCase(c: RigCase): string[] {
     const it = one(w);
     if (!it || cx(it) >= cx(body) || !overlaps(it, body)) fail(`${w} must sit on the back`);
   }
-  if (c.carry) {
+  for (const d of c.detached) fail(d);
+  // things on the back must stay visible: nothing drawn later (head, ears) may cover them
+  if (c.packHidden > 0.1) fail(`the ${c.carry} on the back is ${Math.round(c.packHidden * 100)}% hidden behind the hero`);
+  if (c.carry && !c.air && !['kite', 'balloon'].includes(c.carry)) {
     const it = one('carry');
-    const [ax, ay] = c.anchors.back;
+    const [ax, ay] = c.wear === 'bag' ? [c.anchors.pack[0], c.anchors.pack[1] - 8] : c.anchors.pack;
     if (!it || ax < it.x - 4 || ax > right(it) + 4 || ay < it.y - 4 || ay > bottom(it) + 4) fail(`${c.carry} must rest on the back`);
+  } else if (c.carry) {
+    const it = one('air');
+    const [ax, ay] = c.anchors.pack;
+    if (!it || ax < it.x - 4 || ax > right(it) + 4 || ay < it.y - 4 || ay > bottom(it) + 4) fail(`${c.carry} string must be tied to the back`);
   }
   if (c.ride) {
     const v = one('vehicle');

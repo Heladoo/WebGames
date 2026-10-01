@@ -3,13 +3,13 @@ import { speech } from './speech';
 import { sfx } from './sfx';
 
 // Finger tracing: each letter of the word gets a dotted guide. The child
-// traces the glowing letter; when enough of every stroke is covered the
+// traces the glowing letter; when nearly all of every stroke is covered (and the finger lifts) the
 // letter turns solid and its name is spoken. It is generous on purpose,
 // and after a while of no progress it shows (and finally does) the stroke.
 
 const NS = 'http://www.w3.org/2000/svg';
 const GAP = 22;
-const TOL = 17; // how close (in letter units, letters are 100 tall) a touch must be
+const TOL = 14; // how close (in letter units, letters are 100 tall) a touch must be
 const STEP = 5; // sample spacing along each stroke
 const COLORS = ['#e3685b', '#3f8f8a', '#e8a93c', '#6c7fc4', '#d9788f', '#5f9e6e', '#c98a4b'];
 
@@ -75,7 +75,7 @@ export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number
   let resolveDone!: () => void;
   const done = new Promise<void>((r) => (resolveDone = r));
 
-  const nextStroke = () => letters[cur]?.strokes.find((s) => coverage(s) < 0.6);
+  const nextStroke = () => letters[cur]?.strokes.find((s) => coverage(s) < 0.8);
   const coverage = (s: Stroke) => s.pts.filter((p) => p.hit).length / s.pts.length;
 
   function focus() {
@@ -109,7 +109,6 @@ export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number
       lastProgress = performance.now();
       hints = 0;
       focus();
-      check();
     }
   }
 
@@ -118,7 +117,7 @@ export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number
     if (!l || l.done) return;
     const all = l.strokes.flatMap((s) => s.pts);
     const total = all.filter((p) => p.hit).length / all.length;
-    if (total >= 0.68 && l.strokes.every((s) => coverage(s) >= 0.5)) finishLetter();
+    if (total >= 0.85 && l.strokes.every((s) => coverage(s) >= 0.8)) finishLetter();
   }
 
   function finishLetter() {
@@ -166,9 +165,11 @@ export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number
       inkPath.setAttribute('d', inkD);
     }
   }
+  // a letter is only done once the finger lifts, so the child can finish the stroke
   function onUp() {
     inkPath = null;
     last = null;
+    check();
   }
 
   svg.addEventListener('pointerdown', onDown);
@@ -219,7 +220,7 @@ export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number
     const l = letters[cur];
     if (!l) return;
     for (const s of l.strokes) {
-      if (coverage(s) >= 0.6) continue;
+      if (coverage(s) >= 0.8) continue;
       await glide(s, 1100, (i) => {
         s.pts[i].hit = true;
         if (i > 0) s.pts[i - 1].hit = true;

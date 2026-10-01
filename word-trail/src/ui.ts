@@ -125,6 +125,9 @@ export const ICONS = {
   speaker: icon(`${piece('M10 26 L20 26 L32 16 L32 48 L20 38 L10 38 Z', C.white, { lift: 1.2 })}
     ${line('M40 24 Q46 32 40 40 M46 18 Q56 32 46 46', C.white, 4)}`),
   check: icon(line('M16 34 L28 46 L50 20', C.white, 8)),
+  /** start over: a paper circle arrow around a little paw */
+  restart: icon(`${line('M50 34 A18 18 0 1 1 42 18', C.coral, 6)}${piece('M38 8 L50 16 L38 25 Z', C.coral, { lift: 1 })}
+    ${piece(ell(32, 37, 6, 5), C.bark, { lift: 0.6 })}${piece(`${ell(25, 29, 2.6, 3.2)} ${ell(30, 26, 2.6, 3.2)} ${ell(35, 26, 2.6, 3.2)} ${ell(40, 29, 2.6, 3.2)}`, C.bark, { lift: 0.5 })}`),
   /** a big paper starburst that spins behind a new badge */
   burst: `<svg viewBox="-50 -50 100 100" aria-hidden="true">${piece(Array.from({ length: 16 }, (_, i) => {
     const a = (i * Math.PI) / 8, b = a + Math.PI / 16;

@@ -2,13 +2,17 @@ import { Category, WORDS } from './content';
 import type { SaveData } from './state';
 import { WEAR_SLOT } from './art/wearables';
 
-// Picks the next decision without end: categories take turns, recent words
-// rest for a while, and longer words arrive as the child learns more.
+// Picks the next decision without end. Kinds of choice come from a shuffled
+// deck, so every kind turns up evenly (a new friend is never far away), and
+// recent words rest for a while. Longer words arrive as the child learns more.
 
 export interface Decision {
   cat: Category;
   options: string[];
 }
+
+/** One round of the deck: clothes, friends and things come up most often. */
+export const DECK: Category[] = ['wear', 'wear', 'friend', 'friend', 'carry', 'carry', 'sky', 'place', 'ride'];
 
 const shuffle = <T>(a: T[]) => {
   const b = a.slice();
@@ -25,7 +29,7 @@ export function maxLength(learned: number) {
   return 7;
 }
 
-function candidates(cat: Category, s: SaveData): string[] {
+export function candidates(cat: Category, s: SaveData): string[] {
   const t = s.trip;
   const max = maxLength(Object.keys(s.learned).length);
   let list = WORDS[cat].filter((w) => w.length <= max);
@@ -33,35 +37,34 @@ function candidates(cat: Category, s: SaveData): string[] {
     case 'wear': list = list.filter((w) => t.worn[WEAR_SLOT[w]] !== w); break;
     case 'place': list = list.filter((w) => w !== t.place); break;
     case 'sky': list = list.filter((w) => w !== t.sky); break;
-    case 'carry': list = list.filter((w) => w !== t.carry); break;
-    case 'ride': list = list.filter((w) => w !== t.ride); break;
+    case 'carry': list = list.filter((w) => w !== t.carry && w !== t.air); break;
+    // a boat needs water: it is only offered by the sea
+    case 'ride': list = list.filter((w) => w !== t.ride && (w !== 'boat' || t.place === 'sea')); break;
     case 'friend': list = list.filter((w) => w !== t.hero && !t.friends.includes(w)); break;
   }
   return list;
 }
 
-function chooseCategory(s: SaveData): Category {
+function nextCategory(s: SaveData): Category {
   const t = s.trip;
-  const last = t.lastCats;
-  const sinceLastPlace = last.length - 1 - last.lastIndexOf('place');
-  if (last.length >= 3 && (last.lastIndexOf('place') === -1 || sinceLastPlace >= 3)) return 'place';
-  const weights: [Category, number][] = [
-    ['wear', 3],
-    ['friend', 2],
-    ['carry', 2],
-    ['sky', 1.5],
-    ['ride', last.includes('ride') ? 0.6 : 1],
-    ['place', 1],
-  ];
-  const pool = weights.filter(([c]) => c !== last[last.length - 1] && candidates(c, s).length >= 2);
-  const total = pool.reduce((n, [, w]) => n + w, 0);
-  let r = Math.random() * total;
-  for (const [c, w] of pool) if ((r -= w) <= 0) return c;
-  return pool[0]?.[0] ?? 'wear';
+  const last = t.lastCats[t.lastCats.length - 1];
+  for (let tries = 0; tries < 40; tries++) {
+    if (!t.deck.length) t.deck = shuffle(DECK);
+    const c = t.deck.shift() as Category;
+    // never the same kind twice in a row
+    if (c === last) {
+      // put it back for later (with a fresh round behind it if nothing else is left)
+      if (!t.deck.some((x) => x !== c)) t.deck.push(...shuffle(DECK));
+      t.deck.push(c);
+      continue;
+    }
+    if (candidates(c, s).length >= 2) return c;
+  }
+  return 'wear';
 }
 
 export function nextDecision(s: SaveData, forceCat?: Category): Decision {
-  const cat: Category = !s.trip.hero ? 'hero' : forceCat ?? chooseCategory(s);
+  const cat: Category = !s.trip.hero ? 'hero' : forceCat ?? nextCategory(s);
   const count = cat === 'hero' ? 4 : s.decisions < 6 ? 2 : 3;
   const all = candidates(cat, s);
   const fresh = all.filter((w) => !s.trip.recent.includes(w));

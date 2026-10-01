@@ -425,3 +425,39 @@ body::after {
 
 .badge-pop { background: none; box-shadow: none; }
 .badge-pop b { white-space: nowrap; background: var(--paper); padding: 8px 22px 10px; border-radius: 18px 14px 20px 16px; box-shadow: var(--shadow); }
+
+/* ---------- signpost on the trail ---------- */
+.signpost [data-sign] { transform-box: fill-box; transform-origin: 50% 100%; }
+.signpost.arrived [data-sign] { animation: sign-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
+.signpost.leaving { transition: opacity 0.4s; opacity: 0; }
+@keyframes sign-pop { 40% { transform: scale(1.18) rotate(-4deg); } }
+.panel.from-sign { transform-origin: var(--ox, 50%) var(--oy, 100%); animation: panel-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1); }
+@keyframes panel-pop { from { opacity: 0; transform: translateX(-50%) scale(0.2); } }
+
+/* ---------- letters said aloud after a word ---------- */
+.big-word span { display: inline-block; transition: transform 0.18s, color 0.18s; }
+.big-word span.saying { color: var(--pink); transform: translateY(-10px) scale(1.18); }
+
+/* ---------- start over ---------- */
+.overlay.ask { z-index: 40; }
+.ask-card { padding: 22px 30px 26px; text-align: center; }
+.ask-heroes { display: flex; justify-content: center; gap: 4px; }
+.ask-heroes .pic { width: 92px; height: 92px; }
+.ask-card h2 { margin: 6px 0 16px; font-size: clamp(24px, 5vw, 34px); }
+.ask-yes, .ask-no { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center; font-size: 40px; font-weight: 700; }
+.ask-yes { background: var(--green); box-shadow: 0 6px 0 #2e6f6b; }
+.ask-yes svg { width: 58px; height: 58px; }
+.ask-no { background: var(--paper); color: var(--ink); box-shadow: 0 6px 0 #e0d4c0; }
+.ask .row { gap: 26px; }
+
+/* ---------- voices ---------- */
+.setting.voices { align-items: flex-start; flex-direction: column; }
+.voice-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; width: 100%; max-height: 260px; overflow: auto; padding: 2px; }
+.voice { text-align: left; background: #fff; border-radius: 14px; padding: 8px 12px; box-shadow: 0 2px 0 #e6dccb; border: 3px solid transparent; }
+.voice b { display: block; font-size: 16px; }
+.voice span { font-size: 13px; color: #8c7866; }
+.voice.on { border-color: var(--green); }
+
+/* ---------- photo preview ---------- */
+.toast img { height: 96px; border-radius: 10px; box-shadow: 0 2px 6px rgba(58, 42, 32, 0.2); }
+.toast.clickable { padding: 12px 24px 12px 12px; border-radius: 26px; }

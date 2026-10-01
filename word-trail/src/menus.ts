@@ -2,6 +2,7 @@ import { ALL_WORDS, picture } from './content';
 import { BADGES, deletePhoto, download, listPhotos, makeStickerSheet, Photo, sharePng } from './rewards';
 import { speech } from './speech';
 import { sfx } from './sfx';
+import { music } from './music';
 import { clearAll, SaveData, save } from './state';
 import { $, h, openOverlay, toast } from './ui';
 
@@ -46,7 +47,7 @@ export function initMenus(s: SaveData, hooks: MenuHooks) {
       for (const b of BADGES) {
         const got = s.badges.includes(b.id);
         const el = h('button', `badge${got ? '' : ' locked'}`, `<div class="medal">${picture(b.icon)}</div><span>${b.label}</span>`);
-        if (got) el.addEventListener('click', () => speech.say(b.say));
+        if (got) el.addEventListener('click', () => { sfx.tap(); el.classList.remove('boing'); void el.offsetWidth; el.classList.add('boing'); });
         grid.appendChild(el);
       }
       body.appendChild(grid);
@@ -134,20 +135,40 @@ export function initMenus(s: SaveData, hooks: MenuHooks) {
     speech.say('Hello! This is my voice.');
   });
 
-  const voiceSel = $<HTMLSelectElement>('opt-voice');
+  // every English voice on the device, grouped by accent, each with a try button
+  const voiceBox = $('opt-voice');
+  const ACCENT: Record<string, string> = { GB: 'British', US: 'American', AU: 'Australian', IE: 'Irish', IN: 'Indian', ZA: 'South African', NZ: 'New Zealand', CA: 'Canadian', SC: 'Scottish' };
+  const accent = (lang: string) => ACCENT[(lang.split(/[-_]/)[1] ?? '').toUpperCase()] ?? 'English';
   const fillVoices = () => {
-    const vs = speech.voices();
-    voiceSel.innerHTML = `<option value="">Automatic</option>` + vs.map((v) => `<option>${v.name.replace(/</g, '')}</option>`).join('');
-    voiceSel.value = vs.some((v) => v.name === s.settings.voice) ? s.settings.voice : '';
+    const vs = speech.voices().slice().sort((x, y) => {
+      const rank = (v: SpeechSynthesisVoice) => (/GB/i.test(v.lang) ? 0 : /US/i.test(v.lang) ? 1 : 2);
+      return rank(x) - rank(y) || x.name.localeCompare(y.name);
+    });
+    const active = speech.current()?.name ?? '';
+    const esc = (t: string) => t.replace(/[<>&"]/g, '');
+    voiceBox.innerHTML =
+      `<button class="voice${s.settings.voice ? '' : ' on'}" data-v=""><b>Automatic</b><span>${active ? esc(active) : 'best available'}</span></button>` +
+      vs.map((v) => `<button class="voice${s.settings.voice === v.name ? ' on' : ''}" data-v="${esc(v.name)}"><b>${esc(v.name.replace(/^(Microsoft|Google)\s+/, '').replace(/\s*\(.*\)$/, ''))}</b><span>${accent(v.lang)}</span></button>`).join('');
     $('voice-note').classList.toggle('hidden', vs.length > 0);
   };
   fillVoices();
   speech.onVoices(fillVoices);
-  voiceSel.addEventListener('change', () => {
-    s.settings.voice = voiceSel.value;
-    speech.setVoice(voiceSel.value);
+  voiceBox.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('.voice');
+    if (!b) return;
+    s.settings.voice = b.dataset.v ?? '';
+    speech.setVoice(s.settings.voice);
     save(s);
-    speech.say('Hello! This is my voice.');
+    fillVoices();
+    speech.say('Hello! Let\'s read: cat, dog, sun.');
+  });
+
+  const musicBox = $<HTMLInputElement>('opt-music');
+  musicBox.checked = s.settings.music;
+  musicBox.addEventListener('change', () => {
+    s.settings.music = musicBox.checked;
+    music.setOn(musicBox.checked);
+    save(s);
   });
 
   const sound = $<HTMLInputElement>('opt-sound');

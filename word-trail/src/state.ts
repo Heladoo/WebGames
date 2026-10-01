@@ -1,5 +1,5 @@
 import { ALL_WORDS, WORDS } from './content';
-import type { Slot } from './art/wearables';
+import { AIR, PACK, type Slot } from './art/wearables';
 
 export interface Settings {
   letterCase: 'upper' | 'lower';
@@ -7,6 +7,7 @@ export interface Settings {
   rate: number; // speech speed 0.5..1.2
   voice: string; // voice name ('' = automatic)
   sound: boolean;
+  music: boolean;
 }
 
 export interface Trip {
@@ -15,9 +16,10 @@ export interface Trip {
   friends: string[]; // at most 3, oldest first
   place: string;
   sky: string;
-  carry: string | null;
-  ride: string | null;
-  rideLeft: number; // walks left on the current ride
+  carry: string | null; // a thing resting on the back
+  air: string | null; // a kite or balloon on a string
+  ride: string | null; // ridden until the next new place
+  deck: string[]; // upcoming kinds of choice (a shuffled deck, so every kind comes up evenly)
   recent: string[]; // recently offered/chosen words, to vary the choices
   lastCats: string[];
 }
@@ -36,7 +38,7 @@ export interface SaveData {
 const KEY = 'word-trail-save-v1';
 
 export function newTrip(): Trip {
-  return { hero: null, worn: {}, friends: [], place: 'park', sky: 'sun', carry: null, ride: null, rideLeft: 0, recent: [], lastCats: [] };
+  return { hero: null, worn: {}, friends: [], place: 'park', sky: 'sun', carry: null, air: null, ride: null, deck: [], recent: [], lastCats: [] };
 }
 
 export function defaults(): SaveData {
@@ -48,7 +50,7 @@ export function defaults(): SaveData {
     badges: [],
     decisions: 0,
     rounds: 0,
-    settings: { letterCase: 'upper', activity: 'mix', rate: 0.8, voice: '', sound: true },
+    settings: { letterCase: 'upper', activity: 'mix', rate: 0.8, voice: '', sound: true, music: true },
   };
 }
 
@@ -77,9 +79,10 @@ export function load(): SaveData {
         friends: strings(t.friends, (f) => WORDS.friend.includes(f)).slice(-3),
         place: pick(t.place, WORDS.place, 'park'),
         sky: pick(t.sky, WORDS.sky, 'sun'),
-        carry: typeof t.carry === 'string' && WORDS.carry.includes(t.carry) ? t.carry : null,
+        carry: typeof t.carry === 'string' && PACK.includes(t.carry) ? t.carry : null,
+        air: typeof t.air === 'string' && AIR.includes(t.air) ? t.air : null,
         ride: typeof t.ride === 'string' && WORDS.ride.includes(t.ride) ? t.ride : null,
-        rideLeft: numIn(t.rideLeft, 0, 5, 0),
+        deck: strings(t.deck, (c) => c in WORDS).slice(0, 20),
         recent: strings(t.recent, (w) => known.has(w)).slice(-20),
         lastCats: strings(t.lastCats).slice(-6),
       },
@@ -95,6 +98,7 @@ export function load(): SaveData {
         rate: numIn(ss.rate, 0.5, 1.2, 0.8),
         voice: typeof ss.voice === 'string' ? ss.voice.slice(0, 200) : '',
         sound: typeof ss.sound === 'boolean' ? ss.sound : true,
+        music: typeof ss.music === 'boolean' ? ss.music : true,
       },
     };
   } catch {

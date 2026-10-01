@@ -4,13 +4,14 @@ import '@fontsource/fredoka/500.css';
 import '@fontsource/fredoka/600.css';
 import './styles.css';
 import { heroArt } from './art/characters';
-import { WEAR_SLOT } from './art/wearables';
-import { arrival, Category, CHEERS, picture, prompt } from './content';
+import { AIR, WEAR_SLOT } from './art/wearables';
+import { Category, CHEERS, picture, prompt } from './content';
 import { Decision, nextDecision } from './director';
 import { initMenus } from './menus';
 import { addPhoto, checkBadges, makePostcard } from './rewards';
 import { Scene } from './scene';
 import { sfx } from './sfx';
+import { music } from './music';
 import { speech } from './speech';
 import { load, newTrip, save, SaveData } from './state';
 import { tapWord } from './tapLetters';
@@ -26,6 +27,7 @@ applyDebugParams();
 speech.rate = s.settings.rate;
 speech.setVoice(s.settings.voice);
 sfx.enabled = s.settings.sound;
+music.enabled = s.settings.music;
 
 const scene = new Scene($('scene') as unknown as SVGSVGElement);
 const panel = $('panel');
@@ -47,11 +49,14 @@ function applyDebugParams() {
   }
   const hero = params.get('hero');
   if (hero) s.trip.hero = hero;
-  for (const k of ['place', 'sky', 'carry', 'ride'] as const) {
+  for (const k of ['place', 'sky', 'ride'] as const) {
     const v = params.get(k);
     if (v) (s.trip as unknown as Record<string, unknown>)[k] = v;
   }
-  if (params.get('ride')) s.trip.rideLeft = 2;
+  for (const c of (params.get('carry') ?? '').split(',').filter(Boolean)) {
+    if (AIR.includes(c)) s.trip.air = c;
+    else s.trip.carry = c;
+  }
   const wear = params.get('wear');
   if (wear) for (const w of wear.split(',')) if (WEAR_SLOT[w]) s.trip.worn[WEAR_SLOT[w]] = w;
   const friends = params.get('friends');
@@ -68,6 +73,11 @@ function boot() {
   $('btn-book').innerHTML = ICONS.book;
   $('btn-camera').innerHTML = ICONS.camera;
   $('btn-parents').insertAdjacentHTML('beforeend', ICONS.gear);
+  $('btn-new').innerHTML = ICONS.restart;
+  $('btn-new').addEventListener('click', async () => {
+    sfx.tap();
+    if (await askNewTrip()) startNewTrip();
+  });
   $('btn-start').innerHTML = ICONS.play;
   $('title-art').innerHTML = `<svg viewBox="0 -20 200 220">${heroArt((s.trip.hero ?? 'dog') as 'dog', { worn: s.trip.hero ? s.trip.worn : { head: 'hat' } })}</svg>`;
 
@@ -97,6 +107,11 @@ function boot() {
     speech.unlock();
     sfx.unlock();
     sfx.pop();
+    const ctx = sfx.context;
+    if (ctx) {
+      music.setScene(s.trip.place, s.trip.sky);
+      music.start(ctx, ctx.destination);
+    }
     $('title').classList.add('hidden');
     $('topbar').classList.remove('hidden');
     run();
@@ -110,20 +125,39 @@ function startNewTrip() {
   restart = true;
   speech.stop();
   cancelActivity?.();
+  scene.clearSign();
   scene.crossfade(s.trip);
+  music.setScene(s.trip.place, s.trip.sky);
   resolveChoice?.(null);
 }
 
+/** A big, friendly "start again?" question with a yes and a no button. */
+function askNewTrip(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const o = h('div', 'overlay ask', `<div class="card ask-card">
+      <div class="ask-heroes">${['dog', 'cat', 'fox'].map((w) => picture(w)).join('')}</div>
+      <h2>Choose a new friend?</h2>
+      <div class="row"><button class="ask-yes" aria-label="Yes">${ICONS.check}</button><button class="ask-no" aria-label="No">✕</button></div></div>`);
+    $('app').appendChild(o);
+    const done = (v: boolean) => { sfx.tap(); o.remove(); resolve(v); };
+    o.querySelector('.ask-yes')!.addEventListener('click', () => done(true));
+    o.querySelector('.ask-no')!.addEventListener('click', () => done(false));
+    o.addEventListener('click', (e) => { if (e.target === o) done(false); });
+  });
+}
+
 async function run() {
-  if (s.trip.hero) {
-    speech.say(`Welcome back! Let's walk with the ${s.trip.hero}!`);
-    await walk(5000);
-  }
   for (;;) {
     restart = false;
     const d = nextDecision(s);
     s.trip.recent = [...s.trip.recent, ...d.options].slice(-14);
+    // walk along the trail until the signpost with the next choice arrives
+    if (s.trip.hero) {
+      await scene.walkToSign(s.trip.ride ? 145 : 80, anyOverlayOpen);
+      if (restart) continue;
+    }
     const word = await choose(d);
+    scene.clearSign();
     if (restart || !word) continue;
     await learn(word);
     if (restart) continue;
@@ -131,12 +165,11 @@ async function run() {
     s.decisions++;
     s.trip.lastCats = [...s.trip.lastCats, d.cat].slice(-6);
     save(s);
-    await sleep(2200);
+    await sleep(1600);
     for (const b of checkBadges(s)) {
       save(s);
-      await showBadge(b.label, b.say, b.icon, !!b.party);
+      await showBadge(b.label, b.icon, !!b.party);
     }
-    await walk(9000);
   }
 }
 
@@ -176,21 +209,29 @@ function choose(d: Decision): Promise<string | null> {
     for (const w of d.options) {
       const card = h('button', 'choice', `${picture(w)}<span class="word">${show(w)}</span><span class="ok">${ICONS.check}</span>`);
       card.setAttribute('aria-label', w);
+      // one tap chooses: the card is marked, its word is said, and we go on
       card.addEventListener('click', () => {
-        if (picked === card) return finish(w);
-        picked?.classList.remove('picked');
+        if (picked) return;
         picked = card;
         card.classList.add('picked');
         cards.classList.add('has-pick');
         sfx.tap();
         speech.say(w);
+        setTimeout(() => finish(w), 650);
       });
       cards.appendChild(card);
     }
     again.addEventListener('click', () => {
-      picked = null;
-      readOut();
+      if (!picked) readOut();
     });
+    // the choice pops out of the signpost on the trail
+    const r = scene.signRect();
+    if (r) {
+      const pr = panel.getBoundingClientRect();
+      panel.style.setProperty('--ox', `${r.left + r.width / 2 - (pr.left || 0)}px`);
+      panel.style.setProperty('--oy', `${r.top - (pr.top || 0)}px`);
+      panel.classList.add('from-sign');
+    }
     panel.classList.remove('hidden');
     readOut();
   });
@@ -255,8 +296,12 @@ async function learn(word: string) {
   save(s);
   sfx.success();
   celebrate('word', title);
+  const spans = [...title.querySelectorAll('span')];
+  await speech.spell(word, (i) => {
+    spans.forEach((sp, k) => sp.classList.toggle('saying', k === i || i === -1));
+  });
+  spans.forEach((sp) => sp.classList.remove('saying'));
   title.classList.add('cheer');
-  await speech.spell(word);
   await speech.say(CHEERS[Math.floor(Math.random() * CHEERS.length)], { queue: true, pitch: 1.25 });
   panel.classList.add('leaving');
   await sleep(350);
@@ -274,52 +319,35 @@ function apply(word: string, cat: Category) {
     case 'place':
       t.place = word;
       if (!s.places.includes(word)) s.places.push(word);
+      // a ride lasts until we arrive somewhere new (and a boat needs the sea)
+      t.ride = null;
       fade = true;
       break;
     case 'friend':
       t.friends.push(word);
-      if (t.friends.length > 3) {
-        const bye = t.friends.shift()!;
-        speech.say(`Bye bye, ${bye}!`, { queue: true });
-      }
+      if (t.friends.length > 3) t.friends.shift(); // at most three friends walk along
       break;
     case 'sky': t.sky = word; fade = true; break;
-    case 'carry': t.carry = word; break;
-    case 'ride': t.ride = word; t.rideLeft = 2; break;
+    case 'carry':
+      if (AIR.includes(word)) t.air = word;
+      else t.carry = word;
+      break;
+    case 'ride': t.ride = word; break;
   }
   if (fade) scene.crossfade(t);
   else scene.render(t);
+  music.setScene(t.place, t.sky);
   scene.sparkle();
   sfx.chime(4);
-  speech.say(arrival(cat, word, t.hero ?? word), { queue: true, pitch: 1.2 });
 }
 
-// ---------- 4. walk ----------
-
-async function walk(ms: number) {
-  panel.classList.add('hidden');
-  scene.setWalking(true);
-  const end = performance.now() + ms;
-  while (performance.now() < end || anyOverlayOpen()) {
-    if (restart) break;
-    await sleep(200);
-  }
-  scene.setWalking(false);
-  if (s.trip.ride && --s.trip.rideLeft <= 0) {
-    s.trip.ride = null;
-    s.trip.rideLeft = 0;
-    scene.render(s.trip);
-    save(s);
-  }
-}
-
-async function showBadge(label: string, say: string, icon: string, party: boolean) {
+/** Badges are celebrated with pictures and confetti only (no speech). */
+async function showBadge(label: string, icon: string, party: boolean) {
   sfx.success();
   const b = h('div', 'badge-pop', `<div class="badge-star">${ICONS.burst}</div><div class="medal">${picture(icon)}</div><b>${label}</b>`);
   document.body.appendChild(b);
   celebrate(party ? 'party' : 'badge', b.querySelector('.medal'));
-  await speech.say(say, { pitch: 1.2 });
-  await sleep(900);
+  await sleep(party ? 3200 : 2400);
   b.classList.add('out');
   await sleep(400);
   b.remove();
@@ -339,8 +367,7 @@ async function takePhoto(open: (p: { id: string; png: string; caption: string; a
     const { png, caption } = await makePostcard(s.trip);
     const p = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, png, caption, at: Date.now() };
     await addPhoto(p);
-    toast(`<img src="${png}" alt=""/><span>Saved in your photos!</span>`, 3500, () => open(p));
-    speech.say('Click! What a nice photo!');
+    toast(`<img src="${png}" alt=""/><span>Saved in your photos!</span>`, 7000, () => open(p));
   } catch {
     toast('Oops, the photo did not work.');
   } finally {

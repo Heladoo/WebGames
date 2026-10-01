@@ -6,7 +6,7 @@ import { ALL_WORDS, picture } from './content';
 import { LOWER, UPPER } from './glyphs';
 import { sceneMarkup } from './scene';
 import { newTrip } from './state';
-import { runRig, runTiles } from './rig';
+import { runFrames, runRig, runTiles } from './rig';
 
 // Debug pages for checking art: ?debug=wardrobe, ?debug=words, ?debug=glyphs,
 // ?debug=icon and ?debug=og (app icon and link-preview image), plus
@@ -26,6 +26,7 @@ export function runDebug(kind: string) {
 
   if (kind === 'rig') return runRig();
   if (kind === 'tiles') return void runTiles();
+  if (kind === 'frames') return runFrames(ALL_WORDS, picture);
 
   if (kind === 'icon' || kind === 'og') {
     // app icons and the link-preview image, drawn from the game's own art

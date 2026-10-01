@@ -2,6 +2,7 @@ import { heroArt, HeroId } from './art/characters';
 import { friendArt, isFlying } from './art/friends';
 import { cloudArt, GROUND, moonArt, PlaceId, placeLayers, rainbowArt, SkyId, skyBands, sunArt, TILE } from './art/places';
 import { RIDES } from './art/rides';
+import { C, line, piece } from './art/paper';
 import type { Trip } from './state';
 
 // The walking scene: one SVG with parallax scenery, the sky, the hero with
@@ -19,8 +20,8 @@ export interface View {
 
 function heroGroup(t: Trip, heroX: number) {
   if (!t.hero) return '';
-  const ride = t.ride && t.rideLeft > 0 ? RIDES[t.ride] : null;
-  const look = { worn: t.worn, carry: t.carry, seated: !!ride };
+  const ride = t.ride ? RIDES[t.ride] : null;
+  const look = { worn: t.worn, carry: t.carry, air: t.air, seated: !!ride };
   const dy = ride ? ride.dy : 0;
   const s = HERO_SCALE;
   return `<g class="walker${ride ? ' riding' : ''}" transform="translate(${heroX - 100 * s} ${GROUND + 44 - 194 * s}) scale(${s})">
@@ -115,7 +116,26 @@ export function sceneMarkup(t: Trip, v: View, heroX: number): string {
   return `${skyGroup(t, v)}
     <g class="land">${layer(l.far, 'far', v)}${layer(l.mid, 'mid', v)}${layer(l.ground, 'ground', v)}</g>
     ${weather(t, v)}
+    ${t.ride === 'boat' ? water(v) : ''}
     <g class="party">${friendsGroup(t, heroX)}${heroGroup(t, heroX)}</g>`;
+}
+
+/** A band of water along the trail, so a boat has something to float on. */
+function water(v: View) {
+  const x0 = v.x0 - 40, x1 = v.x0 + v.w + 40;
+  let waves = '';
+  for (let x = x0; x < x1 + 60; x += 30) waves += ` q7.5 -6 15 0 t15 0`;
+  return `<g class="water">${piece(`M${x0} ${GROUND + 18} L${x1} ${GROUND + 18} L${x1} ${GROUND + 66} L${x0} ${GROUND + 66} Z`, '#8ecfd6', { lift: 1.2 })}
+    <g class="waves">${line(`M${x0} ${GROUND + 30}${waves}`, '#fffdf6', 2.4, 'opacity="0.7"')}${line(`M${x0 + 12} ${GROUND + 50}${waves}`, '#fffdf6', 2.4, 'opacity="0.5"')}</g></g>`;
+}
+
+/** The signpost where the next choice waits. */
+function signArt() {
+  return `<g data-sign="">
+    ${piece('M-5 -84 L5 -84 L5 4 L-5 4 Z', C.bark, { lift: 1.4 })}
+    ${piece('M-38 -128 C-38 -134 -34 -138 -28 -138 L28 -138 C34 -138 38 -134 38 -128 L38 -92 C38 -86 34 -82 28 -82 L-28 -82 C-34 -82 -38 -86 -38 -92 Z', C.butter, { lift: 2.2 })}
+    ${piece('M-30 -130 L30 -130 L30 -90 L-30 -90 Z', C.white, { lift: 0.6 })}
+    ${piece('M-9 -118 C-9 -128 9 -128 9 -118 C9 -111 2 -110 2 -104 L-2 -104 C-2 -112 4 -113 4 -118 C4 -122 -4 -122 -4 -118 Z M-2.5 -99 L2.5 -99 L2.5 -94 L-2.5 -94 Z', C.coral, { lift: 0.5 })}</g>`;
 }
 
 export class Scene {
@@ -150,6 +170,56 @@ export class Scene {
   render(t: Trip) {
     this.trip = t;
     this.svg.innerHTML = sceneMarkup(t, this.view, this.heroX);
+    if (this.sign) this.svg.querySelector('.party')?.before(this.sign.el);
+  }
+
+  private sign: { el: SVGGElement; x: number } | null = null;
+
+  /**
+   * A signpost comes along the trail (moving with the ground) and the
+   * promise resolves when it reaches the hero, where the next choice waits.
+   */
+  walkToSign(speed: number, isPaused: () => boolean): Promise<void> {
+    this.clearSign();
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'g') as SVGGElement;
+    el.setAttribute('class', 'signpost');
+    el.innerHTML = signArt();
+    const stop = Math.min(this.heroX + 150, this.view.x0 + this.view.w - 44);
+    const start = Math.max(this.view.x0 + this.view.w + 60, stop + 360);
+    this.sign = { el, x: start };
+    this.svg.querySelector('.party')?.before(el);
+    this.setWalking(true);
+    return new Promise((resolve) => {
+      let last = performance.now();
+      const tick = (now: number) => {
+        const sign = this.sign;
+        if (!sign || sign.el !== el) return resolve();
+        const dt = Math.min(0.1, (now - last) / 1000);
+        last = now;
+        if (!isPaused()) sign.x = Math.max(stop, sign.x - speed * dt);
+        el.setAttribute('transform', `translate(${sign.x.toFixed(1)} ${GROUND + 34})`);
+        if (sign.x <= stop) {
+          this.setWalking(false);
+          el.classList.add('arrived');
+          return resolve();
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  /** Where the signpost is on screen (the choice pops out of it). */
+  signRect(): DOMRect | null {
+    return this.sign?.el.querySelector('[data-sign] path:last-child')?.getBoundingClientRect() ?? null;
+  }
+
+  clearSign() {
+    if (!this.sign) return;
+    const el = this.sign.el;
+    this.sign = null;
+    el.classList.add('leaving');
+    setTimeout(() => el.remove(), 500);
   }
 
   /** Fade from the old scenery into the new one (a new place or sky). */

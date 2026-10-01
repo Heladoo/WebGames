@@ -1,6 +1,9 @@
 // A small wrapper around the browser's built-in voice (Web Speech API).
 
-const PREFERRED = ['Samantha', 'Google US English', 'Natural', 'Karen', 'Moira', 'Serena', 'Female', 'Zira', 'Aria', 'Jenny'];
+// The default is a British female voice; the first name found on the device wins.
+const PREFERRED_GB = ['Google UK English Female', 'Sonia', 'Libby', 'Maisie', 'Serena', 'Kate', 'Stephanie', 'Martha', 'Hazel', 'Susan', 'Female'];
+const PREFERRED_ANY = ['Samantha', 'Google US English', 'Natural', 'Karen', 'Moira', 'Female', 'Zira', 'Aria', 'Jenny'];
+const MALE = /\b(male|daniel|arthur|oliver|george|ryan|thomas|fred|alex|aaron|guy|david|mark|james)\b/i;
 
 // Some voices read a lone letter as a word ("a" as "uh"), so a few are spelled out.
 const LETTER_SAY: Record<string, string> = { a: 'ay', z: 'zee' };
@@ -37,13 +40,26 @@ class Speech {
     const list = this.voices();
     const byName = list.find((v) => v.name === this.voiceName);
     if (byName) return (this.voice = byName);
-    const us = list.filter((v) => /en[-_]US/i.test(v.lang));
-    const pool = us.length ? us : list;
-    for (const p of PREFERRED) {
-      const v = pool.find((x) => x.name.includes(p));
-      if (v) return (this.voice = v);
-    }
-    this.voice = pool.find((v) => v.localService) ?? pool[0] ?? null;
+    const gb = list.filter((v) => /en[-_]GB/i.test(v.lang));
+    const find = (pool: SpeechSynthesisVoice[], names: string[]) => {
+      for (const n of names) {
+        const v = pool.find((x) => x.name.includes(n) && !(n === 'Female' && MALE.test(x.name.replace('Female', ''))));
+        if (v) return v;
+      }
+      return null;
+    };
+    this.voice =
+      find(gb, PREFERRED_GB) ??
+      gb.find((v) => !MALE.test(v.name)) ??
+      find(list, PREFERRED_ANY) ??
+      list.find((v) => /en[-_]US/i.test(v.lang) && !MALE.test(v.name)) ??
+      list[0] ??
+      null;
+    return this.voice;
+  }
+
+  /** The voice in use right now (after automatic choice). */
+  current() {
     return this.voice;
   }
 
@@ -95,9 +111,13 @@ class Speech {
     return this.say(LETTER_SAY[l] ?? l.toUpperCase(), { queue, rate: 0.95 });
   }
 
-  /** "d, o, g... dog!" */
-  async spell(word: string) {
-    for (const ch of word) await this.letter(ch, true);
+  /** "d, o, g... dog!" — onLetter(i) fires as each letter is said (-1 for the whole word). */
+  async spell(word: string, onLetter?: (i: number) => void) {
+    for (let i = 0; i < word.length; i++) {
+      onLetter?.(i);
+      await this.letter(word[i], true);
+    }
+    onLetter?.(-1);
     await this.say(word + '!', { queue: true, pitch: 1.2 });
   }
 }
