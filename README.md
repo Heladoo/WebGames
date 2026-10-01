@@ -148,6 +148,17 @@ Debug pages: `?debug=words` (every picture), `?debug=wardrobe` (every hero with 
 
 You can also start from a ready-made scene, for example `?hero=fox&wear=cap,glasses&friends=bee,cat&place=sea&sky=rainbow&ride=boat&carry=kite`. Add `?words=12` to pretend 12 words are already learned, which unlocks the harder levels.
 
+### Play statistics (anonymous, shares Otter River's database)
+
+Word Trail counts plays, estimated unique players and play time, exactly like Otter River. Open **`/stats.html`** on the Word Trail site and enter your `STATS_KEY` to see the numbers.
+
+**One free Upstash database serves both games.** Every Word Trail counter is stored under the name prefix `wt:`, and Otter River's under `or:`, so their numbers never mix. To connect it:
+1. In Vercel, open the **word-trail** project (not otter-river) → **Settings → Environment Variables**.
+2. Add the same three variables as Otter River, with the same values: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `STATS_KEY`. You can also choose a different `STATS_KEY`.
+3. Redeploy.
+
+The two games share the free plan's monthly command allowance (500,000 commands). A play uses about 14 commands for 10 minutes of play, so the allowance still covers tens of thousands of sessions a month.
+
 ### Deploy on Vercel
 
 Import `Heladoo/WebGames` as a second project and set **Root Directory** to `word-trail`. The framework is detected as Vite from `word-trail/vercel.json`.
