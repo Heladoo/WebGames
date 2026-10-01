@@ -57,6 +57,7 @@
       <svg id="scene" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax slice" aria-label="The trail"></svg>
 
       <div id="topbar" class="topbar hidden">
+        <button id="btn-new" class="round-btn" aria-label="Choose a new friend"></button>
         <button id="btn-book" class="round-btn" aria-label="My stickers"></button>
         <button id="btn-camera" class="round-btn" aria-label="Take a photo"></button>
         <button id="btn-parents" class="round-btn small" aria-label="Grown-ups: hold to open settings"><span class="hold-ring"></span></button>
@@ -125,11 +126,16 @@
               <span>Voice speed</span>
               <input type="range" id="opt-rate" min="50" max="120" step="5" />
             </div>
-            <div class="setting">
+            <div class="setting voices">
               <span>Voice</span>
-              <select id="opt-voice"></select>
+              <div id="opt-voice" class="voice-list" role="radiogroup"></div>
             </div>
-            <p id="voice-note" class="note hidden">No English voice was found on this device. The game still works, but words won't be spoken. You can add an English voice in the device's speech settings.</p>
+            <p class="note">These are the English voices on this device. More (and nicer, "enhanced") voices can be downloaded in the device settings: on iPhone and iPad, go to <b>Settings → Accessibility → Spoken Content → Voices → English</b>, and on Android, go to <b>Settings → Text-to-speech</b>.</p>
+            <p id="voice-note" class="note hidden">No English voice was found on this device. The game still works, but words won't be spoken.</p>
+            <div class="setting">
+              <span>Music and nature sounds</span>
+              <label class="switch"><input type="checkbox" id="opt-music" /><i></i></label>
+            </div>
             <div class="setting">
               <span>Sound effects</span>
               <label class="switch"><input type="checkbox" id="opt-sound" /><i></i></label>

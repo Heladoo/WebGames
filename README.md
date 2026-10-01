@@ -101,15 +101,25 @@ To add an item, draw a grid, pick an anchor and a pivot, and add one line to the
 
 An endless, gentle English word adventure for young children (about 4–7) who are just starting English. Everything is drawn in code in a layered **paper-cut** style: paper pieces with cast shadows, hand-cut edges and a paper grain. The browser's built-in voice speaks every word and letter.
 
-- **Choose:** the voice asks a question ("What will the dog wear?") and reads out 2–4 picture cards. Tap a card to hear its word, then tap it again (or the ✓) to choose.
+- **Choose:** the hero walks along the trail until a signpost arrives. The choice pops out of it: the voice asks a question ("What will the dog wear?") and reads out 2–4 picture cards. One tap on a card chooses it.
 - **Learn the word:** the chosen word is shown and spoken, and then the child practises its letters:
   - **Tap:** the letters wait in slots and each tap says the letter's name. Harder levels shuffle the letters and add one or two extra ones.
-  - **Trace:** the child traces dotted letters with a finger, and each finished letter is spoken. A hint dot shows the stroke after a pause, and after a few hints the game traces it together with the child.
-- **Walk:** the choice joins the trip and stays: clothes, things to carry, friends that follow (up to 3), rides (car, bus, boat, train, bike), the sky (sun, rain, rainbow, moon…) and places (park, farm, woods, snow, sand, sea, hill, pond). You can tap anything on the trail to hear its name.
+  - **Trace:** the child traces dotted letters with a finger. A letter counts once nearly all of each stroke is covered and the finger lifts, and then its name is spoken. A hint dot shows the stroke after a pause, and after a few hints the game traces it together with the child.
+- **Walk:** the choice joins the trip and stays:
+  - **Clothes**, one per body slot: hat, cap, crown, helmet or bow; scarf or tie; coat; boots, shoes or socks; cape or bag; glasses.
+  - **Things**: a kite or balloon on a string, plus one thing on the back (ball, star, book, drum, flag, bell or gift).
+  - **Friends**: up to 3 follow along; when a fourth joins, the oldest leaves.
+  - **Rides** (car, bus, train, bike, and a boat only by the sea) last until the next new place.
+  - **Sky and places**: the sky (sun, cloud, rain, rainbow, moon) and the place (park, farm, woods, snow, sand, sea, hill, pond) change the scenery.
+
+  A new choice only replaces the item in the same slot. You can tap anything on the trail to hear its name. After each word, its letters are spelled aloud, and each letter bounces as it is said.
 - **No losing and no end.** Longer words and harder letter levels appear as the child learns more.
+- **Music:** a quiet, generated melody that changes with each place, with matching nature sounds (birds, waves, wind, a brook, frogs, crickets at night, rain). It quietens whenever the voice speaks.
+- **Quiet celebrations:** badges and photos are celebrated with pictures, sounds and confetti, not speech.
 - **Paper confetti:** a small burst for each finished word, falling paper bunting for a new badge, and a full-screen paper party for milestones (10, 25 or 50 words, A to Z, every place).
 - **Stickers, badges and photos:** every learned word becomes a sticker. The camera makes a postcard of the trip with a caption. Postcards and the sticker page can be shared (system share sheet) or saved as images.
-- **For grown-ups** (hold the ⚙️ button): uppercase or lowercase letters, tap/trace/both, voice and speed, sound effects, progress, and "New trip". Progress is saved only in the browser (localStorage and IndexedDB). There are no accounts, ads or cookies.
+- **Start over** with the paw button: it asks "Choose a new friend?" with big ✓ and ✕ buttons.
+- **For grown-ups** (hold the ⚙️ button): uppercase or lowercase letters, tap/trace/both, the voice (every English voice on the device, a British female voice by default) and its speed, music, sound effects, progress, and "New trip". Progress is saved only in the browser (localStorage and IndexedDB). There are no accounts, ads or cookies.
 
 ### Run locally
 
@@ -121,12 +131,18 @@ npm run build    # static site in word-trail/dist
 npm test         # anatomy tests (Playwright + Chromium)
 ```
 
-**Anatomy tests** (`tests/anatomy.spec.ts`, rules in `tests/rules.ts`) render every hero alone, with every item and on every ride (184 combinations), and measure each named part. They check that parts relate correctly:
+**Anatomy tests** (`tests/anatomy.spec.ts`, rules in `tests/rules.ts`) render every hero alone, with every item and on every ride (8 heroes alone, with each of 14 clothes and 9 things, and on 5 rides), and measure each named part. They check that parts relate correctly:
 - The face follows the 3/4 turn: the far eye is nearer the snout and smaller, the eyes sit on one line above the snout, and the nose is the front-most point.
 - The body is connected: the neck overlaps, the tail and ears attach, the feet are on the ground, front and back legs sit under the right half, and near legs are drawn over far legs.
 - Items fit: hats rest on the head, lenses sit over the eyes, the scarf wraps the neck, boots are on the feet, bags and capes are on the back, carried things rest on the back, and riders sit in their vehicles.
 
-The tests also check that every scenery tile repeats without a seam.
+They also check:
+- Anything sitting on a moving part (a tail tip, a sock) moves with it.
+- Things on the back aren't hidden behind the head or ears.
+- No card picture is cut off at its frame.
+- Every scenery tile repeats without a seam.
+
+`tests/director.spec.ts` plays 360 choices and checks that every kind of question comes up evenly, never twice in a row, and that a boat is only offered by the sea.
 
 Debug pages: `?debug=words` (every picture), `?debug=wardrobe` (every hero with every item and ride), `?debug=glyphs` (tracing strokes), `?debug=rig` / `?debug=tiles` (what the tests measure), and `?debug=icon` / `?debug=og` (the art used for `public/` icons and the link preview).
 

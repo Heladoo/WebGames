@@ -36,19 +36,6 @@ export function prompt(cat: Category, hero: string | null): string {
 /** Short cheer after finishing a word. */
 export const CHEERS = ['Great job!', 'Well done!', 'Wonderful!', 'Super!', 'You did it!', 'Hooray!', 'Amazing!'];
 
-/** Friendly spoken line when something new joins the trip. */
-export function arrival(cat: Category, word: string, hero: string): string {
-  switch (cat) {
-    case 'hero': return `Hello, ${word}! Let's go!`;
-    case 'wear': return `The ${hero} has a ${word}!`.replace('a boots', 'boots').replace('a glasses', 'glasses');
-    case 'place': return `Off to the ${word}!`;
-    case 'friend': return `The ${word} is coming too!`;
-    case 'sky': return word === 'rain' ? 'Look, rain!' : `Look, the ${word}!`;
-    case 'carry': return `The ${hero} has ${/^[aeiou]/.test(word) ? 'an' : 'a'} ${word}!`;
-    case 'ride': return `Let's go by ${word}!`;
-  }
-}
-
 export function categoryOf(word: string): Category {
   for (const c of ['wear', 'place', 'sky', 'carry', 'ride', 'hero', 'friend'] as Category[]) if (WORDS[c].includes(word)) return c;
   return 'friend';

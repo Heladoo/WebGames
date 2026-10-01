@@ -287,7 +287,7 @@ export function skyIcon(id: SkyId): string {
     case 'moon': return bg + moonArt(110, 100, 50) + piece('M150 40 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4 Z M158 146 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3 Z', C.butter, { lift: 0.6 });
     case 'cloud': return bg + cloudArt(100, 110, 1.15);
     case 'rain': return bg + cloudArt(100, 82, 1.05, '#eef1f2') + piece([60, 88, 116, 144, 74, 130].map((x, i) => `M${x} ${118 + (i > 3 ? 32 : 0)} C${x - 5} ${130 + (i > 3 ? 32 : 0)} ${x + 5} ${130 + (i > 3 ? 32 : 0)} ${x} ${118 + (i > 3 ? 32 : 0)} Z`).join(' '), '#6fb6d6', { lift: 0.8 });
-    case 'rainbow': return bg + rainbowArt(100, 150, 84) + cloudArt(36, 150, 0.5) + cloudArt(164, 150, 0.5);
+    case 'rainbow': return bg + rainbowArt(100, 146, 76) + cloudArt(50, 148, 0.4) + cloudArt(150, 148, 0.4);
   }
 }
 
