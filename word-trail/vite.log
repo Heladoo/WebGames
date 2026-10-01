@@ -1,12 +1,5 @@
 
-  VITE v5.4.21  ready in 272 ms
+  VITE v5.4.21  ready in 260 ms
 
   ➜  Local:   http://localhost:5174/
   ➜  Network: use --host to expose
-7:05:52 AM [vite] page reload src/art/characters.ts
-7:05:52 AM [vite] page reload src/art/wearables.ts
-7:06:13 AM [vite] page reload src/art/wearables.ts
-7:06:59 AM [vite] page reload src/scene.ts
-7:08:39 AM [vite] page reload src/rewards.ts
-7:08:39 AM [vite] page reload src/menus.ts
-7:08:53 AM [vite] page reload src/rewards.ts

@@ -1,5 +1,5 @@
 import { heroArt, HEROES } from './art/characters';
-import { svgBox } from './art/paper';
+import { C, ell, flat, line, piece, svgBox } from './art/paper';
 import { RIDES } from './art/rides';
 import { WEAR_SLOT } from './art/wearables';
 import { ALL_WORDS, picture } from './content';
@@ -34,8 +34,7 @@ export function runDebug(kind: string) {
     const trip = { ...newTrip(), hero: 'dog', worn: { head: 'hat' as const }, friends: ['bee'], place: 'park' };
     const heroX = 430;
     document.body.innerHTML = kind === 'icon'
-      ? `<svg viewBox="0 0 200 200" style="width:100vmin;height:100vmin;display:block"><rect width="200" height="200" fill="#9fd0d6"/>
-          <circle cx="100" cy="106" r="86" fill="#fffdf8"/><g transform="translate(4 8) scale(0.92)" filter="url(#pc)">${heroArt('dog', { worn: { head: 'hat' } })}</g></svg>`
+      ? `<svg viewBox="0 0 200 200" style="width:100vmin;height:100vmin;display:block">${frogIcon()}</svg>`
       : `<svg viewBox="${heroX - 470} 20 800 420" style="width:100vw;height:100vh;display:block" preserveAspectRatio="xMidYMid slice">${sceneMarkup(trip, { x0: heroX - 470, y0: 20, w: 800, h: 420 }, heroX)}</svg>
           <div class="og-title">Word Trail</div>`;
     wrap.remove();
@@ -63,4 +62,24 @@ export function runDebug(kind: string) {
   } else {
     for (const w of ALL_WORDS) cell(picture(w), w);
   }
+}
+
+/** The app icon: a crowned frog face with pink glasses, in paper pieces. */
+function frogIcon() {
+  const green = '#8cc07a', light = '#bfe0a6';
+  const eye = (x: number) => `${piece(ell(x, 76, 20, 20), C.white, { lift: 1 })}
+    ${flat(ell(x + 3, 80, 10, 11), C.ink)}${flat(ell(x + 6.5, 75, 3.6, 3.8), C.white)}${flat(ell(x, 85, 1.6, 1.6), C.white)}`;
+  return `<rect width="200" height="200" fill="${C.cream}"/>
+    <g filter="url(#pc)">
+      ${piece(ell(66, 74, 31, 30), green, { lift: 2 })}${piece(ell(134, 74, 31, 30), green, { lift: 2 })}
+      ${piece('M26 120 C24 82 56 66 100 66 C144 66 176 82 174 120 C172 158 142 180 100 180 C58 180 28 158 26 120 Z', green, { lift: 2.4 })}
+      ${piece('M42 134 C60 152 140 152 158 134 C158 160 134 178 100 178 C66 178 42 160 42 134 Z', light, { lift: 1 })}
+      ${piece('M64 50 L60 14 L82 32 L100 4 L118 32 L140 14 L136 50 C124 54 76 54 64 50 Z', C.mustard, { lift: 1.8 })}
+      ${piece(ell(100, 38, 6.5, 7.5), C.coral, { lift: 0.8 })}
+      ${eye(66)}${eye(134)}
+      ${flat(ell(66, 76, 25, 25), 'none', `stroke="${C.rose}" stroke-width="7"`)}${flat(ell(134, 76, 25, 25), 'none', `stroke="${C.rose}" stroke-width="7"`)}
+      ${line('M91 72 C96 66 104 66 109 72', C.rose, 6)}
+      ${flat(ell(46, 128, 10, 6), C.blush, 'opacity="0.85"')}${flat(ell(154, 128, 10, 6), C.blush, 'opacity="0.85"')}
+      ${line('M66 128 C86 146 114 146 134 128', C.ink, 5)}
+    </g>`;
 }
