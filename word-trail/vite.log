@@ -1,0 +1,33 @@
+
+  VITE v5.4.21  ready in 303 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose
+5:28:19 PM [vite] page reload src/art/characters.ts
+5:29:25 PM [vite] page reload src/art/paper.ts
+5:29:25 PM [vite] page reload src/debug.ts
+5:30:51 PM [vite] page reload src/art/wearables.ts
+5:30:51 PM [vite] page reload src/art/characters.ts
+5:31:58 PM [vite] page reload src/ui.ts
+5:32:21 PM [vite] page reload src/main.ts
+5:32:21 PM [vite] page reload src/ui.ts
+5:32:21 PM [vite] page reload src/rewards.ts
+5:33:15 PM [vite] hmr update /src/styles.css
+5:33:29 PM [vite] hmr update /src/styles.css
+5:33:29 PM [vite] page reload src/art/characters.ts
+5:33:29 PM [vite] page reload src/main.ts
+5:33:29 PM [vite] page reload src/debug.ts
+5:33:29 PM [vite] page reload index.html
+5:33:39 PM [vite] page reload src/rewards.ts
+5:34:33 PM [vite] page reload src/art/wearables.ts
+5:35:22 PM [vite] page reload src/tapLetters.ts
+5:35:22 PM [vite] page reload src/trace.ts
+5:35:22 PM [vite] hmr update /src/styles.css
+5:35:22 PM [vite] page reload src/ui.ts
+5:35:33 PM [vite] page reload src/debug.ts
+5:35:33 PM [vite] page reload src/art/samples.ts
+5:35:38 PM [vite] page reload src/art/paper.ts
+5:35:38 PM [vite] page reload src/debug.ts
+5:35:38 PM [vite] page reload src/content.ts
+5:35:38 PM [vite] page reload src/art/palette.ts
+5:38:13 PM [vite] hmr update /src/styles.css

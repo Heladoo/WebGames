@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <title>Word Trail: an English word adventure for kids</title>
+    <meta name="description" content="A gentle, endless adventure for young children learning English: choose a friend, dress it up, pick where to go, and hear, tap and trace every word. Free, with no ads, no accounts and no cookies." />
+    <meta name="theme-color" content="#f6efe3" />
+    <meta name="color-scheme" content="light" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="canonical" href="%SITE_URL%/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Word Trail" />
+    <meta property="og:title" content="Word Trail: an English word adventure" />
+    <meta property="og:description" content="Choose, listen, tap and trace: a calm, endless English word adventure for young children." />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A cute dog in a straw hat walking along a trail with a bee" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="%SITE_URL%/og-image.png" />
+
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Word Trail" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "Word Trail",
+        "url": "%SITE_URL%/",
+        "image": "%SITE_URL%/og-image.png",
+        "description": "A gentle, endless English word adventure for young children: listen to words, tap letters and trace them with a finger.",
+        "genre": ["Educational", "Adventure"],
+        "gamePlatform": ["Web browser", "Mobile", "Tablet"],
+        "playMode": "SinglePlayer",
+        "applicationCategory": "Game",
+        "operatingSystem": "Any",
+        "isFamilyFriendly": true,
+        "typicalAgeRange": "4-7",
+        "inLanguage": "en",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
+  </head>
+  <body>
+    <noscript><p style="padding:16px;font-family:sans-serif">Word Trail is a browser game: please enable JavaScript to play.</p></noscript>
+    <svg id="paper-defs" width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs></defs></svg>
+    <div id="app">
+      <svg id="scene" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax slice" aria-label="The trail"></svg>
+
+      <div id="topbar" class="topbar hidden">
+        <button id="btn-book" class="round-btn" aria-label="My stickers"></button>
+        <button id="btn-camera" class="round-btn" aria-label="Take a photo"></button>
+        <button id="btn-parents" class="round-btn small" aria-label="Grown-ups: hold to open settings"><span class="hold-ring"></span></button>
+      </div>
+
+      <section id="panel" class="panel hidden" aria-live="polite"></section>
+
+      <div id="title" class="overlay title">
+        <div class="card title-card">
+          <div id="title-art" class="title-art"></div>
+          <h1>Word Trail</h1>
+          <p class="subtitle">choose · listen · tap · trace</p>
+          <button id="btn-start" class="play-btn" aria-label="Start"></button>
+          <p class="note">Turn the sound on 🔊</p>
+        </div>
+      </div>
+
+      <div id="book" class="overlay hidden">
+        <div class="card sheet">
+          <header class="sheet-head">
+            <nav class="tabs" role="tablist">
+              <button class="tab on" data-tab="stickers" role="tab">Stickers</button>
+              <button class="tab" data-tab="badges" role="tab">Badges</button>
+              <button class="tab" data-tab="photos" role="tab">Photos</button>
+            </nav>
+            <button class="close-btn" data-close aria-label="Close">✕</button>
+          </header>
+          <div id="book-body" class="sheet-body"></div>
+          <footer id="book-foot" class="sheet-foot"></footer>
+        </div>
+      </div>
+
+      <div id="viewer" class="overlay hidden">
+        <div class="card viewer">
+          <button class="close-btn" data-close aria-label="Close">✕</button>
+          <img id="viewer-img" alt="A postcard from the trip" draggable="false" />
+          <p id="viewer-cap" class="viewer-cap"></p>
+          <div class="row">
+            <button id="btn-share" class="pill-btn">Share</button>
+            <button id="btn-save" class="pill-btn light">Save</button>
+            <button id="btn-delete" class="pill-btn light hidden">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="parents" class="overlay hidden">
+        <div class="card sheet parents">
+          <header class="sheet-head">
+            <h2>For grown-ups</h2>
+            <button class="close-btn" data-close aria-label="Close">✕</button>
+          </header>
+          <div class="sheet-body">
+            <div class="setting">
+              <span>Letters</span>
+              <div class="seg" id="opt-case">
+                <button data-v="upper">ABC</button><button data-v="lower">abc</button>
+              </div>
+            </div>
+            <div class="setting">
+              <span>Letter practice</span>
+              <div class="seg" id="opt-activity">
+                <button data-v="mix">Both</button><button data-v="tap">Tap</button><button data-v="trace">Trace</button>
+              </div>
+            </div>
+            <div class="setting">
+              <span>Voice speed</span>
+              <input type="range" id="opt-rate" min="50" max="120" step="5" />
+            </div>
+            <div class="setting">
+              <span>Voice</span>
+              <select id="opt-voice"></select>
+            </div>
+            <p id="voice-note" class="note hidden">No English voice was found on this device. The game still works, but words won't be spoken. You can add an English voice in the device's speech settings.</p>
+            <div class="setting">
+              <span>Sound effects</span>
+              <label class="switch"><input type="checkbox" id="opt-sound" /><i></i></label>
+            </div>
+            <div id="progress" class="progress"></div>
+            <div class="row">
+              <button id="btn-new-trip" class="pill-btn light">New trip</button>
+              <button id="btn-share-stickers" class="pill-btn light">Share stickers</button>
+              <button id="btn-reset" class="pill-btn danger">Reset everything</button>
+            </div>
+            <p class="note">New trip lets your child choose a new friend and start fresh. Stickers and badges are kept. Progress is saved only in this browser. There are no accounts, ads or cookies.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="toast" class="toast" role="status"></div>
+      <div id="flash" class="flash"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
