@@ -2,53 +2,63 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Repository layout
+`WebGames` is a monorepo of small browser games. Each game lives in its own folder and is deployed as its own Vercel project. **This file holds what applies to every game; game-specific details live in `<game>/CLAUDE.md`** (Claude Code loads it when working inside that folder). When adding a game, add a short entry to the list below and put its specifics in its own folder rather than here.
 
-`WebGames` is a monorepo for browser games; currently only `otter-river/` exists (Vite + TypeScript + Canvas 2D, no runtime dependencies, no game engine). Everything below assumes `cd otter-river`. There is no test runner or linter: `npm run build` (`tsc --noEmit && vite build`) is the check, and `tsc` runs with `strict`, `noUnusedLocals` and `noUnusedParameters`.
+## Games
 
-```bash
-npm install
-npm run dev        # http://localhost:5173
-npm run build      # typecheck + production build into dist/
-npm run preview
-```
+| Folder | What it is | Details |
+|---|---|---|
+| `otter-river/` | Calm pixel-art river game: an otter floats, collects shells, dresses up | `otter-river/CLAUDE.md` |
 
-Deploy: Vercel project with **Root Directory = `otter-river`** (framework Vite). `vercel.json` sets a strict CSP and security headers (scripts `'self'` only; fonts from Google Fonts; `connect-src 'self'`), so new external hosts or inline scripts need a header change. `api/stats.js` is a plain-ESM serverless function.
+## Shared stack and workflow
 
-## Debug URLs (the main way to verify changes)
+- Each game is Vite + TypeScript + Canvas 2D with no runtime dependencies and no game engine. `npm run build` (`tsc --noEmit && vite build`) is the check; there is no test runner or linter, and `tsc` runs `strict` with unused-variable errors.
+- Work from inside the game's folder (`cd otter-river`): `npm install`, `npm run dev`, `npm run build`, `npm run preview`.
+- **No automated tests: verify in a real browser.** Playwright/Chromium is installed in the sandbox. Each game exposes `?debug=…` query parameters that force scenes, expose `window.game`, or render test sheets; use them for screenshots and scripted checks. Add the same kind of hooks to a new game rather than testing by hand.
+- Keep each game's README in sync with player-facing behavior and setup steps.
+- Commits end with the attribution lines given by the session; develop on the branch named by the task and don't open a PR unless asked.
 
-There are no automated tests; features are checked in a browser (Playwright/Chromium is available) using query parameters handled in `src/main.ts`:
-- `?debug=wardrobe`: renders every item × animation pose on one sheet (`src/debug.ts`); use it to check item anchoring after art changes.
-- `?debug=river`: exposes `window.game` for scripted checks.
-- `?debug=assets&kind=og|icon`: renders the social image / app icon from game art (output committed in `public/`).
-- Scene helpers: `?time=0..1` (day phase), `?island=1`, `?dam=1`, `?animal=heron|deer|ducks|…`, `?rain=1`, `?skip=<world px>`, `?shells=N`.
-- Stats counting is disabled on localhost and on any `?debug` URL.
+## Deploying to Vercel
 
-## Architecture
+- One Vercel project per game with **Root Directory = the game folder** (framework Vite). `<game>/vercel.json` carries the headers.
+- **Strict CSP and security headers** are in `vercel.json` (scripts `'self'` only, fonts from Google Fonts, `connect-src 'self'`, no framing, `nosniff`, restrictive Permissions-Policy). Any new external host or inline script needs a header change, and the CSP will block it silently in production while working in dev, so test against a server that applies the same headers.
+- **Build-time SEO:** a small Vite plugin in `vite.config.ts` replaces `%SITE_URL%` in `index.html` (from `SITE_URL`, else Vercel's production URL) and emits `robots.txt` and `sitemap.xml`. Pages need title, description, canonical, Open Graph and Twitter tags, JSON-LD, a manifest and icons; render the social image and icons from the game's own art (a `?debug=assets` page + Playwright screenshot) and commit them under `public/`.
+- Games are for kids as well as adults: no accounts, no ads, no cookies, no personal data. Say so in the UI (pause menu) wherever anything is counted.
 
-**All art is code, not image files.** Sprites are text grids baked once into offscreen canvases (`art/sprite.ts`), or built from shaded shapes (`art/shapes.ts`: `ellipse`, `shape`, light from top-left) plus hand-placed pixels. Every pixel letter must exist in `PALETTE` (`art/palette.ts`); `bake()` throws on unknown letters at load. Translucent letters (`Q J X Z`) are the glasses lenses. Sprites carry a pivot, and `draw()` places by pivot.
+## Anonymous play statistics (reusable)
 
-**The otter is a puppet** (`art/otter.ts`, `otterDraw.ts`): separate head/body/paw/foot/tail parts moved in whole pixels by `Pose`. Items attach to named **anchors** (`anchors()` in `otterDraw.ts`: headTop, eyes, neck, pawR, belly…) using each item's pivot, and `drawOtter` sorts layers by `z` (`Z` in `art/items.ts`). Changing otter proportions means re-tuning `PART`, `anchors()` and item pivots, then checking the wardrobe sheet. `art/items.ts` is also the catalog (price, `unlockAt` lifetime-shell threshold, slot, optional pet mode `follow|ride|fly`); the swimsuits are generated from the otter body grid so they always fit.
+Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstash Redis REST, with a private dashboard at `public/stats.html`. Copy all four into a new game and change the Redis key prefix (`or:` in otter-river) so games sharing one database don't collide.
 
-**The world is a pure function of the scroll distance.** `river.ts` computes channels, biomes, islands and beaver dams from the world row `wy` (deterministic via `hash`), so scenery scrolls without storing state. `River.channels(wy)` is where the otter may swim (dams narrow it to the gap); `River.water(wy)` is the visible water (islands only). Anything the otter must be unable to overlap goes through `River.freeRange()`; `Game.update` hard-clamps to it. Spawning, collisions, rendering, day/night, rain and photo moments live in `game.ts`; passing animals in `fauna.ts`.
+- Counts plays, estimated unique players (HyperLogLog of a random id kept in localStorage) and play time (heartbeat every 2 minutes plus `sendBeacon` on page hide).
+- **Env vars** (set in Vercel → Settings → Environment Variables for all environments, then **redeploy**; variables only apply to new deployments): `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (or the Marketplace names `KV_REST_API_URL/TOKEN`) and `STATS_KEY` (dashboard password).
+- **Use a free Upstash account created on upstash.com**, not Vercel's Storage tab (its Redis offering was paid). The REST URL must be `https://<name>.upstash.io` with **no port** (6379 is the native protocol) and no quotes; the token is the REST token, not the read-only one. A wrong URL shows only as "Redis did not answer", because the function swallows the reason; check Vercel → Logs for `/api/stats` and Upstash's Data Browser for `or:` keys.
+- Budget: the free plan is 500k commands per month. Keep a play at ~4 commands and heartbeats at ~2; don't add per-day `EXPIRE`s or per-frame reporting.
+- POSTs must stay silent no-ops when Redis isn't configured or fails, so stats can never break a game. Counting is off on localhost and `?debug` URLs.
 
-**Fixed-resolution pixel canvas.** `main.ts resize()` picks an integer scale from the *window* (not the stage) so opening/closing the market drawer never changes the otter's size, only how much world shows. `Game.otterY` eases toward 64% of the stage height. Portrait/phone vs desktop use different virtual-size targets (see `resize()`).
+## Sharing photos and links (reusable)
 
-**UI is DOM around the canvas**: HUD, market dock (side panel on desktop, bottom drawer in portrait via a media query duplicated in `main.ts` `mobileDock()`), album/viewer, pause. Numbers are drawn with the pixel digit sprites (`numbers.ts`), not text. `shop.ts` drives the market live (the game never pauses for shopping); owned items toggle instantly and unowned ones preview as a ghost on the real otter.
+- A shareable moment is a framed PNG (stored in IndexedDB, not localStorage) plus a tiny **recipe** that lets another browser re-render the same deterministic scene; the link is `?photo=<base64url recipe>` and the landing page offers "start your own game". Share the image with `navigator.share({files})` and fall back to a download; share the link with `navigator.share({url})` and fall back to the clipboard.
+- This only works if the world is a pure function of a few numbers (seed/distance/time-of-day), so build scenery that way from the start.
+- **Links come from strangers.** The decoder must cap length, accept only base64url, clamp every number, whitelist item/animal ids, and never display text taken from the link (rebuild captions locally). Keep this if the recipe shape changes.
 
-**Persistence** (`state.ts`): one `localStorage` save (`otter-river-save-v1`; always wrapped in try/catch, load migrates the old single-`pet` format). Photos live in IndexedDB (`album.ts`).
+## Sound (reusable Web Audio tips)
 
-**Photos and sharing**: a photo is a framed postcard PNG plus a small `Recipe` (`game.recipe()`); share links are `?photo=<base64url recipe>` and re-render the scene via `Game.applyRecipe` on the recipient's side. Recipes come from strangers, so `decodeRecipe` clamps numbers, whitelists item ids and animal kinds, and the caption is always rebuilt locally. Keep that validation if the `Recipe` shape changes.
+- Synthesize audio in code (no asset files): a slow generative music box over soft pads, noise-based ambience beds (water, wind, rain, waves), small chirp/croak/cricket critters, and pentatonic pickup notes. Calm and gentle is the brief: low gains, long attacks, a lowpass-filtered echo.
+- The `AudioContext` can only start from a user gesture: unlock on the first press, resume on `visibilitychange`, suspend when hidden.
+- Provide Music and Sounds toggles, a volume slider and a persisted mute button; keep a master gain feeding a **compressor/limiter** so no sound can spike.
+- **Never connect an oscillator (or any audio-rate source) to a `gain` AudioParam.** It adds the oscillator's ±amplitude to a gain that should sit near zero and produces a loud buzz that sounds like an error. An early frog croak did this. Shape sounds with scheduled envelope ramps and filters instead.
+- A pickup melody that only climbs gets stuck on the top note; walk the scale up and down and shift key each cycle.
+- Make sounds follow the world (biome, night, weather, nearby hazard) rather than looping one bed.
 
-**Audio** (`audio.ts`): everything is synthesized with Web Audio (generative music box, river/rain/wind beds, bird/frog/cricket critters, collect melody that walks a scale). It must be unlocked by a user gesture. Never connect an oscillator to a gain parameter at audio rate (an earlier frog croak did and sounded like an error buzz); there is a master limiter.
+## Pixel-art canvas approach (reusable)
 
-**Stats** (`src/stats.ts` → `api/stats.js` → Upstash Redis REST; dashboard at `public/stats.html`): anonymous counts of plays, estimated unique players (HyperLogLog of a random id) and play time. The function reads `UPSTASH_REDIS_REST_URL/TOKEN` or `KV_REST_API_URL/TOKEN` plus `STATS_KEY`; the REST URL must be `https://<name>.upstash.io` with no port. POSTs are silent no-ops when unconfigured so the game never breaks. Keep Redis commands per play low (free plan is 500k/month).
+- Art is code: sprites are text grids baked once into offscreen canvases from a single shared palette (unknown letters throw at load), plus shaded-shape helpers. This keeps every asset visually consistent and editable without image tools.
+- Render to a low-resolution canvas and upscale by an **integer** factor with `image-rendering: pixelated`. Derive the scale from the window, not from a panel that opens and closes, so UI changes never resize the characters.
+- Motion is whole-pixel offsets plus eased positions; honor `prefers-reduced-motion` (bob, shimmer, sparkles).
+- Characters that wear items should be puppets (separate parts moved per pose) with named **anchor points**, so any item follows any animation frame; check every item × pose on a generated sheet.
 
-**Build-time SEO**: `vite.config.ts` replaces `%SITE_URL%` in `index.html` (from `SITE_URL`, else Vercel's production URL) and emits `robots.txt` and `sitemap.xml`.
+## Persistence and UI conventions
 
-## Conventions worth knowing
-
-- Match the existing sprite style: 1px `O` outline in soft plum, 3-tone shading, light from the top-left; reuse `shapes.ts` helpers.
-- `prefers-reduced-motion` is honored through `game.reducedMotion` (bob, tail, shimmer, sparkles).
-- The README documents the player-facing features and the full Vercel/Upstash stats setup; keep it in sync when behavior changes.
-- Commits end with the attribution lines specified by the session; develop on the branch named by the task and don't open PRs unless asked.
+- Saves live in one versioned `localStorage` key; always wrap access in try/catch (private mode) and migrate old shapes on load. Large data (images) goes in IndexedDB.
+- UI around the canvas is plain DOM; numbers that must be readable at pixel scale use the pixel digit sprites instead of fonts.
+- No fail state, gentle feedback, and every control has an accessible label and a keyboard/touch path.
