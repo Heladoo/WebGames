@@ -44,6 +44,12 @@ Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstas
 - This only works if the world is a pure function of a few numbers (seed/distance/time-of-day), so build scenery that way from the start.
 - **Links come from strangers.** The decoder must cap length, accept only base64url, clamp every number, whitelist item/animal ids, and never display text taken from the link (rebuild captions locally). Keep this if the recipe shape changes.
 
+## Painted SVG scenery (reusable, used by bead-box)
+
+- For rich, non-pixel art, write scenes as seeded SVG strings (helpers for clouds, foliage, flowers, light rays) and **paint each once** into a canvas, then show the cached picture as an `<img>` (`blob:` URL, which the CSP allows). Filters and hundreds of shapes cost nothing after that. Keep live things (the pieces the player moves) as light SVG without filters, and put ambient motion in a separate overlay that uses only CSS transforms and respects `prefers-reduced-motion`.
+- Pick the paint scale from the screen (device pixels needed to cover it, capped) so wide, high-DPI screens stay sharp.
+- Test it with numbers, not eyes alone: a debug page that reports paint time and a distinct-color count catches a blank or flat scene.
+
 ## Sound (reusable Web Audio tips)
 
 - Synthesize audio in code (no asset files): a slow generative music box over soft pads, noise-based ambience beds (water, wind, rain, waves), small chirp/croak/cricket critters, and pentatonic pickup notes. Calm and gentle is the brief: low gains, long attacks, a lowpass-filtered echo.

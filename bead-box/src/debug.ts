@@ -9,7 +9,8 @@
 
 import { COLOR_IDS, PATTERN_IDS, PLACES, SHAPE_WORD, SLOTS, type Bead, type ShapeId } from './content';
 import { beadSVG } from './art/beads';
-import { BH, BW, braceletSVG, photoSVG, placeArt, slotGeometry } from './scene';
+import { BH, BW, braceletSVG, scenePicture, slotGeometry, tablePicture } from './scene';
+import { makePhoto } from './photo';
 import { $ } from './dom';
 
 function page(html: string, css = '') {
@@ -28,17 +29,50 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
   if (kind === 'beads') {
     const shapes = Object.keys(SHAPE_WORD) as ShapeId[];
     const designs = [...COLOR_IDS, ...PATTERN_IDS];
+    if (params.get('zoom')) {
+      // big beads for judging the finish: every design on a round bead, then every shape in a few designs, front and side view
+      const big = (sh: ShapeId, d: (typeof designs)[number], size: number, view: 'front' | 'side' = 'front') => `<span style="display:inline-block;margin:2px">${beadSVG(sh, d, size, true, view)}</span>`;
+      page(
+        `<div>${designs.map((d) => big('round', d, 150)).join('')}</div><hr/>` +
+          shapes.map((s) => `<div>${(['blue', 'pink', 'white', 'gold', 'glitter'] as const).map((d) => big(s, d, 120)).join('')}${big(s, 'green', 120, 'side')}${big(s, 'stripes', 120, 'side')}</div>`).join(''),
+      );
+      w.__beads = { shapes: shapes.length, designs: designs.length };
+      return true;
+    }
     page(
       `<table style="border-collapse:collapse">${shapes.map((s) => `<tr><th style="text-align:right;padding-right:8px;font-size:12px">${s}</th>${designs.map((d) => `<td title="${s} ${d}">${beadSVG(s, d, 56)}</td>`).join('')}</tr>`).join('')}</table>`,
     );
     w.__beads = { shapes: shapes.length, designs: designs.length };
     return true;
   }
+  if (kind === 'scene') {
+    // one painted scenery picture, full size: ?debug=scene&place=beach&scale=2
+    const t0 = performance.now();
+    const pic = await scenePicture(params.get('place') ?? 'beach', Number(params.get('scale')) || 2);
+    // how much detail did it paint? count distinct colours (4 bits per channel) over a sample of pixels
+    const px = pic.canvas.getContext('2d')!.getImageData(0, 0, pic.canvas.width, pic.canvas.height).data;
+    const seen = new Map<number, number>();
+    let n = 0;
+    for (let i = 0; i < px.length; i += 4 * 29) {
+      const k = ((px[i] >> 4) << 8) | ((px[i + 1] >> 4) << 4) | (px[i + 2] >> 4);
+      seen.set(k, (seen.get(k) ?? 0) + 1);
+      n++;
+    }
+    w.__scene = { ms: Math.round(performance.now() - t0), w: pic.canvas.width, h: pic.canvas.height, colors: seen.size, dominant: Math.max(...seen.values()) / n };
+    document.body.style.cssText = 'margin:0;background:#222';
+    $('app').style.cssText = 'position:static';
+    $('app').innerHTML = `<img id="pic" src="${pic.url}" style="display:block;width:${pic.canvas.width / 2}px;height:${pic.canvas.height / 2}px" alt="">`;
+    return true;
+  }
   if (kind === 'places') {
-    page(
-      `<div style="display:flex;flex-wrap:wrap;gap:12px">${PLACES.map((p) => `<figure style="margin:0;width:300px"><div style="width:300px">${photoSVG(p.id, sample(p)).replace(/width="800" height="1400"/, 'width="300" height="525"')}</div><figcaption>${p.name}</figcaption></figure>`).join('')}</div>`,
-    );
-    w.__places = PLACES.length;
+    // every place as the finished album picture, one after another
+    page('<div id="grid" style="display:flex;flex-wrap:wrap;gap:12px"></div>');
+    const t0 = performance.now();
+    for (const p of PLACES) {
+      const { png } = await makePhoto(p.id, sample(p));
+      $('grid').insertAdjacentHTML('beforeend', `<figure style="margin:0;width:300px"><img src="${png}" style="width:300px;display:block" alt="${p.name}"/><figcaption>${p.name}</figcaption></figure>`);
+    }
+    w.__places = { count: PLACES.length, ms: Math.round(performance.now() - t0) };
     return true;
   }
   if (kind === 'rig') {
@@ -57,14 +91,18 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
   }
   if (kind === 'og') {
     const p = PLACES[0];
+    const [scene, table] = await Promise.all([scenePicture(p.id, 2), tablePicture(p.id, 2)]);
     document.body.style.cssText = 'margin:0;background:#fff';
     $('app').style.cssText = 'position:static;width:1200px;height:630px;overflow:hidden';
     $('app').innerHTML = `<div id="og" style="position:relative;width:1200px;height:630px;overflow:hidden;font-family:Fredoka,system-ui,sans-serif">
-      <svg viewBox="0 190 400 190" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:1200px;height:630px">${placeArt(p.id)}</svg>
+      <img src="${scene.url}" alt="" style="position:absolute;inset:0;width:1200px;height:630px;object-fit:cover;object-position:50% 58%"/>
       <div style="position:absolute;left:60px;top:50px;background:#fdf6e8;border-radius:44px;padding:30px 48px;box-shadow:0 12px 30px rgba(40,70,120,.25)">
         <div style="font-size:120px;font-weight:600;color:#2c4a7c;line-height:1">Bead Box</div>
         <div style="font-size:38px;color:#4a8fe3;margin-top:12px">make bracelets · learn English words</div></div>
-      <div style="position:absolute;left:520px;top:262px;width:640px">${braceletSVG(p.id, sample(p)).replace('viewBox="0 0 400 290"', 'viewBox="0 60 400 230"')}</div></div>`;
+      <div style="position:absolute;left:500px;top:226px;width:680px">${braceletSVG(sample(p), {}, table.url).replace('viewBox="0 0 400 330"', 'viewBox="0 50 400 280"')}</div></div>`;
+    await Promise.all([...document.images].map((i) => i.decode().catch(() => undefined)));
+    await document.fonts?.ready;
+    w.__ready = true;
     return true;
   }
   if (kind === 'icon') {

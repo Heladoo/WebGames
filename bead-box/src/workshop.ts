@@ -4,7 +4,8 @@
 import { DESIGN_WORD, SHAPE_WORD, SLOTS, designsOf, phrase, placeById, wordsOf, type Bead, type DesignId, type ShapeId } from './content';
 import { beadSVG, dotsIcon, shapeIcon } from './art/beads';
 import { ICONS } from './art/ui';
-import { placeArt, braceletSVG } from './scene';
+import { braceletSVG, slotGeometry, tablePicture } from './scene';
+import { fillThumbs, setBackdrop, thumb } from './backdrop';
 import { addPhoto, encodeRecipe } from './album';
 import { makePhoto } from './photo';
 import { speech } from './speech';
@@ -29,12 +30,16 @@ export interface WorkshopHost {
   finished(f: Finished): void;
 }
 
+// the little orange ticks around the bead on the word card, as in the mockup
+const TICKS = `<svg class="ticks" viewBox="-50 -50 100 100" aria-hidden="true" fill="none" stroke="#f5a35a" stroke-width="3" stroke-linecap="round">${[-32, 0, 32, 148, 180, 212].map((a) => `<path d="M${(Math.cos((a * Math.PI) / 180) * 41).toFixed(1)} ${(Math.sin((a * Math.PI) / 180) * 41).toFixed(1)} L${(Math.cos((a * Math.PI) / 180) * 48).toFixed(1)} ${(Math.sin((a * Math.PI) / 180) * 48).toFixed(1)}"/>`).join('')}</svg>`;
+
 export class Workshop {
   place = 'beach';
   shape: ShapeId = 'round';
   design: DesignId = 'blue';
   beads: (Bead | null)[] = Array(SLOTS).fill(null);
   private busy = false; // true while a finished bracelet is being turned into a picture
+  private tableUrl: string | null = null; // the painted table picture of this place, once ready
 
   constructor(private host: WorkshopHost) {
     $('tabs').addEventListener('click', (e) => {
@@ -76,7 +81,13 @@ export class Workshop {
     this.shape = 'round';
     this.design = place.colors[0];
     this.busy = false;
-    $('bg').innerHTML = placeArt(place.id);
+    setBackdrop(place.id);
+    this.tableUrl = null;
+    void tablePicture(place.id).then((t) => {
+      if (this.place !== place.id) return;
+      this.tableUrl = t.url;
+      this.renderTable();
+    });
     music.setPlace(place.id);
     this.renderAll();
     void speech.say(place.name, { rate: 0.9 });
@@ -106,8 +117,9 @@ export class Workshop {
     const p = placeById(this.place);
     const done = Math.min(5, this.host.data.finished[p.id] ?? 0);
     $('place-pill').innerHTML =
-      `<div class="place-thumb"><svg viewBox="40 150 320 320" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${placeArt(p.id)}</svg></div>` +
+      `<div class="place-thumb">${thumb(p.id)}</div>` +
       `<div><div class="place-name">${p.name}</div><div class="dots" role="img" aria-label="${done} bracelets finished here">${Array.from({ length: 5 }, (_, i) => `<i class="${i < done ? 'on' : ''}"></i>`).join('')}</div></div>`;
+    fillThumbs($('place-pill'));
   }
 
   renderTabs() {
@@ -126,7 +138,7 @@ export class Workshop {
 
   renderCard(highlight: 'design' | 'shape' | 'both' | null = null) {
     const b = this.current();
-    $('word-bead').innerHTML = beadSVG(b.shape, b.design, 68, false);
+    $('word-bead').innerHTML = TICKS + beadSVG(b.shape, b.design, 68, false);
     const noun = b.shape === 'round' ? 'bead' : SHAPE_WORD[b.shape];
     const hi = (k: 'design' | 'shape') => (highlight === k || highlight === 'both' ? ' say' : '');
     $('word-text').innerHTML = `<span class="${hi('design').trim()}">${DESIGN_WORD[b.design]}</span> <span class="${hi('shape').trim()}">${noun}</span>`;
@@ -134,7 +146,7 @@ export class Workshop {
 
   renderTable(fresh: number | null = null) {
     const next = this.beads.findIndex((b) => !b);
-    $('table').innerHTML = braceletSVG(this.place, this.beads, { next: next < 0 ? null : next, fresh, interactive: true });
+    $('table').innerHTML = braceletSVG(this.beads, { next: next < 0 ? null : next, fresh, interactive: true }, this.tableUrl);
   }
 
   // ---------- choosing ----------
@@ -181,8 +193,25 @@ export class Workshop {
     if (!full) data.drafts[this.place] = this.beads.slice();
     this.host.persist();
     this.renderTable(i);
+    this.burst(i);
     const spoken = this.say(phrase(bead), 'both');
     if (full) void this.finish(spoken);
+  }
+
+  /** A little burst of sparkles where a bead lands (skipped for people who prefer less motion). */
+  private burst(i: number) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const svg = $('table').querySelector('svg');
+    const g = slotGeometry()[i];
+    if (!svg || !g) return;
+    const cols = ['#fff', '#ffe27a', '#ffb6d4', '#a8e4ff'];
+    const stars = Array.from({ length: 9 }, (_, k) => {
+      const a = (k / 9) * Math.PI * 2 + i;
+      const d = 20 + (k % 3) * 8;
+      return `<path class="sp" d="M0 -5 L1.4 -1.4 L5 0 L1.4 1.4 L0 5 L-1.4 1.4 L-5 0 L-1.4 -1.4Z" fill="${cols[k % cols.length]}" style="--dx:${(Math.cos(a) * d).toFixed(1)}px;--dy:${(Math.sin(a) * d).toFixed(1)}px;animation-delay:${(0.35 + (k % 3) * 0.04).toFixed(2)}s"/>`;
+    }).join('');
+    svg.insertAdjacentHTML('beforeend', `<g class="burst" transform="translate(${g.x.toFixed(1)} ${g.y.toFixed(1)})" pointer-events="none">${stars}</g>`);
+    setTimeout(() => svg.querySelector('.burst')?.remove(), 1400);
   }
 
   private async finish(spoken: Promise<void>) {

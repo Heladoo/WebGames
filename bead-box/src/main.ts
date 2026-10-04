@@ -2,7 +2,7 @@ import './styles.css';
 import { SLOTS, isDesign, isShape, PLACE_IDS, type Bead } from './content';
 import { ICONS } from './art/ui';
 import { decodeRecipe } from './album';
-import { placeArt } from './scene';
+import { setBackdrop, fillThumbs, thumb } from './backdrop';
 import { initMenus, closeOverlays } from './menus';
 import { renderMap } from './map';
 import { Workshop, type Finished } from './workshop';
@@ -59,7 +59,7 @@ function unlockAudio() {
 }
 
 function showMap(highlight: string | null = null) {
-  $('bg').innerHTML = placeArt('beach');
+  setBackdrop('beach');
   music.setPlace('beach');
   renderMap(
     data,
@@ -149,17 +149,11 @@ window.addEventListener('pagehide', () => { stats.flush(true); save(data); });
 // anonymous play time: one second at a time, only while the screen is showing and a place is open
 setInterval(() => { if (!document.hidden && screen !== 'title') stats.tick(1); }, 1000);
 
-// the scenery is cropped from the bottom on tall screens and from the middle on wide ones
-function fitBg() {
-  $('bg').setAttribute('preserveAspectRatio', innerWidth > innerHeight ? 'xMidYMid slice' : 'xMidYMax slice');
-}
-fitBg();
-addEventListener('resize', fitBg);
-
 // ----- start -----
 applySettings();
-$('bg').innerHTML = placeArt('beach');
-$('title-art').innerHTML = `<svg viewBox="0 250 400 250" preserveAspectRatio="xMidYMid slice">${placeArt('beach')}</svg>`;
+setBackdrop('beach');
+$('title-art').innerHTML = thumb('beach');
+fillThumbs($('title-art'));
 
 function presetBeads(): (Bead | null)[] | undefined {
   const raw = params.get('beads');
@@ -191,7 +185,7 @@ function presetBeads(): (Bead | null)[] | undefined {
     const r = decodeRecipe(code);
     if (r) {
       await menus.openGift(r.place, r.beads, () => {});
-      $('bg').innerHTML = placeArt(r.place);
+      setBackdrop(r.place);
     }
   }
 })();

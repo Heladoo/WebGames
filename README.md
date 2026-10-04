@@ -184,7 +184,9 @@ npm run build    # static site in bead-box/dist
 npm test         # Playwright + Chromium
 ```
 
-Debug pages: `?debug=beads` (every shape in every design), `?debug=places` (every scene), `?debug=rig` (slot geometry checks), `?debug=og` / `?debug=icon` (the art used for `public/` images), and `?debug=play&place=woods&beads=round:blue,leaf:green` to start straight in a workshop state.
+Every place is a hand-painted-in-code scene (clouds, sea and foam, palms, a canopy, a mirror ball, a skyline, snowy peaks, a flower garden) with a matching table, and the beads have glazed color, pearl, gold and glitter finishes with real string holes. Scenes are painted once into pictures, with a light layer of gentle motion on top (gulls, pollen, snow, butterflies) that is switched off if the device asks for reduced motion.
+
+Debug pages: `?debug=beads` (every shape in every design, `&zoom=1` for big ones), `?debug=scene&place=beach` (one painted scene with paint time and detail numbers), `?debug=places` (every finished album picture), `?debug=rig` (slot geometry checks), `?debug=og` / `?debug=icon` (the art used for `public/` images), and `?debug=play&place=woods&beads=round:blue,leaf:green` to start straight in a workshop state.
 
 ### Play statistics (anonymous, shares the other games' database)
 

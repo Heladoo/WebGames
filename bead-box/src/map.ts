@@ -2,7 +2,7 @@
 
 import { PLACES } from './content';
 import { ICONS } from './art/ui';
-import { placeArt } from './scene';
+import { fillThumbs, thumb } from './backdrop';
 import type { SaveData } from './state';
 import { $ } from './dom';
 
@@ -14,11 +14,12 @@ export function renderMap(data: SaveData, onPick: (id: string) => void, onLocked
     const dots = `<div class="dots" role="img" aria-label="${data.finished[p.id] ?? 0} bracelets finished">${Array.from({ length: 5 }, (_, i) => `<i class="${i < done ? 'on' : ''}"></i>`).join('')}</div>`;
     return (
       `<button class="place-card${open ? '' : ' locked'}${highlight === p.id ? ' new' : ''}" data-place="${p.id}" aria-label="${p.name}${open ? '' : ', locked. Finish a bracelet to open it'}">` +
-      `<div class="thumb"><svg viewBox="0 130 400 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${placeArt(p.id)}</svg></div>` +
+      `<div class="thumb">${thumb(p.id)}</div>` +
       (open ? '' : `<div class="lock"><span>${ICONS.lock}<br/>Finish a bracelet<br/>to open</span></div>`) +
       `<b>${p.name}</b>${open ? dots : ''}</button>`
     );
   }).join('');
+  fillThumbs(grid);
   grid.onclick = (e) => {
     const card = (e.target as HTMLElement).closest<HTMLElement>('[data-place]');
     if (!card) return;

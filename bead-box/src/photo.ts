@@ -1,18 +1,10 @@
 // Draws a finished bracelet, with its place behind it, into a framed picture for the album.
 
 import { placeById, type Bead } from './content';
-import { PHOTO_H, PHOTO_W, photoSVG } from './scene';
+import { BH, BW, PHOTO_H, PHOTO_TABLE_Y, PHOTO_W, beadsSVG, scenePicture, tablePicture } from './scene';
+import { svgToCanvas } from './raster';
 
 const FONT = "'Fredoka', ui-rounded, 'Nunito', system-ui, sans-serif";
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.onload = () => res(img);
-    img.onerror = rej;
-    img.src = src;
-  });
-}
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -27,8 +19,8 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 export const captionFor = (place: string) => `${placeById(place).name} bracelet`;
 
 export async function makePhoto(place: string, beads: (Bead | null)[]): Promise<{ png: string; caption: string }> {
-  const svg = photoSVG(place, beads);
-  const img = await loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+  // the scenery and the table are painted pictures; the beads are drawn fresh on top
+  const [scene, table, beadLayer] = await Promise.all([scenePicture(place, 2), tablePicture(place, 2), svgToCanvas(beadsSVG(beads, 2), BW * 2, BH * 2)]);
   try {
     await document.fonts?.load(`600 40px Fredoka`);
   } catch {
@@ -48,7 +40,9 @@ export async function makePhoto(place: string, beads: (Bead | null)[]): Promise<
   ctx.save();
   roundRect(ctx, pad, pad, iw, ih, 30);
   ctx.clip();
-  ctx.drawImage(img, pad, pad, iw, ih);
+  ctx.drawImage(scene.canvas, pad, pad, iw, ih);
+  ctx.drawImage(table.canvas, pad, pad + PHOTO_TABLE_Y * k, BW * k, BH * k);
+  ctx.drawImage(beadLayer, pad, pad + PHOTO_TABLE_Y * k, BW * k, BH * k);
   ctx.restore();
   ctx.lineWidth = 6;
   ctx.strokeStyle = '#ffffff';
