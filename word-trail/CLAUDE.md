@@ -66,13 +66,17 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 
 **Scenery** (`places.ts`):
 - Each place has three 800-wide tiles (far, middle, ground) on a 450-high stage with `GROUND = 370`.
-- Any shape crossing a tile edge goes through `wrap()`, so the tiles loop seamlessly.
+- Each tile draws past its edges and the next tile is drawn on top, so where they overlap both must draw the same thing:
+  - Any shape near a tile edge goes through `wrap()`, which also redraws it in the next tile (within 100 units of the right edge).
+  - Edges that cross a tile edge must be periodic: same height and slope at x = 0 and x = 800, continued along the neighbour's curve (`tileCurve`, `tileStrip`, `hills`), never a straight stub.
+  - A cut edge must lie under something the next tile paints: nearer hill bands reach further than the bands behind them, and the trail reaches 20 units further than the grass. Otherwise it shows as a hairline while the scenery scrolls.
 - Skies are paper bands (`skyBands`).
 
 **The scene** (`scene.ts`) is rebuilt as markup by `render()`:
-- **Parallax** is CSS (`.walking .layer`).
+- **Parallax** is CSS (`.walking .layer`). A redraw carries each layer's scroll over (`scroll`/`setScroll`), and the first one starts at a random spot, so the hero doesn't stop in front of the same tree every time.
 - **The signpost** is moved by JS at ground speed: 80 units/s, or 145 when riding.
-- **The view** is fitted per aspect ratio; portrait views zoom in and show more ground.
+- **The view** is fitted per aspect ratio; portrait views zoom in and show more ground. The hero stands at 64% of the width.
+- **Panels.** On wide screens (4:3 and wider) the choice and learning panels sit at the left, clear of the top buttons, and the learning panel stays left of the hero (`--free-w`). On short landscape phones the learning panel is two columns. Slots, bubbles and the big word size themselves from the word length (`--n`) and the panel's width (container units), so a 7-letter word fits a 360-wide phone.
 
 **Card pictures** come from `content.ts` `picture(word)`. Item cards are framed by `ITEM_BOX` in `wearables.ts`.
 
@@ -84,7 +88,11 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 - **Items:** each item fits its place (hats on the head, lenses on the eyes, scarf and tie at the neck, coat over the body, boots, shoes and socks on the feet, bag and cape on the back, strings tied to the back, riders in their vehicle). The thing on the back may be at most 10% hidden.
 - **Moving groups:** nothing sits on a moving group without moving with it.
 - **Card frames** (`?debug=frames`): no card picture is cut off.
-- **Scenery** (`?debug=tiles`): every tile repeats without a seam.
+- **Scenery** (`?debug=tiles`): every tile repeats, and where neighbouring tiles overlap they agree, including at a scroll position between two pixels (no seam or hairline).
+
+**`layout.spec.ts`** loads `?debug=learn` for the longest words on a small phone, a phone, a tablet and a landscape phone, in both activities, and checks that the big word stays on one line and everything fits in the panel and on screen; on tablets the panel must not cover the hero or the top buttons.
+
+**`content.spec.ts`**: every badge medal has a picture, and captions say "an owl".
 
 **`director.spec.ts`** simulates 360 choices and checks that categories stay even, never repeat twice in a row, include a friend question regularly, and offer the boat only at sea.
 
@@ -96,9 +104,14 @@ When adding or changing art, add the case to `rigCases()` if needed, then **fix 
 - `?debug=wardrobe`: every hero with every item and ride.
 - `?debug=glyphs`: tracing strokes.
 - `?debug=rig`, `?debug=frames`, `?debug=tiles`: what the tests read.
+- `?debug=learn&word=rainbow&mode=tap|trace&level=0..3`: the learning panel alone, for layout checks (add `&hero=dog` to see the hero beside it).
 - `?debug=icon` and `?debug=og`: art for `public/` icons and the link preview; regenerate the PNGs by screenshotting these pages.
 
-You can also set up a scene directly from the URL: `?hero=fox&wear=cap,glasses&friends=bee,cat&place=sea&sky=moon&ride=boat&carry=kite,star&words=12`. `words=N` pretends N words are learned, which unlocks harder levels and longer words.
+You can also set up a scene directly from the URL: `?hero=fox&wear=cap,glasses&friends=bee,cat&place=sea&sky=moon&ride=boat&carry=kite,star&words=12`. `words=N` pretends N words are learned, which unlocks harder levels and longer words. Any scene or debug parameter turns saving off (`stopSaving()`), so a pretend trip never replaces the real one.
+
+## Controls children shouldn't hit by accident
+
+`holdButton()` (`ui.ts`) acts only after a press and hold, with a filling ring: the grown-ups gear (1.5 s) and start-over (1 s, then a yes/no card). A short tap only wobbles and shows a hint. Idle hints (spoken letters, hint dots) pause while any overlay is open or the page is hidden.
 
 ## Voice, music and sound
 

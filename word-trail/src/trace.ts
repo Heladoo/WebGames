@@ -1,6 +1,7 @@
 import { glyph } from './glyphs';
 import { speech } from './speech';
 import { sfx } from './sfx';
+import { anyOverlayOpen } from './ui';
 
 // Finger tracing: each letter of the word gets a dotted guide. The child
 // traces the glowing letter; when nearly all of every stroke is covered (and the finger lifts) the
@@ -181,6 +182,8 @@ export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number
   let hintAnim = 0;
   const timer = window.setInterval(() => {
     if (cancelled || cur >= letters.length) return;
+    // no hints while the sticker book or a menu is open, or the page is hidden
+    if (anyOverlayOpen() || document.hidden) { lastProgress = performance.now(); return; }
     if (performance.now() - lastProgress < 6000 || hintAnim) return;
     hints++;
     lastProgress = performance.now();

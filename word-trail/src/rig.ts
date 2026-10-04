@@ -180,29 +180,68 @@ export function runRig() {
 export async function runTiles() {
   document.body.className = 'debug';
   document.body.innerHTML = '';
-  const out: { place: PlaceId; layer: string; diff: number }[] = [];
+  const out: { place: PlaceId; layer: string; diff: number; seam: number; where: string }[] = [];
   for (const place of PLACE_IDS) {
     const l = placeLayers(place);
     for (const layer of ['far', 'mid', 'ground'] as const) {
       const copies = [-1, 0, 1, 2].map((i) => `<g transform="translate(${i * TILE} 0)">${l[layer]}</g>`).join('');
-      const src = `<svg xmlns="${NS}" viewBox="0 150 ${TILE * 2} 300" width="${TILE}" height="150"><defs>${FILTER_DEFS}</defs>${copies}</svg>`;
+      // full resolution: a one-pixel seam where two tiles meet must show up
+      const W = TILE * 2, Hh = 300;
+      const src = `<svg xmlns="${NS}" viewBox="0 150 ${W} ${Hh}" width="${W}" height="${Hh}"><defs>${FILTER_DEFS}</defs>${copies}</svg>`;
       const img = new Image();
       img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src);
       await img.decode();
       const c = document.createElement('canvas');
-      c.width = TILE;
-      c.height = 150;
+      c.width = W;
+      c.height = Hh;
       const ctx = c.getContext('2d')!;
       ctx.drawImage(img, 0, 0);
-      const d = ctx.getImageData(0, 0, TILE, 150).data;
-      const half = TILE / 2;
+      const d = ctx.getImageData(0, 0, W, Hh).data;
       let diff = 0;
-      for (let y = 0; y < 150; y++)
-        for (let x = 0; x < half; x++) {
-          const a = (y * TILE + x) * 4, b = (y * TILE + x + half) * 4;
-          if (Math.abs(d[a] - d[b]) + Math.abs(d[a + 1] - d[b + 1]) + Math.abs(d[a + 2] - d[b + 2]) > 24) diff++;
+      const diffAt: string[] = [];
+      for (let y = 0; y < Hh; y++)
+        for (let x = 0; x < TILE; x++) {
+          const a = (y * W + x) * 4, b = (y * W + x + TILE) * 4;
+          if (Math.abs(d[a] - d[b]) + Math.abs(d[a + 1] - d[b + 1]) + Math.abs(d[a + 2] - d[b + 2]) > 24) {
+            diff++;
+            if (diffAt.length < 6) diffAt.push(`${x},${y + 150}`);
+          }
         }
-      out.push({ place, layer, diff });
+      // A seam repeats with the tiles, so the comparison above can't see it. Each
+      // tile also draws up to 100 units past each edge, and the next tile is drawn
+      // on top. A seam shows (1) where the next tile's overdraw differs from what is
+      // already there, (2) where this tile's overdraw ends and the next tile doesn't
+      // continue it, and (3) as a hairline at a cut edge once the layer scrolls to
+      // a position between two pixels (one a single tile doesn't draw by itself).
+      const render = async (idx: number[], dx = 0) => {
+        const g = idx.map((i) => `<g transform="translate(${i * TILE} 0)">${l[layer]}</g>`).join('');
+        const one = `<svg xmlns="${NS}" viewBox="${-dx} 150 ${W} ${Hh}" width="${W}" height="${Hh}"><defs>${FILTER_DEFS}</defs>${g}</svg>`;
+        const im = new Image();
+        im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(one);
+        await im.decode();
+        ctx.clearRect(0, 0, W, Hh);
+        ctx.drawImage(im, 0, 0);
+        return ctx.getImageData(0, 0, W, Hh).data;
+      };
+      const A = await render([0]), B = await render([1]);
+      const A2 = await render([0], 0.4), B2 = await render([1], 0.4), F = await render([-1, 0, 1, 2], 0.4);
+      const differ = (P: Uint8ClampedArray, Q: Uint8ClampedArray, p: number, q: number, by: number) =>
+        Math.abs(P[p] - Q[q]) + Math.abs(P[p + 1] - Q[q + 1]) + Math.abs(P[p + 2] - Q[q + 2]) > by;
+      const hair = (P: Uint8ClampedArray, x: number, y: number) => {
+        const q = (y * W + x) * 4, l3 = q - 12, r3 = q + 12;
+        return P[q + 3] > 250 && P[l3 + 3] > 250 && P[r3 + 3] > 250 && !differ(P, P, l3, r3, 12) && differ(P, P, q, l3, 18) && differ(P, P, q, r3, 18);
+      };
+      let seam = 0;
+      const where: string[] = [];
+      const flag = (x: number, y: number) => { seam++; if (where.length < 6) where.push(`${x - TILE},${y + 150}`); };
+      for (let y = 0; y < Hh; y++)
+        for (let x = TILE - 100; x <= TILE + 100; x++) {
+          const q = (y * W + x) * 4;
+          if (x < TILE - 1 && B[q + 3] > 250 && (A[q + 3] < 250 || differ(A, B, q, q, 24))) flag(x, y);
+          else if (x > TILE + 1 && A[q + 3] > 250 && B[q + 3] < 250) flag(x, y);
+          else if (hair(F, x, y) && !hair(A2, x, y) && !hair(B2, x, y)) flag(x, y);
+        }
+      out.push({ place, layer, diff, seam, where: [...diffAt, ...where].join(' ') });
     }
   }
   (window as unknown as { __tiles: typeof out }).__tiles = out;

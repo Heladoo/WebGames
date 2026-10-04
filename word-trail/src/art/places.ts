@@ -21,24 +21,89 @@ interface Place {
   near?: () => string;
 }
 
-/** Draw at x, and again one tile over when the shape crosses a tile edge. */
+/**
+ * Draw at x, and again one tile over when the shape crosses a tile edge. Each
+ * tile's backdrop overdraws up to 100 units into the tile before it, so a shape
+ * near the right edge is drawn again by the next tile, on top of that.
+ */
 export function wrap(x: number, half: number, draw: (x: number) => string): string {
   let s = draw(x);
-  if (x + half > TILE) s += draw(x - TILE);
+  if (x + half > TILE - 100) s += draw(x - TILE);
   if (x - half < 0) s += draw(x + TILE);
   return s;
 }
 
-/** A band of rolling hills (seamless: starts and ends at the same height). */
+type Pt = [number, number];
+const lerp = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+/** The part of a cubic Bézier between t = a and t = b (de Casteljau). */
+function subCubic(p: Pt[], a: number, b: number): Pt[] {
+  const split = (q: Pt[], t: number): [Pt[], Pt[]] => {
+    const ab = lerp(q[0], q[1], t), bc = lerp(q[1], q[2], t), cd = lerp(q[2], q[3], t);
+    const abc = lerp(ab, bc, t), bcd = lerp(bc, cd, t), m = lerp(abc, bcd, t);
+    return [[q[0], ab, abc, m], [m, bcd, cd, q[3]]];
+  };
+  const left = split(p, b)[0];
+  return b > 0 ? split(left, a / b)[1] : left;
+}
+/** The t where a cubic whose x only grows reaches x. */
+function tAtX(p: Pt[], x: number) {
+  let lo = 0, hi = 1;
+  for (let k = 0; k < 40; k++) {
+    const t = (lo + hi) / 2;
+    const u = 1 - t;
+    const px = u * u * u * p[0][0] + 3 * u * u * t * p[1][0] + 3 * u * t * t * p[2][0] + t * t * t * p[3][0];
+    if (px < x) lo = t;
+    else hi = t;
+  }
+  return (lo + hi) / 2;
+}
+
+/**
+ * One edge of a strip that repeats every tile: a single cubic from (0, y) to
+ * (TILE, y), continued 40 units past each end along the neighbouring tiles'
+ * copy of the same curve. Returns ' C…' segments from x = -40 to TILE + 40.
+ */
+function tileEdge(y: number, c1y: number, c2y: number, over = 40): { start: Pt; segs: Pt[][] } {
+  return tileCurve([[[0, y], [TILE * 0.25, c1y], [TILE * 0.75, c2y], [TILE, y]]], over);
+}
+/** Cubics that run from x = 0 to x = TILE (ending at the height they start), continued `over` units past each end. */
+function tileCurve(segs: Pt[][], over = 40): { start: Pt; segs: Pt[][] } {
+  const shift = (p: Pt[], dx: number) => p.map(([x, y]): Pt => [x + dx, y]);
+  const before = shift(segs[segs.length - 1], -TILE), after = shift(segs[0], TILE);
+  const head = subCubic(before, tAtX(before, -over), 1);
+  return { start: head[0], segs: [head, ...segs, subCubic(after, 0, tAtX(after, TILE + over))] };
+}
+const cubic = (p: Pt[]) => ` C${p[1][0].toFixed(2)} ${p[1][1].toFixed(2)} ${p[2][0].toFixed(2)} ${p[2][1].toFixed(2)} ${p[3][0].toFixed(2)} ${p[3][1].toFixed(2)}`;
+/** A strip between two tile edges (top edge left to right, bottom edge back). */
+function tileStrip(top: [number, number, number], bottom: [number, number, number], over = 40) {
+  const t = tileEdge(...top, over), b = tileEdge(...bottom, over);
+  const back = b.segs.slice().reverse().map((p) => p.slice().reverse());
+  return `M${t.start[0].toFixed(2)} ${t.start[1].toFixed(2)}${t.segs.map(cubic).join('')} L${back[0][0][0].toFixed(2)} ${back[0][0][1].toFixed(2)}${back.map(cubic).join('')} Z`;
+}
+
+/**
+ * A band of rolling hills (seamless). In the 40 units it overdraws past each
+ * edge it follows its neighbour's bump, so where two tiles overlap they draw
+ * the very same curve.
+ */
 function hills(y: number, amp: number, fill: string, n = 4, phase = 0, lift = 2.5) {
   const step = TILE / n;
-  let d = `M-40 ${y} L0 ${y}`;
-  for (let i = 0; i < n; i++) {
+  // Nearer bands (lower on screen) reach further past the edge than the bands
+  // behind them, so a band's cut edge always lies under the next tile's nearer
+  // band instead of showing as a hairline while the scenery scrolls.
+  const over = 40 + Math.max(0, Math.min(60, y - 290));
+  const bump = (i: number): Pt[] => {
     const x0 = i * step;
-    const k = (i + phase) % 2 === 0 ? 1 : 0.45;
-    d += ` C${x0 + step * 0.3} ${y - amp * k} ${x0 + step * 0.7} ${y - amp * k} ${x0 + step} ${y}`;
-  }
-  return piece(`${d} L${TILE + 40} ${y} L${TILE + 40} ${GROUND + 30} L-40 ${GROUND + 30} Z`, fill, { lift });
+    const k = ((((i % n) + n) % n) + phase) % 2 === 0 ? 1 : 0.45;
+    return [[x0, y], [x0 + step * 0.3, y - amp * k], [x0 + step * 0.7, y - amp * k], [x0 + step, y]];
+  };
+  const c = cubic;
+  const before = bump(-1), after = bump(n);
+  const head = subCubic(before, tAtX(before, -over), 1);
+  let d = `M${head[0][0].toFixed(2)} ${head[0][1].toFixed(2)}${c(head)}`;
+  for (let i = 0; i < n; i++) d += c(bump(i));
+  d += c(subCubic(after, 0, tAtX(after, TILE + over)));
+  return piece(`${d} L${TILE + over} ${GROUND + 30} L${-over} ${GROUND + 30} Z`, fill, { lift });
 }
 
 function canopy(x: number, base: number, s: number, dx = 0, dy = 0, k = 1) {
@@ -126,7 +191,10 @@ const PLACES: Record<PlaceId, Place> = {
     far1: '#b9d6ae', far2: '#98c28f', ground: '#86bd7a', trail: '#e4cda4',
     far: () => {
       let s = hills(330, 22, '#b9d6ae', 4);
-      for (let x = 10; x < TILE; x += 44) s += wrap(x, 24, (x) => piece(`M${x} ${262 + (x % 3) * 10} L${x + 22} 334 L${x - 22} 334 Z`, '#98c28f', { lift: 1.2 }));
+      for (let x = 10; x < TILE; x += 44) {
+        const top = 262 + (x % 3) * 10; // from the tile position, so the wrapped copy matches
+        s += wrap(x, 24, (x) => piece(`M${x} ${top} L${x + 22} 334 L${x - 22} 334 Z`, '#98c28f', { lift: 1.2 }));
+      }
       return s;
     },
     mid: () => pine(60, 1.1) + pine(150, 0.8, C.leafLight) + tree(300, 1, '#5d9a66') + pine(440, 1.25) + pine(530, 0.9, C.leafLight) + tree(690, 0.9, C.leafLight) +
@@ -166,10 +234,14 @@ const PLACES: Record<PlaceId, Place> = {
   },
   sea: {
     far1: '#8ecfd6', far2: '#f5e1b5', ground: '#f5e1b5', trail: '#fbeed4',
-    far: () => piece(`M-40 298 L${TILE + 40} 298 L${TILE + 40} ${GROUND + 20} L-40 ${GROUND + 20} Z`, '#8ecfd6', { lift: 0 }) +
-      piece(`M-40 330 C100 322 200 334 400 328 C600 322 700 334 ${TILE + 40} 328 L${TILE + 40} ${GROUND + 20} L-40 ${GROUND + 20} Z`, '#76c1c9', { lift: 1.4 }) +
+    far: () => {
+      // the nearer band of sea reaches further past the edge than the one behind it
+      const wave = tileCurve([[[0, 330], [100, 322], [200, 334], [400, 328]], [[400, 328], [600, 322], [700, 338], [TILE, 330]]], 60);
+      return piece(`M-40 298 L${TILE + 40} 298 L${TILE + 40} ${GROUND + 20} L-40 ${GROUND + 20} Z`, '#8ecfd6', { lift: 0 }) +
+      piece(`M${wave.start.join(' ')}${wave.segs.map(cubic).join('')} L${TILE + 60} ${GROUND + 20} L-60 ${GROUND + 20} Z`, '#76c1c9', { lift: 1.4 }) +
       line('M40 312 q14 -6 28 0 M300 316 q14 -6 28 0 M520 310 q14 -6 28 0 M690 318 q14 -6 28 0', C.white, 2.4) +
-      `<g data-word="boat">${piece('M600 296 L600 250 L632 292 Z', C.white, { lift: 1 })}${piece('M582 298 L638 298 L630 310 L590 310 Z', C.coral, { lift: 1 })}</g>`,
+      `<g data-word="boat">${piece('M600 296 L600 250 L632 292 Z', C.white, { lift: 1 })}${piece('M582 298 L638 298 L630 310 L590 310 Z', C.coral, { lift: 1 })}</g>`;
+    },
     mid: () => {
       const palm = (x: number, s: number) => wrap(x, 60 * s, (x) => `<g data-word="tree">
         ${piece(`M${x - 7 * s} ${GROUND + 4} C${x - 12 * s} ${GROUND - 60 * s} ${x - 2 * s} ${GROUND - 100 * s} ${x + 6 * s} ${GROUND - 128 * s} L${x + 16 * s} ${GROUND - 126 * s} C${x + 8 * s} ${GROUND - 96 * s} ${x - 2 * s} ${GROUND - 60 * s} ${x + 7 * s} ${GROUND + 4} Z`, '#c99b6c', { lift: 1.4 })}
@@ -220,8 +292,13 @@ export function placeLayers(id: PlaceId) {
   const i = PLACE_IDS.indexOf(id);
   const pebbles = [[40, 34, 6], [150, 44, 4], [290, 38, 5], [430, 46, 4], [560, 36, 6], [700, 44, 4]]
     .map(([x, y, r]) => wrap(x, 12, (x) => piece(ell(x, GROUND + y, r * 1.6, r), shade(p.trail, -0.14), { lift: 0.6 }))).join('');
-  const ground = piece(`M-40 ${GROUND} C200 ${GROUND - 6} 600 ${GROUND + 6} ${TILE + 40} ${GROUND} L${TILE + 40} ${GROUND + 1200} L-40 ${GROUND + 1200} Z`, p.ground, { lift: 2.4 }) +
-    piece(`M-40 ${GROUND + 28} C200 ${GROUND + 22} 600 ${GROUND + 32} ${TILE + 40} ${GROUND + 28} L${TILE + 40} ${GROUND + 58} C600 ${GROUND + 62} 200 ${GROUND + 54} -40 ${GROUND + 58} Z`, p.trail, { lift: 1.6 }) +
+  const ground = piece(tileStrip([GROUND, GROUND - 6, GROUND + 6], [GROUND + 1200, GROUND + 1200, GROUND + 1200]), p.ground, { lift: 2.4 }) +
+    // The trail reaches 20 units further than the grass, so the grass's cut edge
+    // (where the next tile starts) is hidden under the trail rather than showing
+    // as a hairline across it while the ground scrolls. Its shadow stays within
+    // the grass's reach, so it isn't drawn twice.
+    flat(tileStrip([GROUND + 28, GROUND + 22, GROUND + 34], [GROUND + 58, GROUND + 54, GROUND + 62], 40.8), C.shadow, 'opacity="0.17" transform="translate(0.8 1.6)"') +
+    flat(tileStrip([GROUND + 28, GROUND + 22, GROUND + 34], [GROUND + 58, GROUND + 54, GROUND + 62], 60), p.trail) +
     pebbles +
     [30, 210, 380, 520, 690].map((x, k) => tuft(x, GROUND + 76 + (k % 2) * 6, 0.9, shade(p.ground, -0.12))).join('') +
     (p.near ? p.near() : '');

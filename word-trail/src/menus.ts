@@ -4,7 +4,7 @@ import { speech } from './speech';
 import { sfx } from './sfx';
 import { music } from './music';
 import { clearAll, SaveData, save } from './state';
-import { $, h, openOverlay, toast } from './ui';
+import { $, h, holdButton, openOverlay, toast } from './ui';
 
 // The sticker book (stickers, badges, photos), the photo viewer and the grown-ups' menu.
 
@@ -23,6 +23,7 @@ export function initMenus(s: SaveData, hooks: MenuHooks) {
   async function renderBook() {
     document.querySelectorAll<HTMLButtonElement>('#book .tab').forEach((t) => t.classList.toggle('on', t.dataset.tab === tab));
     body.innerHTML = '';
+    body.scrollTop = 0; // each tab opens at its top
     foot.innerHTML = '';
     if (tab === 'stickers') {
       const learned = ALL_WORDS.filter((w) => s.learned[w]);
@@ -203,29 +204,11 @@ export function initMenus(s: SaveData, hooks: MenuHooks) {
   });
 
   // hold the gear for a moment so little fingers don't open it by accident
-  const gear = $('btn-parents');
-  let holdTimer = 0;
-  const cancelHold = () => {
-    clearTimeout(holdTimer);
-    gear.classList.remove('holding');
-  };
-  gear.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    gear.classList.add('holding');
-    holdTimer = window.setTimeout(() => {
-      gear.classList.remove('holding');
-      progress();
-      fillVoices();
-      openOverlay('parents');
-    }, 1500);
-  });
-  gear.addEventListener('pointerup', () => {
-    if (gear.classList.contains('holding')) toast('Grown-ups: press and hold ⚙️');
-    cancelHold();
-  });
-  gear.addEventListener('pointerleave', cancelHold);
-  gear.addEventListener('pointercancel', cancelHold);
-  gear.addEventListener('contextmenu', (e) => e.preventDefault());
+  holdButton($('btn-parents'), 1500, () => {
+    progress();
+    fillVoices();
+    openOverlay('parents');
+  }, () => toast('Grown-ups: press and hold ⚙️'));
 
   return {
     openBook(which = 'stickers') {

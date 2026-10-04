@@ -106,7 +106,14 @@ export function load(): SaveData {
   }
 }
 
+let saving = true;
+/** Scene and debug URLs set up a pretend trip: it must never replace the real save. */
+export function stopSaving() {
+  saving = false;
+}
+
 export function save(s: SaveData) {
+  if (!saving) return;
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
   } catch {
