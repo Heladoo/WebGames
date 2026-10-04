@@ -1,7 +1,8 @@
 // Draws a finished bracelet, with its place behind it, into a framed picture for the album.
 
 import { placeById, type Bead } from './content';
-import { BH, BW, PHOTO_H, PHOTO_TABLE_Y, PHOTO_W, beadsSVG, scenePicture, tablePicture } from './scene';
+import { PHOTO_H, PHOTO_W, scenePicture, wristPicture } from './scene';
+import { wristBeads, wristLayerSVG } from './art/wrist';
 import { svgToCanvas } from './raster';
 
 const FONT = "'Fredoka', ui-rounded, 'Nunito', system-ui, sans-serif";
@@ -19,8 +20,14 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 export const captionFor = (place: string) => `${placeById(place).name} bracelet`;
 
 export async function makePhoto(place: string, beads: (Bead | null)[]): Promise<{ png: string; caption: string }> {
-  // the scenery and the table are painted pictures; the beads are drawn fresh on top
-  const [scene, table, beadLayer] = await Promise.all([scenePicture(place, 2), tablePicture(place, 2), svgToCanvas(beadsSVG(beads, 2), BW * 2, BH * 2)]);
+  // the scenery and the arm are painted pictures; the bracelet is drawn fresh round the wrist, its far half behind the arm
+  const parts = wristBeads(beads);
+  const [scene, arm, back, front] = await Promise.all([
+    scenePicture(place, 2),
+    wristPicture(2),
+    svgToCanvas(wristLayerSVG(parts.back), PHOTO_W * 2, PHOTO_H * 2),
+    svgToCanvas(wristLayerSVG(parts.front), PHOTO_W * 2, PHOTO_H * 2),
+  ]);
   try {
     await document.fonts?.load(`600 40px Fredoka`);
   } catch {
@@ -41,8 +48,9 @@ export async function makePhoto(place: string, beads: (Bead | null)[]): Promise<
   roundRect(ctx, pad, pad, iw, ih, 30);
   ctx.clip();
   ctx.drawImage(scene.canvas, pad, pad, iw, ih);
-  ctx.drawImage(table.canvas, pad, pad + PHOTO_TABLE_Y * k, BW * k, BH * k);
-  ctx.drawImage(beadLayer, pad, pad + PHOTO_TABLE_Y * k, BW * k, BH * k);
+  ctx.drawImage(back, pad, pad, iw, ih);
+  ctx.drawImage(arm.canvas, pad, pad, iw, ih);
+  ctx.drawImage(front, pad, pad, iw, ih);
   ctx.restore();
   ctx.lineWidth = 6;
   ctx.strokeStyle = '#ffffff';

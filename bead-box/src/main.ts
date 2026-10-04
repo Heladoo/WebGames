@@ -12,7 +12,7 @@ import { speech } from './speech';
 import { stats } from './stats';
 import { load, save } from './state';
 import { $, toast } from './dom';
-import { sharePng } from './album';
+import { gameLink, sharePng } from './album';
 
 const params = new URLSearchParams(location.search);
 const debug = params.get('debug');
@@ -103,8 +103,8 @@ $('finish-again').addEventListener('click', () => { $('finish').classList.add('h
 $('finish-map').addEventListener('click', () => { $('finish').classList.add('hidden'); showMap(lastFinish?.newPlace ?? null); });
 $('finish-share').addEventListener('click', async () => {
   if (!lastFinish?.png) return;
-  const r = await sharePng(lastFinish.png, 'bracelet.png', lastFinish.caption);
-  if (r === 'downloaded') toast('Picture saved');
+  const r = await sharePng(lastFinish.png, 'bracelet.png', `I made a ${lastFinish.caption.toLowerCase()} in Bead Box! Play it here:`, gameLink());
+  if (r !== 'shared') toast(r === 'saved+copied' ? 'Picture saved and game link copied' : 'Picture saved');
 });
 
 // ----- buttons -----

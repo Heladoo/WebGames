@@ -50,7 +50,10 @@ export class Workshop {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-design]');
       if (b) this.pickDesign(b.dataset.design as DesignId);
     });
-    $('btn-say').addEventListener('click', () => void this.say(phrase(this.current()), 'both'));
+    // the plus button and the title itself both add the bead
+    const add = () => this.placeAt(this.nextFree());
+    $('btn-add').addEventListener('click', add);
+    $('word-text').addEventListener('click', add);
     $('btn-place').addEventListener('click', () => this.placeAt(this.nextFree()));
     $('table').addEventListener('click', (e) => {
       const s = (e.target as Element).closest<SVGElement>('[data-slot]');
@@ -61,7 +64,7 @@ export class Workshop {
     $('btn-back').innerHTML = ICONS.back;
     $('btn-album').innerHTML = ICONS.album;
     $('btn-place').innerHTML = ICONS.check;
-    $('btn-say').innerHTML = ICONS.speaker;
+    $('btn-add').innerHTML = ICONS.plus;
   }
 
   current(): Bead {
@@ -142,6 +145,7 @@ export class Workshop {
     const noun = b.shape === 'round' ? 'bead' : SHAPE_WORD[b.shape];
     const hi = (k: 'design' | 'shape') => (highlight === k || highlight === 'both' ? ' say' : '');
     $('word-text').innerHTML = `<span class="${hi('design').trim()}">${DESIGN_WORD[b.design]}</span> <span class="${hi('shape').trim()}">${noun}</span>`;
+    $('word-text').setAttribute('aria-label', `Add the ${phrase(b)} to the bracelet`);
   }
 
   renderTable(fresh: number | null = null) {

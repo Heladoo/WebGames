@@ -12,6 +12,7 @@ export const ICONS = {
   close: svg('<path d="M8 8 L24 24 M24 8 L8 24"/>', 24),
   soundOn: svg('<path d="M5 12 H10 L17 6 V26 L10 20 H5Z" fill="currentColor"/><path d="M22 11 a7 7 0 0 1 0 10 M25 7 a12 12 0 0 1 0 18"/>', 26),
   soundOff: svg('<path d="M5 12 H10 L17 6 V26 L10 20 H5Z" fill="currentColor"/><path d="M22 12 L29 20 M29 12 L22 20"/>', 26),
+  plus: svg('<path d="M16 6 V26 M6 16 H26" stroke-width="4.8"/>', 34),
   speaker: svg('<path d="M5 12 H10 L17 6 V26 L10 20 H5Z" fill="currentColor" stroke="none"/><path d="M21 11 a7 7 0 0 1 0 10 M24.5 7.5 a12 12 0 0 1 0 17"/>', 34),
   share: svg('<path d="M16 21 V4 M9 11 L16 4 L23 11"/><path d="M6 17 V25 a2 2 0 0 0 2 2 H24 a2 2 0 0 0 2 -2 V17"/>', 26),
   trash: svg('<path d="M6 9 H26 M12 9 V5 H20 V9 M9 9 L10 27 H22 L23 9"/>', 24),

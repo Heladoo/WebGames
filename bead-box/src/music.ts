@@ -7,7 +7,8 @@ interface Mood {
   root: number; // midi note of the key
   scale: number[]; // pentatonic steps
   tempo: number; // seconds between notes (on average)
-  timbre: 'bell' | 'flute' | 'pluck' | 'marimba';
+  timbre: 'bell' | 'flute' | 'pluck' | 'marimba' | 'piano';
+  style?: 'waltz'; // played as a slow piano waltz instead of a wandering melody
   nature: ('birds' | 'waves' | 'wind' | 'frogs' | 'brook')[];
 }
 
@@ -17,11 +18,23 @@ const MIN = [0, 3, 5, 7, 10];
 const MOODS: Record<string, Mood> = {
   beach: { root: 65, scale: MAJ, tempo: 1.2, timbre: 'marimba', nature: ['waves', 'birds'] },
   woods: { root: 69, scale: MIN, tempo: 1.1, timbre: 'flute', nature: ['birds', 'brook'] },
-  ball: { root: 67, scale: MAJ, tempo: 1.5, timbre: 'bell', nature: [] },
+  ball: { root: 67, scale: MAJ, tempo: 0.62, timbre: 'piano', style: 'waltz', nature: [] },
   city: { root: 64, scale: [0, 2, 5, 7, 9], tempo: 1, timbre: 'pluck', nature: ['wind'] },
   snow: { root: 76, scale: MAJ, tempo: 1.4, timbre: 'bell', nature: ['wind'] },
   garden: { root: 72, scale: MAJ, tempo: 0.9, timbre: 'flute', nature: ['birds'] },
 };
+
+// The Night Ball plays a slow piano waltz: a bass note, two chord notes, and a soft tune on top. One chord a bar.
+const WALTZ: number[][] = [
+  [48, 64, 67, 72], // C
+  [52, 59, 64, 67], // Em
+  [45, 60, 64, 69], // Am
+  [41, 60, 65, 69], // F
+  [50, 57, 62, 65], // Dm
+  [43, 59, 62, 67], // G
+  [48, 64, 67, 72], // C
+  [43, 59, 62, 67], // G
+];
 
 class Music {
   enabled = true;
@@ -32,7 +45,7 @@ class Music {
   private echo!: DelayNode;
   private noise!: AudioBuffer;
   private mood: Mood = MOODS.beach;
-  private night = false;
+  private bar = 0;
   private loops: { stop: () => void }[] = [];
   private step = 2;
 
@@ -85,7 +98,7 @@ class Music {
     const mood = MOODS[place] ?? MOODS.beach;
     if (mood === this.mood) return;
     this.mood = mood;
-    this.night = place === 'ball';
+    this.bar = 0;
     if (this.ctx) this.buildNature();
   }
 
@@ -95,16 +108,75 @@ class Music {
     const c = this.ctx;
     if (!c) return;
     const m = this.mood;
-    const slow = this.night ? 1.5 : 1;
+    if (m.style === 'waltz') return this.waltz();
+    const slow = 1;
     // a gentle random walk over two octaves of the scale, with rests
     if (Math.random() > 0.22) {
       this.step = Math.max(0, Math.min(9, this.step + [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)]));
-      const note = m.root - 12 + Math.floor(this.step / 5) * 12 + m.scale[this.step % 5] - (this.night ? 5 : 0);
+      const note = m.root - 12 + Math.floor(this.step / 5) * 12 + m.scale[this.step % 5];
       this.play(midi(note), m.timbre);
       if (Math.random() < 0.18) this.play(midi(note - 12), m.timbre, 0.5);
     }
     const next = m.tempo * slow * (0.6 + Math.random() * 0.9);
     window.setTimeout(() => this.schedule(), next * 1000);
+  }
+
+  /** One bar of the waltz (three beats), then the next bar is scheduled. */
+  private waltz() {
+    if (!this.ctx) return;
+    const beat = 0.62;
+    const [bass, ...up] = WALTZ[this.bar % WALTZ.length];
+    this.piano(midi(bass), 0.95, 0);
+    this.piano(midi(up[this.bar % up.length]), 0.6, beat);
+    this.piano(midi(up[(this.bar + 1) % up.length]), 0.55, beat * 2);
+    // a soft tune on top on most bars, walking up and down the scale
+    if (this.bar % 4 !== 3 && Math.random() > 0.15) {
+      const tune = () => {
+        this.step = Math.max(0, Math.min(9, this.step + [-2, -1, -1, 1, 1, 2][Math.floor(Math.random() * 6)]));
+        return 67 + MAJ[this.step % 5] + Math.floor(this.step / 5) * 12;
+      };
+      this.piano(midi(tune()), 0.8, Math.random() < 0.5 ? 0.02 : beat + 0.02);
+      if (Math.random() < 0.55) this.piano(midi(tune()), 0.7, beat * 2 + 0.02);
+    }
+    this.bar++;
+    window.setTimeout(() => this.schedule(), beat * 3 * 1000);
+  }
+
+  /** A piano-like note: a few overtones, a soft hammer tick and a long decay (no oscillator ever drives a gain). */
+  private piano(freq: number, vol = 1, delay = 0) {
+    const c = this.ctx!;
+    const t = c.currentTime + 0.02 + delay;
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = Math.min(5200, freq * 6 + 900);
+    const g = c.createGain();
+    [[1, 1], [2, 0.42], [3, 0.2], [4, 0.1], [5, 0.05]].forEach(([m, a], i) => {
+      const o = c.createOscillator();
+      o.type = i === 0 ? 'triangle' : 'sine';
+      o.frequency.value = freq * m * (i ? 1 + 0.0007 * i : 1);
+      const og = c.createGain();
+      og.gain.value = a;
+      o.connect(og).connect(lp);
+      o.start(t);
+      o.stop(t + 3.8);
+    });
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.19 * vol, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.07 * vol, t + 0.4);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + 3.6);
+    lp.connect(g).connect(this.notes);
+    // the hammer: a very short, soft burst of filtered noise
+    const n = c.createBufferSource();
+    n.buffer = this.noise;
+    const nf = c.createBiquadFilter();
+    nf.type = 'bandpass';
+    nf.frequency.value = Math.min(3000, freq * 3);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.05 * vol, t);
+    ng.gain.exponentialRampToValueAtTime(0.0005, t + 0.05);
+    n.connect(nf).connect(ng).connect(this.notes);
+    n.start(t);
+    n.stop(t + 0.08);
   }
 
   private play(freq: number, timbre: Mood['timbre'], vol = 1) {
@@ -159,17 +231,12 @@ class Music {
     this.loops.forEach((l) => l.stop());
     this.loops = [];
     const kinds = new Set<string>(this.mood.nature);
-    if (this.night) {
-      kinds.delete('birds');
-      kinds.add('crickets');
-    }
     for (const k of kinds) {
       if (k === 'waves') this.loops.push(this.noiseBed(500, 0.5, 0.1, 0.09));
       if (k === 'wind') this.loops.push(this.noiseBed(700, 1.2, 0.07, 0.05));
       if (k === 'brook') this.loops.push(this.noiseBed(2400, 4, 0.9, 0.025, 'bandpass'));
       if (k === 'birds') this.loops.push(this.every(2.5, 6, () => this.chirp()));
       if (k === 'frogs') this.loops.push(this.every(3, 7, () => this.ribbit()));
-      if (k === 'crickets') this.loops.push(this.every(0.9, 1.6, () => this.cricket()));
     }
     void c;
   }
@@ -240,10 +307,6 @@ class Music {
 
   private ribbit() {
     for (let i = 0; i < 2; i++) this.blip(180, 120, 0.12, 0.03, 'square', i * 0.16);
-  }
-
-  private cricket() {
-    for (let i = 0; i < 3; i++) this.blip(4400, 4300, 0.03, 0.01, 'sine', i * 0.06);
   }
 }
 

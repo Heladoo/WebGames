@@ -103,23 +103,45 @@ export function download(png: string, name: string) {
   link.remove();
 }
 
-/** Share a picture with the system share sheet, or download it. */
-export async function sharePng(png: string, name: string, text: string): Promise<'shared' | 'downloaded'> {
+/** The address of the game itself (what a shared picture points to). */
+export const gameLink = () => `${location.origin}/`;
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Share a picture together with a link to the game. The link goes in the message text as well as in the link
+ * field, because some apps drop the link when a file is attached. Without file sharing (most desktops) the
+ * picture is saved and the link is copied instead.
+ */
+export async function sharePng(png: string, name: string, text: string, url: string = gameLink()): Promise<'shared' | 'saved+copied' | 'saved'> {
+  const message = `${text} ${url}`;
   try {
     const blob = await (await fetch(png)).blob();
     const file = new File([blob], name, { type: 'image/png' });
     if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'Bead Box', text });
+      try {
+        await navigator.share({ files: [file], title: 'Bead Box', text: message, url });
+      } catch (e) {
+        if ((e as Error)?.name === 'AbortError') return 'shared';
+        await navigator.share({ files: [file], title: 'Bead Box', text: message }); // some systems refuse a file plus a link field
+      }
       return 'shared';
     }
   } catch (e) {
     if ((e as Error)?.name === 'AbortError') return 'shared';
   }
   download(png, name);
-  return 'downloaded';
+  return (await copyText(url)) ? 'saved+copied' : 'saved';
 }
 
-/** Share a link to the bracelet: share sheet, else the clipboard, else a prompt. */
+/** Share a link to one bracelet (it opens the game showing that bracelet): share sheet, else the clipboard. */
 export async function shareLink(url: string, text: string): Promise<'shared' | 'copied'> {
   try {
     if (navigator.share) {
@@ -129,10 +151,6 @@ export async function shareLink(url: string, text: string): Promise<'shared' | '
   } catch (e) {
     if ((e as Error)?.name === 'AbortError') return 'shared';
   }
-  try {
-    await navigator.clipboard.writeText(url);
-  } catch {
-    window.prompt('Copy this link', url);
-  }
+  if (!(await copyText(url))) window.prompt('Copy this link', url);
   return 'copied';
 }

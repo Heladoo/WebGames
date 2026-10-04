@@ -71,7 +71,7 @@ interface ShapeArt {
 const line = (d: string, c: string, w = 2, o = 0.2) => `<path d="${d}" stroke="${c}" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="${o}"/>`;
 
 const SHAPES: Record<ShapeId, ShapeArt> = {
-  round: { body: (f) => `<ellipse cx="50" cy="50" rx="41" ry="39.5" fill="${f}"/>`, hole: [52, 38, 13], side: [17, 52], gloss: [26, 24] },
+  round: { body: (f) => `<ellipse cx="50" cy="50" rx="41" ry="39.5" fill="${f}"/>`, hole: [51, 37, 17], side: [17, 52], gloss: [25, 23] },
   flower: {
     body: (f) => `${petals(5, 24, 19, f)}<circle cx="50" cy="50" r="15" fill="${f}"/>`,
     detail: ({ dk, lt }) =>
@@ -189,28 +189,35 @@ const SHAPES: Record<ShapeId, ShapeArt> = {
 
 // ---------- the tunnel ----------
 
-/** A string hole: lit lip, inner wall catching bounce light, deep void. rot tilts it; `thread` shows the string. */
+/**
+ * A string hole seen the way a real bead's is: a soft raised lip in the bead's own colour, a wide inner wall that is
+ * dark at the top and catches bounce light at the bottom, and a small, not-quite-black void at the far end.
+ * (A white ring round a black dot reads as an eyeball, so the lip is tinted and the void is tinted too.)
+ * `thread` shows the string running through (for beads on the bracelet).
+ */
 function tunnel(id: string, t: Tone, cx: number, cy: number, rx: number, ry: number, rot: number, thread: boolean): { defs: string; body: string } {
-  const wallTop = mix(t.dark, '#000000', 0.4);
-  const wallBottom = mix(t.base, t.light, 0.3);
-  const voidCore = mix(t.dark, '#000000', 0.78);
-  const voidEdge = mix(t.dark, '#000000', 0.5);
-  const g = `<linearGradient id="${id}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${wallTop}"/><stop offset=".55" stop-color="${mix(t.dark, '#000', 0.2)}"/><stop offset="1" stop-color="${wallBottom}"/></linearGradient>` +
-    `<radialGradient id="${id}v" cx=".5" cy=".42" r=".6"><stop offset="0" stop-color="${voidCore}"/><stop offset=".65" stop-color="${voidEdge}"/><stop offset="1" stop-color="${t.dark}" stop-opacity=".75"/></radialGradient>`;
+  const lipLight = mix(t.base, t.light, 0.5);
+  const lipShade = mix(t.base, t.dark, 0.55);
+  const wallTop = mix(t.dark, '#000000', 0.42);
+  const wallMid = mix(t.dark, t.base, 0.25);
+  const wallBottom = mix(t.base, t.light, 0.45);
+  const voidCore = mix(t.dark, '#000000', 0.72);
+  const voidEdge = mix(t.dark, '#000000', 0.4);
+  const defs =
+    `<linearGradient id="${id}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${wallTop}"/><stop offset=".5" stop-color="${wallMid}"/><stop offset="1" stop-color="${wallBottom}"/></linearGradient>` +
+    `<radialGradient id="${id}v" cx=".5" cy=".4" r=".62"><stop offset="0" stop-color="${voidCore}"/><stop offset=".62" stop-color="${voidEdge}"/><stop offset="1" stop-color="${voidEdge}" stop-opacity="0"/></radialGradient>`;
   const tr = `transform="rotate(${rot} ${cx} ${cy})"`;
-  return {
-    defs: g,
-    body:
-      // soft shadow the lip throws on the bead, then the bevelled lip itself
-      `<ellipse cx="${cx + 0.8}" cy="${cy + 1.4}" rx="${(rx * 1.3).toFixed(2)}" ry="${(ry * 1.32).toFixed(2)}" fill="${t.dark}" opacity=".4" ${tr}/>` +
-      `<ellipse cx="${cx}" cy="${cy}" rx="${(rx * 1.22).toFixed(2)}" ry="${(ry * 1.22).toFixed(2)}" fill="${mix(t.light, t.base, 0.4)}" opacity=".95" ${tr}/>` +
-      `<ellipse cx="${cx + 0.5}" cy="${cy + 0.9}" rx="${(rx * 1.1).toFixed(2)}" ry="${(ry * 1.1).toFixed(2)}" fill="${t.dark}" opacity=".55" ${tr}/>` +
-      `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#${id}w)" ${tr}/>` +
-      `<ellipse cx="${(cx + rx * 0.1).toFixed(2)}" cy="${(cy - ry * 0.22).toFixed(2)}" rx="${(rx * 0.7).toFixed(2)}" ry="${(ry * 0.58).toFixed(2)}" fill="url(#${id}v)" ${tr}/>` +
-      (thread ? `<path d="M${(cx - rx * 0.9).toFixed(2)} ${(cy + ry * 0.2).toFixed(2)} Q${cx} ${(cy + ry * 0.5).toFixed(2)} ${(cx + rx * 0.9).toFixed(2)} ${(cy - ry * 0.1).toFixed(2)}" stroke="#c99458" stroke-width="${(ry * 0.5).toFixed(2)}" fill="none" stroke-linecap="round" ${tr}/><path d="M${(cx - rx * 0.8).toFixed(2)} ${(cy + ry * 0.05).toFixed(2)} Q${cx} ${(cy + ry * 0.3).toFixed(2)} ${(cx + rx * 0.8).toFixed(2)} ${(cy - ry * 0.25).toFixed(2)}" stroke="#f0cf96" stroke-width="${(ry * 0.14).toFixed(2)}" fill="none" stroke-linecap="round" opacity=".8" ${tr}/>` : '') +
-      // a thin bright edge along the lower inner wall: bounce light
-      `<path d="M${(cx - rx * 0.72).toFixed(2)} ${(cy + ry * 0.55).toFixed(2)} Q${cx} ${(cy + ry * 1.02).toFixed(2)} ${(cx + rx * 0.72).toFixed(2)} ${(cy + ry * 0.55).toFixed(2)}" stroke="#fff" stroke-width="${Math.max(0.8, ry * 0.12).toFixed(2)}" fill="none" opacity=".5" stroke-linecap="round" ${tr}/>`,
-  };
+  const e = (dx: number, dy: number, rxk: number, ryk: number, fill: string, op = 1) =>
+    `<ellipse cx="${(cx + dx).toFixed(2)}" cy="${(cy + dy).toFixed(2)}" rx="${(rx * rxk).toFixed(2)}" ry="${(ry * ryk).toFixed(2)}" fill="${fill}" opacity="${op}" ${tr}/>`;
+  const body =
+    // the lip: a lighter rim on the lit side, a darker one on the shaded side
+    e(0.5, 0.9, 1.22, 1.3, lipShade, 0.55) + e(-0.3, -0.5, 1.2, 1.26, lipLight, 0.95) +
+    // the wall, then the small void high up inside it, leaving a bright crescent of wall below
+    e(0, 0, 1, 1, `url(#${id}w)`) + e(0.6, -ry * 0.2, 0.74, 0.56, `url(#${id}v)`) +
+    (thread
+      ? `<path d="M${(cx - rx * 0.9).toFixed(2)} ${(cy + ry * 0.25).toFixed(2)} Q${cx} ${(cy + ry * 0.55).toFixed(2)} ${(cx + rx * 0.9).toFixed(2)} ${(cy - ry * 0.05).toFixed(2)}" stroke="#c99458" stroke-width="${(ry * 0.5).toFixed(2)}" fill="none" stroke-linecap="round" ${tr}/><path d="M${(cx - rx * 0.8).toFixed(2)} ${(cy + ry * 0.1).toFixed(2)} Q${cx} ${(cy + ry * 0.35).toFixed(2)} ${(cx + rx * 0.8).toFixed(2)} ${(cy - ry * 0.2).toFixed(2)}" stroke="#f0cf96" stroke-width="${(ry * 0.14).toFixed(2)}" fill="none" stroke-linecap="round" opacity=".8" ${tr}/>`
+      : '');
+  return { defs, body };
 }
 
 let uid = 0;
@@ -258,7 +265,7 @@ export function beadInner(shape: ShapeId, design: DesignId, shadow = true, view:
   const [hx, hy, hr] = art.hole;
   const front = view === 'front';
   const tun = front
-    ? tunnel(id, t, hx, hy, hr, hr * 0.74, -14, false)
+    ? tunnel(id, t, hx, hy, hr, hr * 0.7, -8, false)
     : tunnel(id, t, Math.max(art.side[0], 17), art.side[1], Math.max(4.2, hr * 0.42), Math.max(8.5, hr * 0.95), 6, true);
   const [gx, gy] = art.gloss;
 
@@ -278,7 +285,7 @@ export function beadInner(shape: ShapeId, design: DesignId, shadow = true, view:
     // two highlights: a broad soft one and a small sharp one, plus a tiny kick on the far rim
     `<ellipse cx="${gx}" cy="${gy}" rx="12" ry="6.4" fill="#fff" opacity=".6" transform="rotate(-32 ${gx} ${gy})"/>` +
     `<ellipse cx="${gx - 2}" cy="${gy - 1.4}" rx="5" ry="2.2" fill="#fff" opacity=".9" transform="rotate(-32 ${gx} ${gy})"/>` +
-    `<circle cx="${gx + 15}" cy="${gy + 10}" r="2" fill="#fff" opacity=".65"/>` +
+    `<circle cx="72" cy="72" r="1.8" fill="#fff" opacity=".5"/>` +
     (metallic || design === 'glitter' ? `<path d="M${gx + 22} ${gy - 8} l1.6 4.4 l4.4 1.6 l-4.4 1.6 l-1.6 4.4 l-1.6 -4.4 l-4.4 -1.6 l4.4 -1.6Z" fill="#fff" opacity=".95"/>` : '')
   );
 }
@@ -297,7 +304,7 @@ export function shapeIcon(shape: ShapeId, color: string, size = 30): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">${art.body(color)}${detail}</svg>`;
 }
 
-/** The icon for the plain round bead is a 2x2 group of dots, like the mockup's first tab. */
+/** The icon for the plain round bead: one circle. */
 export function dotsIcon(color: string, size = 30): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true"><g fill="${color}"><circle cx="28" cy="28" r="19"/><circle cx="72" cy="28" r="19"/><circle cx="28" cy="72" r="19"/><circle cx="72" cy="72" r="19"/></g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true"><circle cx="50" cy="50" r="38" fill="${color}"/></svg>`;
 }

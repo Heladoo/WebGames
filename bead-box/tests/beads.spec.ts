@@ -60,3 +60,41 @@ test('the ambient layer is left out when motion is reduced', async ({ page }) =>
   await expect(page.locator('#bg')).toHaveAttribute('src', /^blob:/, { timeout: 15000 });
   await expect(page.locator('#ambient svg')).toHaveCount(0);
 });
+
+test('the bracelet is big: its beads are at least 50 screen pixels wide on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?debug=play&place=beach&beads=round:blue,round:pink,round:green');
+  await expect(page.locator('#table g.bead')).toHaveCount(3);
+  const w = await page.locator('#table g.bead').nth(1).evaluate((el) => el.getBoundingClientRect().width);
+  expect(w).toBeGreaterThan(50);
+  // and it still fits on a small phone, without being squeezed by the tray
+  await page.setViewportSize({ width: 375, height: 667 });
+  const box = await page.locator('#table svg').boundingBox();
+  expect(box!.height).toBeGreaterThan(200);
+});
+
+test('the finished picture shows the bracelet on a wrist, with detail', async ({ page }) => {
+  await page.goto('/?debug=photo&place=beach');
+  await page.waitForFunction(() => (window as unknown as { __photo?: boolean }).__photo, null, { timeout: 30000 });
+  const stats = await page.evaluate(async () => {
+    const img = document.getElementById('photo') as HTMLImageElement;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    // skin-coloured pixels (warm, light) tell us an arm is in the picture
+    let skin = 0;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4 * 13) {
+      const [r, g, b] = [d[i], d[i + 1], d[i + 2]];
+      n++;
+      if (r > 200 && g > 140 && g < 215 && b > 110 && b < 190 && r - b > 40 && r - g < 60) skin++;
+    }
+    return { skinShare: skin / n, w: c.width, h: c.height };
+  });
+  expect(stats.skinShare).toBeGreaterThan(0.04); // an arm and hand
+  expect(stats.skinShare).toBeLessThan(0.5); // but still mostly the place behind it
+});

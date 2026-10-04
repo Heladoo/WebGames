@@ -4,9 +4,9 @@
 import { FX, f1, lg, rg, rng } from './paint';
 
 export const CX = 200;
-export const CY = 150;
-export const RX = 126;
-export const RY = 64;
+export const CY = 166;
+export const RX = 158;
+export const RY = 84;
 
 type Kind = 'planks' | 'rings' | 'lacquer' | 'concrete' | 'snow' | 'garden';
 
@@ -141,6 +141,8 @@ export function tableArt(place: string): string {
     lg(id + 'rim', [[0, look.rim, 0.9], [0.5, look.rim, 0.1], [1, '#000', 0.25]]) +
     `<clipPath id="${id}clip">${TOP}</clipPath>` +
     `<clipPath id="${id}eclip"><path d="M12 190 A188 86 0 0 0 388 190 L388 224 A188 86 0 0 1 12 224Z"/></clipPath></defs>` +
+    // the table is drawn on a 400 x 330 grid, then stretched to sit under the bigger ring
+    `<g transform="translate(200 196) scale(1.02 1.163) translate(-200 -190)">` +
     // shadow on the ground
     `<ellipse cx="200" cy="246" rx="176" ry="36" fill="#2a1608" opacity=".3" filter="url(#b8)"/><ellipse cx="200" cy="236" rx="178" ry="24" fill="#1a0e04" opacity=".3" filter="url(#b3)"/>` +
     // the thick edge
@@ -154,6 +156,7 @@ export function tableArt(place: string): string {
     `<ellipse cx="200" cy="190" rx="188" ry="86" fill="url(#${id}top)"/>` +
     `<g clip-path="url(#${id}clip)">${surface(look, id)}<ellipse cx="140" cy="140" rx="130" ry="46" fill="#fff" opacity=".18" filter="url(#b8)" transform="rotate(-8 140 140)"/></g>` +
     `<ellipse cx="200" cy="190" rx="187" ry="85" fill="none" stroke="url(#${id}rim)" stroke-width="3.4"/>` +
+    `</g>` +
     rope() + knot()
   );
 }

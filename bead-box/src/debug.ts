@@ -64,6 +64,16 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     $('app').innerHTML = `<img id="pic" src="${pic.url}" style="display:block;width:${pic.canvas.width / 2}px;height:${pic.canvas.height / 2}px" alt="">`;
     return true;
   }
+  if (kind === 'photo') {
+    // one finished album picture at full size: ?debug=photo&place=beach
+    const place = PLACES.find((p) => p.id === params.get('place')) ?? PLACES[0];
+    const { png } = await makePhoto(place.id, sample(place));
+    document.body.style.cssText = 'margin:0;background:#222';
+    $('app').style.cssText = 'position:static';
+    $('app').innerHTML = `<img id="photo" src="${png}" style="display:block;width:560px" alt="">`;
+    w.__photo = true;
+    return true;
+  }
   if (kind === 'places') {
     // every place as the finished album picture, one after another
     page('<div id="grid" style="display:flex;flex-wrap:wrap;gap:12px"></div>');
@@ -83,8 +93,8 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
       maxOverlap: Math.max(0, ...gaps.map((g) => -g)),
       minGap: Math.min(...gaps),
       inside: geo.every((g) => g.x - g.size / 2 >= 0 && g.x + g.size / 2 <= BW && g.y - g.size / 2 >= 0 && g.y + g.size / 2 <= BH),
-      // every bead must stay on the table top (ellipse centred 200,190 with radii 188 x 86)
-      onTable: geo.every((g) => ((g.x - 200) / 188) ** 2 + ((g.y + g.size / 2 - 190) / 86) ** 2 <= 1),
+      // every bead must stay on the table top (ellipse centred 200,196 with radii 192 x 100)
+      onTable: geo.every((g) => ((g.x - 200) / 192) ** 2 + ((g.y + g.size / 2 - 196) / 100) ** 2 <= 1),
     };
     page('<pre>' + JSON.stringify(w.__rig, null, 2) + '</pre>');
     return true;
@@ -99,7 +109,7 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
       <div style="position:absolute;left:60px;top:50px;background:#fdf6e8;border-radius:44px;padding:30px 48px;box-shadow:0 12px 30px rgba(40,70,120,.25)">
         <div style="font-size:120px;font-weight:600;color:#2c4a7c;line-height:1">Bead Box</div>
         <div style="font-size:38px;color:#4a8fe3;margin-top:12px">make bracelets · learn English words</div></div>
-      <div style="position:absolute;left:500px;top:226px;width:680px">${braceletSVG(sample(p), {}, table.url).replace('viewBox="0 0 400 330"', 'viewBox="0 50 400 280"')}</div></div>`;
+      <div style="position:absolute;left:500px;top:226px;width:680px">${braceletSVG(sample(p), {}, table.url).replace(/viewBox="0 \d+ 400 \d+"/, 'viewBox="0 56 400 294"')}</div></div>`;
     await Promise.all([...document.images].map((i) => i.decode().catch(() => undefined)));
     await document.fonts?.ready;
     w.__ready = true;

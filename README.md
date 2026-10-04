@@ -167,11 +167,11 @@ Import `Heladoo/WebGames` as a second project and set **Root Directory** to `wor
 
 A calm bracelet-making game for young children learning English (about 4–8). There is no timer, no rush and no way to fail. Everything is drawn in code as smooth SVG: painted scenery, glossy rounded beads and cream cards. The browser's built-in voice says every word.
 
-- **Make a bracelet:** pick a bead **shape** on the tabs, then a **color or design** in the grid. You hear the word ("blue", "star") and see it on the word card, then **tap the bracelet** (or the ✓ button) to place the bead. Tap an empty slot to fill it, or a filled slot to swap the bead. Twelve beads finish a bracelet.
+- **Make a bracelet:** pick a bead **shape** on the tabs, then a **color or design** in the grid. You hear the word ("blue", "star") and see it on the word card, then add it with the **+** button next to its name (tapping the name does the same), or tap the bracelet or the ✓ button. Tap an empty slot to fill it, or a filled slot to swap the bead. Twelve beads finish a bracelet.
 - **Places:** the map starts with **Hawaii Beach** and **The Woods**. Each finished bracelet opens the next place: **Night Ball**, **Big City**, **Snowy Mountain** and **Flower Garden**. Each place has its own scenery, table, beads and music, and every place can be played again. An unfinished bracelet is kept for when you come back.
-- **Album:** a finished bracelet is saved as a framed picture of the place, with a celebration and a new place unlocked. The album can share the picture, or a link that redraws the same bracelet in another browser (the link only carries bead and place ids, never text).
+- **Album:** a finished bracelet is saved as a framed picture of it worn on a wrist in that place, with a celebration and a new place unlocked. **Share** sends the picture together with a link to the game (if the device can't share files, the picture is saved and the link copied). The album can also share a link that redraws the same bracelet in another browser (it only carries bead and place ids, never text).
 - **Words:** about 40 words: ten colors, four designs (stripes, dots, gold, glitter), fifteen bead shapes, "bead", "bracelet" and the place names. The settings list how many have been learned.
-- **Music:** a quiet generated melody that changes with each place, with matching nature sounds, and it quietens when the voice speaks.
+- **Music:** a quiet generated melody that changes with each place, with matching nature sounds (the Night Ball plays a soft piano waltz instead), and it quietens when the voice speaks.
 - **Settings:** music, sounds, volume, voice (every English voice on the device) and speed. Progress is saved only in the browser. There are no accounts, ads or cookies.
 
 ### Run locally

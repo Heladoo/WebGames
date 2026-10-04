@@ -45,6 +45,40 @@ test('choose a shape and a color, see the word, place the bead', async ({ page }
     .toEqual(expect.arrayContaining(['pink', 'blue', 'flower']));
 });
 
+test('the plus button and the title both add the bead; there is no speaker button', async ({ page }) => {
+  await openPlace(page, 'beach');
+  await expect(page.locator('#btn-say')).toHaveCount(0);
+  await page.click('#designs [data-design="yellow"]');
+  await expect(page.locator('#word-text')).toHaveText('yellow bead');
+  await page.click('#btn-add');
+  await expect(beads(page)).toHaveCount(1);
+  await page.click('#designs [data-design="pink"]');
+  await page.click('#word-text'); // clicking the title adds it too
+  await expect(beads(page)).toHaveCount(2);
+});
+
+test('the round bead tab is a single circle', async ({ page }) => {
+  await openPlace(page, 'beach');
+  const icon = page.locator('#tabs [data-shape="round"] svg');
+  await expect(icon.locator('circle')).toHaveCount(1);
+});
+
+test('sharing a finished bracelet sends the picture together with a link to the game', async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __shared: unknown }).__shared = null;
+    navigator.canShare = () => true;
+    navigator.share = async (d: ShareData) => { (window as unknown as { __shared: unknown }).__shared = { files: d.files?.length ?? 0, text: d.text, url: d.url }; };
+  });
+  await openPlace(page, 'beach');
+  for (let i = 0; i < 12; i++) await page.click('#btn-add');
+  await expect(page.locator('#finish')).toBeVisible({ timeout: 15000 });
+  await page.click('#finish-share');
+  const shared = await page.evaluate(() => (window as unknown as { __shared: { files: number; text: string; url: string } | null }).__shared);
+  expect(shared?.files).toBe(1);
+  expect(shared?.url).toMatch(/^https?:\/\/[^/]+\/$/); // the game itself, not a long bracelet link
+  expect(shared?.text).toContain(shared!.url); // and also in the message text, for apps that drop the link field
+});
+
 test('a placed bead can be replaced, and an unfinished bracelet is kept', async ({ page }) => {
   await openPlace(page, 'woods');
   await page.click('#designs [data-design="green"]');

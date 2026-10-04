@@ -2,7 +2,7 @@
 
 import { ALL_WORDS } from './content';
 import { ICONS } from './art/ui';
-import { deletePhoto, decodeRecipe, download, linkFor, listPhotos, shareLink, sharePng, type Photo } from './album';
+import { deletePhoto, decodeRecipe, download, gameLink, linkFor, listPhotos, shareLink, sharePng, type Photo } from './album';
 import { makePhoto } from './photo';
 import { speech } from './speech';
 import { sfx } from './sfx';
@@ -59,8 +59,8 @@ export function initMenus(host: MenuHost) {
 
   $('viewer-share').addEventListener('click', async () => {
     if (!viewing) return;
-    const r = await sharePng(viewing.png, 'bracelet.png', viewing.caption);
-    if (r === 'downloaded') toast('Picture saved');
+    const r = await sharePng(viewing.png, 'bracelet.png', `I made a ${viewing.caption.toLowerCase()} in Bead Box! Play it here:`, gameLink());
+    if (r !== 'shared') toast(r === 'saved+copied' ? 'Picture saved and game link copied' : 'Picture saved');
   });
   $('viewer-link').addEventListener('click', async () => {
     if (!viewing) return;

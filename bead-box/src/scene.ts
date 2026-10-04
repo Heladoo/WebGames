@@ -5,20 +5,23 @@ import { SLOTS, type Bead } from './content';
 import { beadInner } from './art/beads';
 import { placeArt as rawArt } from './art/places';
 import { tableArt } from './art/tables';
+import { wristArmSVG } from './art/wrist';
 import { canvasURL, svgToCanvas } from './raster';
 
+/** The top of the bracelet layer is empty sky above the ring; the screen leaves it out so the bracelet can be bigger. */
+export const CROP = 56;
 export const BW = 400; // bracelet layer size
-export const BH = 330;
+export const BH = 350;
 const CX = 200;
-const CY = 150;
-const RX = 126;
-const RY = 64;
+const CY = 166;
+const RX = 158;
+const RY = 84;
 
 /** Centre, size and tilt of each slot, filling left to right along the lower arc. */
 export function slotGeometry(): { x: number; y: number; size: number; tilt: number }[] {
   // equal spacing along the curve (not equal angles), so beads never bunch up where the ellipse bends
-  const from = 220;
-  const to = -40;
+  const from = 236;
+  const to = -56;
   const N = 400;
   const pts = Array.from({ length: N + 1 }, (_, i) => {
     const deg = from + ((to - from) * i) / N;
@@ -33,7 +36,7 @@ export function slotGeometry(): { x: number; y: number; size: number; tilt: numb
     while (i < N && len[i] < target) i++;
     const p = pts[i];
     const s = Math.sin((p.deg * Math.PI) / 180);
-    return { x: p.x, y: p.y, size: 40 + s * 3, tilt: (p.deg - 90) * -0.28 };
+    return { x: p.x, y: p.y, size: 54 + s * 4, tilt: (p.deg - 90) * -0.28 };
   });
 }
 
@@ -96,7 +99,7 @@ export function braceletInner(beads: (Bead | null)[], o: BraceletOpts = {}): str
 
 /** The bracelet layer on screen: the painted table picture (when ready) with the live beads on top. */
 export function braceletSVG(beads: (Bead | null)[], o: BraceletOpts = {}, tableUrl: string | null = null): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BW} ${BH}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Your bracelet">${tableUrl ? `<image href="${tableUrl}" x="0" y="0" width="${BW}" height="${BH}"/>` : ''}${braceletInner(beads, o)}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ${CROP} ${BW} ${BH - CROP}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Your bracelet">${tableUrl ? `<image href="${tableUrl}" x="0" y="0" width="${BW}" height="${BH}"/>` : ''}${braceletInner(beads, o)}</svg>`;
 }
 
 /** Just the beads, as a standalone svg, for drawing into the album picture. */
@@ -104,8 +107,6 @@ export function beadsSVG(beads: (Bead | null)[], scale = 2): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BW} ${BH}" width="${BW * scale}" height="${BH * scale}">${braceletInner(beads)}</svg>`;
 }
 
-/** Where the table layer starts in the album picture (it ends exactly at the bottom edge). */
-export const PHOTO_TABLE_Y = 370;
 export const PHOTO_W = 400;
 export const PHOTO_H = 700;
 
@@ -143,6 +144,21 @@ export function tablePicture(place: string, scale = 2): Promise<Picture> {
     p = (async () => {
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BW} ${BH}" width="${BW * scale}" height="${BH * scale}">${tableArt(place)}</svg>`;
       const canvas = await svgToCanvas(svg, BW * scale, BH * scale);
+      return { canvas, url: await canvasURL(canvas, 'image/png') };
+    })();
+    pictures.set(key, p);
+    p.catch(() => pictures.delete(key));
+  }
+  return p;
+}
+
+/** The forearm and hand (no bracelet) as a picture covering the whole album picture, for the finished bracelet photo. */
+export function wristPicture(scale = 2): Promise<Picture> {
+  const key = `wrist@${scale}`;
+  let p = pictures.get(key);
+  if (!p) {
+    p = (async () => {
+      const canvas = await svgToCanvas(wristArmSVG(scale), PHOTO_W * scale, PHOTO_H * scale);
       return { canvas, url: await canvasURL(canvas, 'image/png') };
     })();
     pictures.set(key, p);
