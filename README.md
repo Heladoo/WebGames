@@ -162,3 +162,34 @@ The two games share the free plan's monthly command allowance (500,000 commands)
 ### Deploy on Vercel
 
 Import `Heladoo/WebGames` as a second project and set **Root Directory** to `word-trail`. The framework is detected as Vite from `word-trail/vercel.json`.
+
+## 📿 Bead Box (`bead-box/`)
+
+A calm bracelet-making game for young children learning English (about 4–8). There is no timer, no rush and no way to fail. Everything is drawn in code as smooth SVG: painted scenery, glossy rounded beads and cream cards. The browser's built-in voice says every word.
+
+- **Make a bracelet:** pick a bead **shape** on the tabs, then a **color or design** in the grid. You hear the word ("blue", "star") and see it on the word card, then **tap the bracelet** (or the ✓ button) to place the bead. Tap an empty slot to fill it, or a filled slot to swap the bead. Twelve beads finish a bracelet.
+- **Places:** the map starts with **Hawaii Beach** and **The Woods**. Each finished bracelet opens the next place: **Night Ball**, **Big City**, **Snowy Mountain** and **Flower Garden**. Each place has its own scenery, table, beads and music, and every place can be played again. An unfinished bracelet is kept for when you come back.
+- **Album:** a finished bracelet is saved as a framed picture of the place, with a celebration and a new place unlocked. The album can share the picture, or a link that redraws the same bracelet in another browser (the link only carries bead and place ids, never text).
+- **Words:** about 40 words: ten colors, four designs (stripes, dots, gold, glitter), fifteen bead shapes, "bead", "bracelet" and the place names. The settings list how many have been learned.
+- **Music:** a quiet generated melody that changes with each place, with matching nature sounds, and it quietens when the voice speaks.
+- **Settings:** music, sounds, volume, voice (every English voice on the device) and speed. Progress is saved only in the browser. There are no accounts, ads or cookies.
+
+### Run locally
+
+```bash
+cd bead-box
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # static site in bead-box/dist
+npm test         # Playwright + Chromium
+```
+
+Debug pages: `?debug=beads` (every shape in every design), `?debug=places` (every scene), `?debug=rig` (slot geometry checks), `?debug=og` / `?debug=icon` (the art used for `public/` images), and `?debug=play&place=woods&beads=round:blue,leaf:green` to start straight in a workshop state.
+
+### Play statistics (anonymous, shares the other games' database)
+
+Same as the other games. Counters use the prefix `bb:` (Otter River `or:`, Word Trail `wt:`). In the **bead-box** Vercel project add `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `STATS_KEY`, then redeploy. Open `/stats.html` and enter the `STATS_KEY`.
+
+### Deploy on Vercel
+
+Import `Heladoo/WebGames` as another project and set **Root Directory** to `bead-box`. The framework is detected as Vite from `bead-box/vercel.json`.

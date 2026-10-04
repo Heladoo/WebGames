@@ -1,0 +1,14 @@
+{
+  "name": "Bead Box",
+  "short_name": "Bead Box",
+  "description": "A calm bracelet-making game that teaches English words.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#bfe6fb",
+  "theme_color": "#bfe6fb",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
