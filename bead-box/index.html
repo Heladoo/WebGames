@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <title>Bead Box: make bracelets and learn English words</title>
+    <meta name="description" content="A calm bracelet-making game for children learning English: pick a bead, choose a color, hear and see the word, then place it. Unlock new places and keep every bracelet in your album. Free, with no ads, no accounts and no cookies." />
+    <meta name="theme-color" content="#bfe6fb" />
+    <meta name="color-scheme" content="light" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="canonical" href="%SITE_URL%/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Bead Box" />
+    <meta property="og:title" content="Bead Box: make bracelets, learn English words" />
+    <meta property="og:description" content="Pick a bead, choose a color, hear the word and place it. A calm game with no rush and no way to lose." />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A bead bracelet on a wooden table at a sunny Hawaii beach" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="%SITE_URL%/og-image.png" />
+
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Bead Box" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "Bead Box",
+        "url": "%SITE_URL%/",
+        "image": "%SITE_URL%/og-image.png",
+        "description": "A calm bracelet-making game that teaches children basic English words: colors, shapes and places.",
+        "genre": ["Educational", "Creative"],
+        "gamePlatform": ["Web browser", "Mobile", "Tablet"],
+        "playMode": "SinglePlayer",
+        "applicationCategory": "Game",
+        "operatingSystem": "Any",
+        "isFamilyFriendly": true,
+        "typicalAgeRange": "4-8",
+        "inLanguage": "en",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
+  </head>
+  <body>
+    <noscript><p style="padding:16px;font-family:sans-serif">Bead Box is a browser game: please enable JavaScript to play.</p></noscript>
+    <div id="app">
+      <img id="bg" alt="" draggable="false" />
+      <div id="ambient" class="ambient" aria-hidden="true"></div>
+
+      <section id="title" class="screen center">
+        <div class="card title-card">
+          <div id="title-art" class="title-art" aria-hidden="true"></div>
+          <h1>Bead Box</h1>
+          <p class="subtitle">pick · listen · place</p>
+          <button id="btn-start" class="big-btn" aria-label="Play">Play</button>
+          <p class="note">Turn the sound on to hear the words.</p>
+        </div>
+      </section>
+
+      <section id="map" class="screen hidden" aria-label="Choose a place">
+        <header class="topbar">
+          <button id="map-settings" class="round-btn" aria-label="Settings"></button>
+          <div class="pill-card map-title"><b>Where shall we make a bracelet?</b></div>
+          <button id="map-album" class="round-btn album" aria-label="My album"></button>
+        </header>
+        <div id="map-grid" class="map-grid"></div>
+      </section>
+
+      <section id="workshop" class="screen hidden" aria-label="Make a bracelet">
+        <header class="topbar">
+          <button id="btn-back" class="round-btn" aria-label="Back to the map"></button>
+          <div id="place-pill" class="pill-card place-pill" aria-live="polite"></div>
+          <div class="side-btns">
+            <button id="btn-album" class="round-btn album" aria-label="My album"></button>
+            <button id="btn-sound" class="round-btn small" aria-label="Mute sound"></button>
+          </div>
+        </header>
+        <div id="stage" class="stage">
+          <div id="word-card" class="card word-card" aria-live="polite">
+            <span id="word-bead" class="word-bead"></span>
+            <button id="btn-say" class="say-btn" aria-label="Hear the word again"></button>
+            <span id="word-text" class="word-text"></span>
+          </div>
+          <div id="table" class="table"></div>
+        </div>
+        <div id="tray" class="card tray">
+          <div id="tabs" class="tabs" role="tablist" aria-label="Bead shapes"></div>
+          <div id="designs" class="designs" role="listbox" aria-label="Colors and designs"></div>
+          <button id="btn-place" class="check-btn" aria-label="Put the bead on the bracelet"></button>
+        </div>
+      </section>
+
+      <div id="finish" class="overlay hidden" role="dialog" aria-label="Bracelet finished">
+        <div class="card sheet finish-sheet">
+          <h2 id="finish-title">Your bracelet is ready!</h2>
+          <img id="finish-img" alt="Your finished bracelet" draggable="false" />
+          <p id="finish-new" class="unlock hidden"></p>
+          <div class="row">
+            <button id="finish-again" class="pill-btn">Make another</button>
+            <button id="finish-map" class="pill-btn light">Map</button>
+            <button id="finish-share" class="pill-btn light">Share</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="album" class="overlay hidden" role="dialog" aria-label="My album">
+        <div class="card sheet">
+          <header class="sheet-head"><h2>My album</h2><button class="close-btn" data-close aria-label="Close"></button></header>
+          <div id="album-body" class="album-grid"></div>
+        </div>
+      </div>
+
+      <div id="viewer" class="overlay hidden" role="dialog" aria-label="Bracelet picture">
+        <div class="card sheet viewer">
+          <button class="close-btn" data-close aria-label="Close"></button>
+          <img id="viewer-img" alt="A bracelet from the album" draggable="false" />
+          <div class="row">
+            <button id="viewer-share" class="pill-btn">Share picture</button>
+            <button id="viewer-link" class="pill-btn light">Share link</button>
+            <button id="viewer-delete" class="pill-btn light">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="gift" class="overlay hidden" role="dialog" aria-label="A bracelet someone made">
+        <div class="card sheet viewer">
+          <h2>Someone made you a bracelet!</h2>
+          <img id="gift-img" alt="A shared bracelet" draggable="false" />
+          <div class="row"><button id="gift-play" class="pill-btn">Make your own</button></div>
+        </div>
+      </div>
+
+      <div id="settings" class="overlay hidden" role="dialog" aria-label="Settings">
+        <div class="card sheet">
+          <header class="sheet-head"><h2>Settings</h2><button class="close-btn" data-close aria-label="Close"></button></header>
+          <div class="sheet-body">
+            <div class="setting"><span>Music</span><label class="switch"><input type="checkbox" id="opt-music" /><i></i></label></div>
+            <div class="setting"><span>Sounds</span><label class="switch"><input type="checkbox" id="opt-sound" /><i></i></label></div>
+            <div class="setting"><span>Volume</span><input type="range" id="opt-volume" min="0" max="100" step="5" aria-label="Volume" /></div>
+            <div class="setting"><span>Voice speed</span><input type="range" id="opt-rate" min="50" max="120" step="5" aria-label="Voice speed" /></div>
+            <div class="setting voices"><span>Voice</span><div id="opt-voice" class="voice-list" role="radiogroup" aria-label="Voice"></div></div>
+            <p id="voice-note" class="note hidden">No English voice was found on this device, so words will be shown and chimed but not spoken.</p>
+            <p id="progress" class="note"></p>
+            <div class="row"><button id="btn-reset" class="pill-btn danger">Start again</button></div>
+            <p class="note">Everything is saved only in this browser. There are no accounts, ads or cookies. Only anonymous play counts (number of plays and play time) are collected.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="toast" class="toast" role="status"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
