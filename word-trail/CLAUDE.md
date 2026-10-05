@@ -38,7 +38,7 @@ npx playwright test -g "fits inside its frame"    # one test, by name
   - **find** (`findWord.ts`): the word is shown big above with its picture, and the child picks the same word from 3 word cards (other first letters) or, later, 4 (same first letter or length, like RAIN for RAINBOW). A wrong card wobbles and says its own word; after quiet moments the word is said again and then the right card glows.
   - After any of them, the word is spelled aloud, and each letter lights up as it is said (the `speech.spell` callback).
 - **Applying the choice.** `apply` changes only the slot of the chosen item. The rules for what stays and what goes:
-  - **Friends:** at most 3; when a fourth joins, the oldest says "Bye bye" in a paper bubble (spoken too) and hops off (`scene.farewell`, pulled into view on narrow screens).
+  - **Friends:** at most 3; when a fourth joins, the oldest says "Bye bye" first (`scene.farewell`, spoken too) from its own spot while the others keep theirs, then hops off; only then does the new friend join, so nobody stands where it waves. The paper bubble, with the friend's picture, floats above everyone inside the view (on a phone the oldest friend is out of view).
   - **Hand-me-downs** (`gear.ts`): an item the hero swaps away goes to the newest animal friend (one drawn like a hero) with that spot free, and stays with it (`trip.gear`) until that friend leaves. Small friends (bee, bird, …) can't wear things.
   - **Carried things:** `carry` (a thing on the back: ball, star, book, drum, flag, bell, gift) and `air` (kite or balloon) are separate slots.
   - **Rides:** a `ride` lasts until the place changes.
@@ -81,6 +81,10 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 - **The signpost** is moved by JS at ground speed: 80 units/s, or 145 when riding.
 - **The view** is fitted per aspect ratio; portrait views zoom in and show more ground.
 - **Panels.** On wide screens (4:3 and wider) the choice panel sits at the left, clear of the top buttons. The learning panel stays wide and centred and may cover the hero: the owner prefers big trace letters to seeing the hero. On short landscape phones the learning panel is two columns. Slots, bubbles and the big word size themselves from the word length (`--n`) and the panel's width (container units), so a 7-letter word fits a 360-wide phone.
+
+**Words.** Every letter A–Z is in at least one word (tested). For J, Q, V, Y and Z the owner chose JELLYFISH, SQUIRREL, BUNNY, MONKEY and ZEBRA (friends) and VIOLIN and KEY (carried); words must be easy to recognise and not look like another word's picture, so **ask the owner to approve new words before drawing them** (VAN, PONY, JAR and QUAIL were rejected). Words of 8–9 letters appear once 30 words are learned (`maxLength`). A new word needs its picture, a rig case if a hero wears, carries or rides it, and passing art tests.
+
+**Logo.** `public/logo.webp` (640 px) and `logo-small.webp` (256 px) are the owner's logo with the backdrop cut out (transparent). It is the title-screen heading, sits in the top-left corner while playing (`#corner-logo`; the panels on wide screens leave room for it, tested), and is drawn top-left on postcards.
 
 **Card pictures** come from `content.ts` `picture(word)`. Item cards are framed by `ITEM_BOX` in `wearables.ts`.
 

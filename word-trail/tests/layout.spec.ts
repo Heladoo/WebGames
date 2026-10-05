@@ -38,6 +38,7 @@ async function measure(page: Page) {
       wordOverflow: word.scrollWidth - word.clientWidth,
       parts: [...document.querySelectorAll('.slot, .bubble, .trace-svg, .big-pic, .word-card')].map((e) => ({ cls: e.getAttribute('class'), ...box(e)! })),
       topbar: box(document.querySelector('#topbar')),
+      logo: box(document.querySelector('#corner-logo')),
       cardOverflow: Math.max(0, ...[...document.querySelectorAll<HTMLElement>('.word-card')].map((c) => c.scrollWidth - c.clientWidth)),
     };
   });
@@ -59,6 +60,7 @@ for (const [name, viewport] of Object.entries(SIZES)) {
         for (const p of m.parts) expect(inside(p, m.panel), `${what}: .${p.cls} must be inside the panel`).toBe(true);
         expect(m.panel.y + m.panel.h, `${what}: the panel must fit on screen`).toBeLessThanOrEqual(m.view.h + 1);
         expect(overlaps(m.panel, m.topbar!), `${what}: the panel must not cover the top buttons`).toBe(false);
+        expect(overlaps(m.panel, m.logo!), `${what}: the panel must not cover the game logo`).toBe(false);
         expect(m.cardOverflow, `${what}: every word must fit its card`).toBeLessThanOrEqual(1);
       }
     });
