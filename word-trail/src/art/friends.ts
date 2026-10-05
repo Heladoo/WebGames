@@ -1,4 +1,4 @@
-import { heroArt, HEROES, HeroId } from './characters';
+import { heroArt, HEROES, HeroId, type Look } from './characters';
 import { C, ell, eye, flat, line, piece, shade } from './paper';
 
 // Small friends in the paper style, facing right like the hero, drawn in a
@@ -78,12 +78,12 @@ export const SMALL_FRIENDS = Object.keys(SMALL);
 
 export const isFlying = (id: string) => !!SMALL[id]?.fly;
 
-/** A friend drawn in the 100×100 box. */
-export function friendArt(id: string): string {
+/** A friend drawn in the 100×100 box (animal friends can wear hand-me-downs). */
+export function friendArt(id: string, look?: Look): string {
   const s = SMALL[id];
   if (s) return `<g data-word="${id}" class="friend ${s.fly ? 'fly' : 'hop'}" filter="url(#pc)">${s.art}</g>`;
   if ((HEROES as string[]).includes(id))
-    return `<g data-word="${id}" class="friend hop"><g transform="translate(0 0) scale(0.5)" filter="url(#pc)">${heroArt(id as HeroId)}</g></g>`;
+    return `<g data-word="${id}" class="friend hop"><g transform="translate(0 0) scale(0.5)" filter="url(#pc)">${heroArt(id as HeroId, look)}</g></g>`;
   return '';
 }
 

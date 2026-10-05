@@ -36,14 +36,15 @@ async function measure(page: Page) {
       word: box(word)!,
       wordLines: word.getBoundingClientRect().height / parseFloat(getComputedStyle(word).fontSize),
       wordOverflow: word.scrollWidth - word.clientWidth,
-      parts: [...document.querySelectorAll('.slot, .bubble, .trace-svg, .big-pic')].map((e) => ({ cls: e.getAttribute('class'), ...box(e)! })),
+      parts: [...document.querySelectorAll('.slot, .bubble, .trace-svg, .big-pic, .word-card')].map((e) => ({ cls: e.getAttribute('class'), ...box(e)! })),
       topbar: box(document.querySelector('#topbar')),
+      cardOverflow: Math.max(0, ...[...document.querySelectorAll<HTMLElement>('.word-card')].map((c) => c.scrollWidth - c.clientWidth)),
     };
   });
 }
 
 for (const [name, viewport] of Object.entries(SIZES)) {
-  for (const mode of ['tap', 'trace'] as const) {
+  for (const mode of ['tap', 'trace', 'find'] as const) {
     test(`${name}: ${mode} panel fits ${words.join(', ')}`, async ({ page }) => {
       await page.setViewportSize(viewport);
       for (const word of words) {
@@ -58,6 +59,7 @@ for (const [name, viewport] of Object.entries(SIZES)) {
         for (const p of m.parts) expect(inside(p, m.panel), `${what}: .${p.cls} must be inside the panel`).toBe(true);
         expect(m.panel.y + m.panel.h, `${what}: the panel must fit on screen`).toBeLessThanOrEqual(m.view.h + 1);
         expect(overlaps(m.panel, m.topbar!), `${what}: the panel must not cover the top buttons`).toBe(false);
+        expect(m.cardOverflow, `${what}: every word must fit its card`).toBeLessThanOrEqual(1);
       }
     });
   }

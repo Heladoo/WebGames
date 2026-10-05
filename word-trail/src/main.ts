@@ -14,9 +14,11 @@ import { sfx } from './sfx';
 import { music } from './music';
 import { stats } from './stats';
 import { speech } from './speech';
-import { load, newTrip, save, SaveData, stopSaving } from './state';
+import { load, newTrip, save, SaveData, stopSaving, type Trip } from './state';
+import { takeItem } from './gear';
 import { tapWord } from './tapLetters';
 import { traceLetterPx, traceWord } from './trace';
+import { findWord } from './findWord';
 import { $, anyOverlayOpen, celebrate, flash, h, holdButton, ICONS, sleep, toast } from './ui';
 import { runDebug } from './debug';
 import { installDefs } from './art/paper';
@@ -262,7 +264,7 @@ function choose(d: Decision): Promise<string | null> {
 let cancelActivity: (() => void) | null = null;
 
 /** Builds the learning panel: picture, big word and the activity area. */
-function learnLayout(word: string, mode: 'tap' | 'trace') {
+function learnLayout(word: string, mode: Activity) {
   panel.className = 'panel learn';
   panel.innerHTML = '';
   panel.style.setProperty('--n', String(word.length));
@@ -278,22 +280,35 @@ function learnLayout(word: string, mode: 'tap' | 'trace') {
   return { pic, title, act };
 }
 
+type Activity = 'tap' | 'trace' | 'find';
 const tapLevel = (learnedCount: number) => (learnedCount < 3 ? 0 : learnedCount < 8 ? 1 : learnedCount < 16 ? 2 : 3);
+/** Find the word: three cards that look clearly different at first, then four that look alike. */
+const findLevel = (learnedCount: number) => (learnedCount < 8 ? 0 : learnedCount < 16 ? 1 : 2);
 
-/** ?debug=learn&word=rainbow&mode=tap|trace&level=0..3: the learning panel alone, for layout checks. */
+/** Find the word in the activity area; the big word above is shown in full. */
+function startFind(act: HTMLElement, title: HTMLElement, word: string, level: number) {
+  title.querySelectorAll('span').forEach((sp) => sp.classList.add('lit'));
+  const host = h('div', 'find-host');
+  act.appendChild(host);
+  return findWord(host, word, level, show);
+}
+
+/** ?debug=learn&word=rainbow&mode=tap|trace|find&level=0..3: the learning panel alone, for layout checks. */
 function debugLearn() {
   installDefs();
   scene.fit();
   scene.render(s.trip);
   const word = (params.get('word') ?? 'rainbow').toLowerCase().replace(/[^a-z]/g, '').slice(0, 10) || 'cat';
-  const mode = params.get('mode') === 'trace' ? 'trace' : 'tap';
+  const mode: Activity = params.get('mode') === 'trace' ? 'trace' : params.get('mode') === 'find' ? 'find' : 'tap';
+  const level = Math.min(3, Math.max(0, Number(params.get('level')) || 0));
   const { title, act } = learnLayout(word, mode);
   title.innerHTML = [...show(word)].map((c) => `<span>${c}</span>`).join('');
-  if (mode !== 'trace' || !fitTrace(act, word)) {
+  if (mode === 'find') startFind(act, title, word, level);
+  else if (mode !== 'trace' || !fitTrace(act, word)) {
     const slots = h('div', 'slots');
     const bubbles = h('div', 'bubbles');
     act.append(slots, bubbles);
-    tapWord(slots, bubbles, word, Math.min(3, Math.max(0, Number(params.get('level')) || 0)), s.settings.letterCase === 'upper');
+    tapWord(slots, bubbles, word, level, s.settings.letterCase === 'upper');
   }
   $('btn-book').innerHTML = ICONS.book;
   $('btn-camera').innerHTML = ICONS.camera;
@@ -322,7 +337,8 @@ function fitTrace(act: HTMLElement, word: string, onLetter?: (i: number) => void
 
 async function learn(word: string) {
   const learnedCount = Object.keys(s.learned).length;
-  const mode = s.settings.activity === 'mix' ? (s.rounds % 2 === 1 ? 'trace' : 'tap') : s.settings.activity;
+  // mixed: tap, trace and find take turns
+  const mode: Activity = s.settings.activity === 'mix' ? (['tap', 'trace', 'find'] as const)[s.rounds % 3] : s.settings.activity;
   const { pic, title, act } = learnLayout(word, mode);
   const traceTask = mode === 'trace' ? fitTrace(act, word, (i) => markLetter(i)) : null;
   cancelActivity = traceTask?.cancel ?? null;
@@ -350,6 +366,9 @@ async function learn(word: string) {
   if (traceTask) {
     speech.say('Trace the letters!', { queue: true });
     task = traceTask;
+  } else if (mode === 'find') {
+    speech.say('Find the word!', { queue: true });
+    task = startFind(act, title, word, findLevel(learnedCount));
   } else {
     speech.say('Tap the letters!', { queue: true });
     const slots = h('div', 'slots');
@@ -361,6 +380,7 @@ async function learn(word: string) {
   await task.done;
   cancelActivity = null;
   if (restart) return;
+  if (mode === 'find') [...word].forEach((_, i) => markLetter(i)); // the word is spelled out next
 
   s.learned[word] = (s.learned[word] ?? 0) + 1;
   s.rounds++;
@@ -383,10 +403,17 @@ async function learn(word: string) {
 
 function apply(word: string, cat: Category) {
   const t = s.trip;
+  const before: Trip = structuredClone(t);
   let fade = false;
+  let bye: string | null = null; // a friend who has to go home
+  let handedTo: string | null = null; // a friend who got the hero's old item
   switch (cat) {
     case 'hero': t.hero = word; break;
-    case 'wear': t.worn[WEAR_SLOT[word]] = word; break;
+    case 'wear':
+    case 'carry':
+      // the old item isn't lost: a friend who can wear it takes it
+      handedTo = takeItem(t, word).to;
+      break;
     case 'place':
       t.place = word;
       if (!s.places.includes(word)) s.places.push(word);
@@ -396,13 +423,13 @@ function apply(word: string, cat: Category) {
       break;
     case 'friend':
       t.friends.push(word);
-      if (t.friends.length > 3) t.friends.shift(); // at most three friends walk along
+      if (t.friends.length > 3) {
+        // at most three friends walk along: the one who came first says goodbye
+        bye = t.friends.shift()!;
+        delete t.gear[bye];
+      }
       break;
     case 'sky': t.sky = word; fade = true; break;
-    case 'carry':
-      if (AIR.includes(word)) t.air = word;
-      else t.carry = word;
-      break;
     case 'ride': t.ride = word; break;
   }
   if (fade) scene.crossfade(t);
@@ -410,6 +437,11 @@ function apply(word: string, cat: Category) {
   music.setScene(t.place, t.sky);
   scene.sparkle();
   sfx.chime(4);
+  if (handedTo) setTimeout(() => { scene.sparkle(handedTo!); sfx.chime(6); }, 500);
+  if (bye) {
+    scene.farewell(before, bye, `Bye bye, ${bye}!`);
+    speech.say(`Bye bye, ${bye}!`, { queue: true });
+  }
 }
 
 /** Badges are celebrated with pictures and confetti only (no speech). */

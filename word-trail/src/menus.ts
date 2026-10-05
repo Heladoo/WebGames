@@ -89,8 +89,9 @@ export function initMenus(s: SaveData, hooks: MenuHooks) {
   let onDelete: (() => void) | null = null;
   function openViewer(list: Photo[], i: number, allowDelete = true) {
     current = list[i];
-    ($('viewer-img') as HTMLImageElement).src = current.png;
-    $('viewer-cap').textContent = current.caption;
+    const img = $('viewer-img') as HTMLImageElement;
+    img.src = current.png;
+    img.alt = current.caption; // the caption is written on the picture itself
     $('btn-delete').classList.toggle('hidden', !allowDelete);
     onDelete = () => renderBook();
     openOverlay('viewer');
@@ -125,7 +126,7 @@ export function initMenus(s: SaveData, hooks: MenuHooks) {
     );
   };
   seg('opt-case', s.settings.letterCase, (v) => (s.settings.letterCase = v as 'upper' | 'lower'));
-  seg('opt-activity', s.settings.activity, (v) => (s.settings.activity = v as 'mix' | 'tap' | 'trace'));
+  seg('opt-activity', s.settings.activity, (v) => (s.settings.activity = v as 'mix' | 'tap' | 'trace' | 'find'));
 
   const rate = $<HTMLInputElement>('opt-rate');
   rate.value = String(Math.round(s.settings.rate * 100));
