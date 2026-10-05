@@ -42,8 +42,13 @@ test('the rules catch a hat floating above the head', () => {
 test('scenery tiles repeat without a seam', async () => {
   await page.goto('/?debug=tiles');
   await page.waitForFunction(() => (window as unknown as { __tiles?: unknown }).__tiles, null, { timeout: 30_000 });
-  const res = await page.evaluate(() => (window as unknown as { __tiles: { place: string; layer: string; diff: number }[] }).__tiles);
-  const bad = res.filter((r) => r.diff > 40).map((r) => `${r.place} ${r.layer}: ${r.diff} mismatched pixels at the seam`);
+  const res = await page.evaluate(() => (window as unknown as { __tiles: { place: string; layer: string; diff: number; seam: number; where: string }[] }).__tiles);
+  // diff: pixels that differ one tile apart (the render is now full size, so 160
+  // matches the old limit of 40 at half size). seam: pixels where neighbouring
+  // tiles disagree where they overlap, or a hairline at a tile edge while the
+  // scenery scrolls (the trail had one under the hero; scenery with real seams
+  // scored 20 to 1000). Up to 16 is smoothing along curved edges.
+  const bad = res.filter((r) => r.diff > 160 || r.seam > 16).map((r) => `${r.place} ${r.layer}: ${r.diff} pixels differ from the next tile, ${r.seam} seam pixels (x,y: ${r.where})`);
   expect(bad, bad.join('\n')).toEqual([]);
 });
 

@@ -1,6 +1,7 @@
 import { glyph } from './glyphs';
 import { speech } from './speech';
 import { sfx } from './sfx';
+import { anyOverlayOpen } from './ui';
 
 // Finger tracing: each letter of the word gets a dotted guide. The child
 // traces the glowing letter; when nearly all of every stroke is covered (and the finger lifts) the
@@ -15,7 +16,8 @@ const COLORS = ['#e3685b', '#3f8f8a', '#e8a93c', '#6c7fc4', '#d9788f', '#5f9e6e'
 
 interface Sample { x: number; y: number; hit: boolean }
 interface Stroke { el: SVGPathElement; pts: Sample[] }
-interface Letter { ch: string; g: SVGGElement; strokes: Stroke[]; done: boolean; x: number }
+// each letter has a pale shape under the child's ink and its dotted guide above it
+interface Letter { ch: string; gs: SVGGElement[]; strokes: Stroke[]; done: boolean; x: number }
 
 const el = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>, parent?: Element) => {
   const e = document.createElementNS(NS, tag);
@@ -23,6 +25,15 @@ const el = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, 
   parent?.appendChild(e);
   return e;
 };
+
+/** How tall (CSS px) a capital letter is drawn in a trace area that is already laid out. */
+export function traceLetterPx(host: HTMLElement): number {
+  const svg = host.querySelector('svg');
+  const vb = svg?.viewBox.baseVal;
+  if (!svg || !vb || !vb.width) return 0;
+  // the layout size, not the on-screen box, which the panel's entrance animation scales
+  return 100 * Math.min(svg.clientWidth / vb.width, svg.clientHeight / vb.height);
+}
 
 export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number) => void): { done: Promise<void>; cancel: () => void } {
   const letters: Letter[] = [];
@@ -41,13 +52,20 @@ export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number
   for (const [y, cls] of [[0, 'l-top'], [45, 'l-mid'], [100, 'l-base']] as const)
     if (y >= top) el('path', { d: `M-10 ${y} L${width + 10} ${y}`, class: cls }, lines);
 
+  // Layers: pale letter shapes, then the child's ink, then the dotted guides,
+  // hints and start dot, so scribbling over a letter never hides where to go.
+  const under = el('g', { class: 'trace-under' }, svg);
+  const ink = el('g', { class: 'ink' }, svg);
+  const over = el('g', { class: 'trace-over' }, svg);
   let x = 0;
   [...word].forEach((ch, i) => {
     const gl = glyph(ch);
-    const g = el('g', { class: 'trace-letter', transform: `translate(${x} 0)` }, svg);
+    const gu = el('g', { class: 'trace-letter', transform: `translate(${x} 0)` }, under);
+    const g = el('g', { class: 'trace-letter', transform: `translate(${x} 0)`, style: `--c:${COLORS[i % COLORS.length]}` }, over);
     const strokes: Stroke[] = gl.strokes.map((d) => {
-      el('path', { d, class: 'guide-bg' }, g);
-      const p = el('path', { d, class: 'guide', style: `--c:${COLORS[i % COLORS.length]}` }, g);
+      el('path', { d, class: 'guide-bg' }, gu);
+      el('path', { d, class: 'guide-halo' }, g);
+      const p = el('path', { d, class: 'guide' }, g);
       const len = p.getTotalLength();
       const pts: Sample[] = [];
       const n = Math.max(2, Math.ceil(len / STEP));
@@ -57,11 +75,10 @@ export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number
       }
       return { el: p, pts };
     });
-    letters.push({ ch, g, strokes, done: false, x });
+    letters.push({ ch, gs: [gu, g], strokes, done: false, x });
     x += gl.w + GAP;
   });
 
-  const ink = el('g', { class: 'ink' }, svg);
   const startDot = el('circle', { r: 9, class: 'start-dot' }, svg);
   const hintDot = el('circle', { r: 10, class: 'hint-dot' }, svg);
 
@@ -79,7 +96,7 @@ export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number
   const coverage = (s: Stroke) => s.pts.filter((p) => p.hit).length / s.pts.length;
 
   function focus() {
-    letters.forEach((l, i) => l.g.classList.toggle('current', i === cur));
+    letters.forEach((l, i) => l.gs.forEach((g) => g.classList.toggle('current', i === cur)));
     const s = nextStroke();
     if (s) {
       startDot.setAttribute('cx', String(s.pts[0].x));
@@ -123,8 +140,10 @@ export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number
   function finishLetter() {
     const l = letters[cur];
     l.done = true;
-    l.g.classList.add('done');
-    l.g.classList.remove('current');
+    l.gs.forEach((g) => {
+      g.classList.add('done');
+      g.classList.remove('current');
+    });
     ink.querySelectorAll('path').forEach((p) => p.classList.add('fade'));
     setTimeout(() => ink.querySelectorAll('path.fade').forEach((p) => p.remove()), 500);
     inkPath = null;
@@ -181,6 +200,8 @@ export function traceWord(host: HTMLElement, word: string, onLetter?: (i: number
   let hintAnim = 0;
   const timer = window.setInterval(() => {
     if (cancelled || cur >= letters.length) return;
+    // no hints while the sticker book or a menu is open, or the page is hidden
+    if (anyOverlayOpen() || document.hidden) { lastProgress = performance.now(); return; }
     if (performance.now() - lastProgress < 6000 || hintAnim) return;
     hints++;
     lastProgress = performance.now();

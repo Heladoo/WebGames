@@ -19,9 +19,9 @@ export const BADGES: Badge[] = [
   { id: 'words-5', label: '5 words', say: 'Wow! Five words!', icon: 'balloon' },
   { id: 'words-10', label: '10 words', say: 'Ten words! Amazing!', icon: 'crown', party: true },
   { id: 'words-25', label: '25 words', say: 'Twenty-five words! Super star!', icon: 'rainbow', party: true },
-  { id: 'words-50', label: '50 words', say: 'Fifty words! Hooray!', icon: 'cake', party: true },
+  { id: 'words-50', label: '50 words', say: 'Fifty words! Hooray!', icon: 'gift', party: true },
   { id: 'words-all', label: 'Every word', say: 'You found every word!', icon: 'sun', party: true },
-  { id: 'letters-10', label: '10 letters', say: 'Ten different letters!', icon: 'kite' },
+  { id: 'letters-10', label: '10 letters', say: 'Ten different letters!', icon: 'book' },
   { id: 'letters-20', label: '20 letters', say: 'Twenty different letters!', icon: 'ball' },
   { id: 'letters-26', label: 'A to Z', say: 'Every letter from A to Z! Wow!', icon: 'star', party: true },
   { id: 'places-4', label: '4 places', say: 'Four places visited!', icon: 'boat' },
@@ -58,7 +58,7 @@ const a = (w: string) => (['boots', 'glasses', 'shoes', 'socks'].includes(w) ? w
 export function caption(t: Trip): string {
   if (!t.hero) return 'Word Trail';
   const things = [...Object.values(t.worn), t.carry, t.air].filter((x): x is string => !!x).map(a);
-  const all = [...things, ...t.friends.map((f) => `a ${f}`)];
+  const all = [...things, ...t.friends.map(a)];
   let s = `The ${t.hero} ${t.place === 'sea' ? 'by the sea' : t.place === 'snow' ? 'in the snow' : t.place === 'sand' ? 'in the sand' : `in the ${t.place}`}`;
   if (all.length) s += ` with ${list(all)}`;
   return s;

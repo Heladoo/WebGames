@@ -1,6 +1,6 @@
 # CLAUDE.md (otter-river)
 
-Game-specific guidance for `otter-river/`. Monorepo-wide topics (Vercel deploy and headers, Upstash stats setup, photo-sharing pattern, Web Audio rules, pixel-art approach) are in the root `CLAUDE.md`; this file only covers what is particular to the otter game.
+Game-specific guidance for `otter-river/`. Monorepo-wide topics (Vercel deploy and headers, Upstash stats setup, photo-sharing pattern, Web Audio rules, the pixel-art canvas approach) are in the root `CLAUDE.md`; this file only covers what is particular to the otter game.
 
 ## Commands
 
@@ -16,7 +16,7 @@ npm run preview
 Handled in `src/main.ts`:
 - `?debug=wardrobe`: every item × pose on one sheet (`src/debug.ts`); check item anchoring after any art change.
 - `?debug=river`: exposes `window.game` for scripted checks (e.g. measuring otter/obstacle overlap).
-- `?debug=assets&kind=og|icon`: renders the social image / app icon from game art (results committed in `public/`).
+- `?debug=assets&kind=og|icon`: renders the social image / app icon from game art; screenshot it with Playwright and commit the PNGs in `public/`.
 - Scene helpers: `?time=0..1` (day phase), `?island=1`, `?dam=1`, `?animal=heron|deer|ducks|kingfisher|bunny|fish|dragonflies`, `?rain=1`, `?skip=<world px>`, `?shells=N`.
 
 ## The otter puppet
@@ -35,6 +35,9 @@ Handled in `src/main.ts`:
 
 ## Screen and layout
 
+Numbers in the DOM UI (the shell counter in `main.ts`, market prices in `shop.ts`) are painted with the pixel digit sprites (`src/numbers.ts`), not fonts, so they stay readable at pixel scale. The page loads its fonts from Google Fonts, which the CSP in `vercel.json` allows (`fonts.googleapis.com`, `fonts.gstatic.com`).
+
+
 `main.ts resize()` chooses the pixel scale: ~240 virtual px across in portrait, ~340 px tall on desktop, ~290 px tall on short (phone-landscape) screens. The market is a side dock on desktop and a bottom drawer in portrait, switched by a media query that is duplicated in `main.ts` as `mobileDock()` (keep the two in sync). `Game.otterY` eases toward 64% of the stage height, so the otter sits lower when the drawer is closed but never changes size.
 
 The market (`shop.ts`) never pauses the game: owned items toggle instantly, unowned ones preview as a ghost on the real otter, an unaffordable buy shakes the button and plays the deny sound, locked items show a lock badge, and a "NEW" banner (top of the stage, tap to jump to the item) fires once per item (persisted in `announced`).
@@ -45,4 +48,4 @@ The market (`shop.ts`) never pauses the game: owned items toggle instantly, unow
 
 ## Stats
 
-Uses the shared pattern with Redis key prefix `or:`. Client in `src/stats.ts`; function in `api/stats.js`; dashboard `public/stats.html` + `stats.js` (the file is static, not part of the Vite bundle).
+Uses the shared pattern with Redis key prefix `or:` (Word Trail uses `wt:` in the same database). Client in `src/stats.ts`; function in `api/stats.js`; dashboard `public/stats.html` + `stats.js` (the file is static, not part of the Vite bundle).

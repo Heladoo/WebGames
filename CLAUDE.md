@@ -9,32 +9,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Folder | What it is | Details |
 |---|---|---|
 | `otter-river/` | Calm pixel-art river game: an otter floats, collects shells, dresses up | `otter-river/CLAUDE.md` |
-| `word-trail/` | Paper-cut SVG English word adventure for ages 4-7 (speech, tap/trace letters). No `CLAUDE.md` yet; see the README section | root `README.md` |
+| `word-trail/` | Endless English word adventure for young children, in paper-cut SVG art: pick choices, then tap or trace the letters | `word-trail/CLAUDE.md` |
 | `bead-box/` | Calm SVG bracelet-making game that teaches English words; places unlock as bracelets are finished | `bead-box/CLAUDE.md` |
 
 ## Shared stack and workflow
 
-- Each game is Vite + TypeScript + Canvas 2D with no runtime dependencies and no game engine. `npm run build` (`tsc --noEmit && vite build`) is the check, and `tsc` runs `strict` with unused-variable errors. There is no linter. Otter River has no test runner; Word Trail and Bead Box have Playwright tests (`npm test`).
+- Each game is Vite + TypeScript, drawn with Canvas 2D (Otter River) or SVG (Word Trail, Bead Box), with no game engine and no runtime libraries (self-hosted font packages are fine). `npm run build` (`tsc --noEmit && vite build`) is the check; there is no linter, and `tsc` runs `strict` with unused-variable errors.
 - Work from inside the game's folder (`cd otter-river`): `npm install`, `npm run dev`, `npm run build`, `npm run preview`.
-- **No automated tests: verify in a real browser.** Playwright/Chromium is installed in the sandbox. Each game exposes `?debug=…` query parameters that force scenes, expose `window.game`, or render test sheets; use them for screenshots and scripted checks. Add the same kind of hooks to a new game rather than testing by hand.
+- **Verify in a real browser.** Playwright/Chromium is installed in the sandbox. Each game exposes `?debug=…` query parameters that force scenes, expose state, or render test sheets; use them for screenshots and scripted checks. Add the same kind of hooks to a new game rather than testing by hand. Automated tests differ per game: Word Trail and Bead Box have Playwright suites (`npm test`), Otter River has none; the game's own `CLAUDE.md` says which.
 - Keep each game's README in sync with player-facing behavior and setup steps.
-- Commits end with the attribution lines given by the session; develop on the branch named by the task and don't open a PR unless asked.
+- Commits end with the attribution lines given by the session; develop on the branch named by the task.
+- **Preview before any PR.** Push to the branch, then show the work (screenshots at phone and tablet sizes, or the Vercel branch preview). Open or merge a PR only when the owner asks. Postponed or rejected ideas go in `<game>/BACKLOG.md`.
 
 ## Deploying to Vercel
 
 - One Vercel project per game with **Root Directory = the game folder** (framework Vite). `<game>/vercel.json` carries the headers.
+- **Strict CSP and security headers** are in `vercel.json` (scripts `'self'` only, `connect-src 'self'`, no framing, `nosniff`, restrictive Permissions-Policy). Any new external host or inline script needs a header change, and the CSP will block it silently in production while working in dev, so test against a server that applies the same headers. Prefer self-hosted fonts (`font-src 'self'`, as in Word Trail and Bead Box); Otter River still loads Google Fonts and its CSP allows those two hosts.
 - **Vite inlines small assets as `data:` URIs** and the CSP refuses `data:` fonts; set `build.assetsInlineLimit: 0` when a game bundles fonts (bead-box does).
-- **Strict CSP and security headers** are in `vercel.json` (scripts `'self'` only, fonts from Google Fonts, `connect-src 'self'`, no framing, `nosniff`, restrictive Permissions-Policy). Any new external host or inline script needs a header change, and the CSP will block it silently in production while working in dev, so test against a server that applies the same headers.
-- **Build-time SEO:** a small Vite plugin in `vite.config.ts` replaces `%SITE_URL%` in `index.html` (from `SITE_URL`, else Vercel's production URL) and emits `robots.txt` and `sitemap.xml`. Pages need title, description, canonical, Open Graph and Twitter tags, JSON-LD, a manifest and icons; render the social image and icons from the game's own art (a `?debug=assets` page + Playwright screenshot) and commit them under `public/`.
+- **Build-time SEO:** a small Vite plugin in `vite.config.ts` replaces `%SITE_URL%` in `index.html` (from `SITE_URL`, else Vercel's production URL) and emits `robots.txt` and `sitemap.xml`. Pages need title, description, canonical, Open Graph and Twitter tags, JSON-LD, a manifest and icons; render the social image and icons from the game's own art (a debug page per game, named in its `CLAUDE.md`, plus a Playwright screenshot) and commit them under `public/`.
 - Games are for kids as well as adults: no accounts, no ads, no cookies, no personal data. Say so in the UI (pause menu) wherever anything is counted.
 
 ## Anonymous play statistics (reusable)
 
-Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstash Redis REST, with a private dashboard at `public/stats.html`. Copy all four into a new game and change the Redis key prefix (`or:` in otter-river, `wt:` in word-trail, `bb:` in bead-box) so games sharing one database don't collide.
+Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstash Redis REST, with a private dashboard at `public/stats.html`. Copy all four into a new game and change the Redis key prefix so games sharing one database don't collide. Prefixes in use: `or:` (Otter River), `wt:` (Word Trail) and `bb:` (Bead Box).
 
 - Counts plays, estimated unique players (HyperLogLog of a random id kept in localStorage) and play time (heartbeat every 2 minutes plus `sendBeacon` on page hide).
 - **Env vars** (set in Vercel → Settings → Environment Variables for all environments, then **redeploy**; variables only apply to new deployments): `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (or the Marketplace names `KV_REST_API_URL/TOKEN`) and `STATS_KEY` (dashboard password).
-- **Use a free Upstash account created on upstash.com**, not Vercel's Storage tab (its Redis offering was paid). The REST URL must be `https://<name>.upstash.io` with **no port** (6379 is the native protocol) and no quotes; the token is the REST token, not the read-only one. A wrong URL shows only as "Redis did not answer", because the function swallows the reason; check Vercel → Logs for `/api/stats` and Upstash's Data Browser for `or:` keys.
+- **Use a free Upstash account created on upstash.com**, not Vercel's Storage tab (its Redis offering was paid). The REST URL must be `https://<name>.upstash.io` with **no port** (6379 is the native protocol) and no quotes; the token is the REST token, not the read-only one. A wrong URL shows only as "Redis did not answer", because the function swallows the reason; check Vercel → Logs for `/api/stats` and Upstash's Data Browser for the game's keys.
 - Budget: the free plan is 500k commands per month. Keep a play at ~4 commands and heartbeats at ~2; don't add per-day `EXPIRE`s or per-frame reporting.
 - POSTs must stay silent no-ops when Redis isn't configured or fails, so stats can never break a game. Counting is off on localhost and `?debug` URLs.
 
@@ -59,7 +60,9 @@ Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstas
 - A pickup melody that only climbs gets stuck on the top note; walk the scale up and down and shift key each cycle.
 - Make sounds follow the world (biome, night, weather, nearby hazard) rather than looping one bed.
 
-## Pixel-art canvas approach (reusable)
+## Pixel-art canvas approach (reusable, canvas games)
+
+For canvas games such as Otter River. Word Trail draws code-built paper-cut SVG instead (see `word-trail/CLAUDE.md`), but the same principles apply: one palette, art as code, characters as rigs with named anchors, and generated sheets that check every item × pose.
 
 - Art is code: sprites are text grids baked once into offscreen canvases from a single shared palette (unknown letters throw at load), plus shaded-shape helpers. This keeps every asset visually consistent and editable without image tools.
 - Render to a low-resolution canvas and upscale by an **integer** factor with `image-rendering: pixelated`. Derive the scale from the window, not from a panel that opens and closes, so UI changes never resize the characters.
@@ -69,5 +72,5 @@ Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstas
 ## Persistence and UI conventions
 
 - Saves live in one versioned `localStorage` key; always wrap access in try/catch (private mode) and migrate old shapes on load. Large data (images) goes in IndexedDB.
-- UI around the canvas is plain DOM; numbers that must be readable at pixel scale use the pixel digit sprites instead of fonts.
+- UI around the game stage is plain DOM.
 - No fail state, gentle feedback, and every control has an accessible label and a keyboard/touch path.

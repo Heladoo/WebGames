@@ -135,6 +135,38 @@ export const ICONS = {
   }).join(' ') + ' Z', C.butter, { lift: 2 })}${piece(ell(0, 0, 30, 30), shade(C.butter, 0.35), { lift: 1 })}</svg>`,
 };
 
+/**
+ * A button that acts only when pressed and held (a ring fills up meanwhile),
+ * so little fingers don't trigger it by accident. A short tap calls onTap; a
+ * keyboard press acts at once.
+ */
+export function holdButton(el: HTMLElement, ms: number, onHold: () => void, onTap?: () => void) {
+  let timer = 0;
+  el.style.setProperty('--hold', `${ms}ms`);
+  const cancel = () => {
+    clearTimeout(timer);
+    el.classList.remove('holding');
+  };
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    el.classList.add('holding');
+    timer = window.setTimeout(() => {
+      el.classList.remove('holding');
+      onHold();
+    }, ms);
+  });
+  el.addEventListener('pointerup', () => {
+    if (el.classList.contains('holding')) onTap?.();
+    cancel();
+  });
+  el.addEventListener('pointerleave', cancel);
+  el.addEventListener('pointercancel', cancel);
+  el.addEventListener('contextmenu', (e) => e.preventDefault());
+  el.addEventListener('click', (e) => {
+    if (e.detail === 0) onHold(); // Enter or Space
+  });
+}
+
 /** Open an overlay; resolves when it is closed. */
 export function openOverlay(id: string): Promise<void> {
   const o = $(id);

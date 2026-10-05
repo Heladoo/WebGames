@@ -169,8 +169,30 @@ export class Scene {
 
   render(t: Trip) {
     this.trip = t;
+    const scroll = this.scroll();
     this.svg.innerHTML = sceneMarkup(t, this.view, this.heroX);
+    this.setScroll(this.svg, scroll);
     if (this.sign) this.svg.querySelector('.party')?.before(this.sign.el);
+  }
+
+  /**
+   * How far each scenery layer has scrolled (0–1 of a tile). New markup would
+   * restart the scroll at 0, so the hero would always stop in front of the same
+   * tree; the scroll carries over instead (and starts at a random spot).
+   */
+  private scroll(root: Element = this.svg): number[] {
+    return ['far', 'mid', 'ground'].map((k) => {
+      const a = root.querySelector(`.layer.${k}`)?.getAnimations()[0];
+      return a ? a.effect?.getComputedTiming().progress ?? 0 : Math.random();
+    });
+  }
+
+  private setScroll(root: Element, scroll: number[]) {
+    ['far', 'mid', 'ground'].forEach((k, i) => {
+      const a = root.querySelector(`.layer.${k}`)?.getAnimations()[0];
+      const d = Number(a?.effect?.getComputedTiming().duration) || 0;
+      if (a && d) a.currentTime = scroll[i] * d;
+    });
   }
 
   private sign: { el: SVGGElement; x: number } | null = null;
@@ -224,10 +246,12 @@ export class Scene {
 
   /** Fade from the old scenery into the new one (a new place or sky). */
   crossfade(t: Trip) {
+    const scroll = this.scroll();
     const old = this.svg.cloneNode(true) as SVGSVGElement;
     old.classList.add('scene-old');
     old.removeAttribute('id');
     this.svg.parentElement?.insertBefore(old, this.svg.nextSibling);
+    this.setScroll(old, scroll);
     this.render(t);
     requestAnimationFrame(() => requestAnimationFrame(() => old.classList.add('gone')));
     setTimeout(() => old.remove(), 1500);

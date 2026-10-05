@@ -199,21 +199,28 @@ class Music {
     const g = c.createGain();
     g.gain.value = 0;
     g.gain.setTargetAtTime(vol, c.currentTime, 1.5);
-    let lfo: OscillatorNode | null = null;
+    // Swells are scheduled envelope ramps between a quiet and a full level, never
+    // an oscillator on the gain (that adds a loud buzz; see the root CLAUDE.md).
+    let timer = 0;
     if (swell > 0) {
-      lfo = c.createOscillator();
-      lfo.frequency.value = swell;
-      const depth = c.createGain();
-      depth.gain.value = vol * 0.8;
-      lfo.connect(depth).connect(g.gain);
-      lfo.start();
+      const half = 0.5 / swell;
+      let up = false;
+      const next = () => {
+        const target = up ? vol : vol * 0.35;
+        up = !up;
+        g.gain.setTargetAtTime(target, c.currentTime, half / 3);
+        timer = window.setTimeout(next, half * (0.8 + Math.random() * 0.4) * 1000);
+      };
+      timer = window.setTimeout(next, 3000);
     }
     src.connect(f).connect(g).connect(this.nature);
     src.start();
     return {
       stop: () => {
+        clearTimeout(timer);
+        g.gain.cancelScheduledValues(c.currentTime);
         g.gain.setTargetAtTime(0, c.currentTime, 0.6);
-        setTimeout(() => { src.stop(); lfo?.stop(); }, 3000);
+        setTimeout(() => src.stop(), 3000);
       },
     };
   }

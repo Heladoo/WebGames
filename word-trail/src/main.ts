@@ -5,7 +5,7 @@ import '@fontsource/fredoka/600.css';
 import './styles.css';
 import { heroArt } from './art/characters';
 import { AIR, WEAR_SLOT } from './art/wearables';
-import { Category, CHEERS, picture, prompt } from './content';
+import { ALL_WORDS, Category, CHEERS, picture, prompt } from './content';
 import { Decision, nextDecision } from './director';
 import { initMenus } from './menus';
 import { addPhoto, checkBadges, makePostcard } from './rewards';
@@ -14,10 +14,10 @@ import { sfx } from './sfx';
 import { music } from './music';
 import { stats } from './stats';
 import { speech } from './speech';
-import { load, newTrip, save, SaveData } from './state';
+import { load, newTrip, save, SaveData, stopSaving } from './state';
 import { tapWord } from './tapLetters';
-import { traceWord } from './trace';
-import { $, anyOverlayOpen, celebrate, flash, h, ICONS, sleep, toast } from './ui';
+import { traceLetterPx, traceWord } from './trace';
+import { $, anyOverlayOpen, celebrate, flash, h, holdButton, ICONS, sleep, toast } from './ui';
 import { runDebug } from './debug';
 import { installDefs } from './art/paper';
 
@@ -34,7 +34,9 @@ const scene = new Scene($('scene') as unknown as SVGSVGElement);
 const panel = $('panel');
 const show = (w: string) => (s.settings.letterCase === 'upper' ? w.toUpperCase() : w);
 
-if (params.get('debug')) {
+if (params.get('debug') === 'learn') {
+  debugLearn();
+} else if (params.get('debug')) {
   runDebug(params.get('debug')!);
   installDefs();
 } else {
@@ -42,10 +44,13 @@ if (params.get('debug')) {
 }
 
 function applyDebugParams() {
+  // a pretend trip from the URL is played but never saved over the real one
+  if (['debug', 'words', 'hero', 'place', 'sky', 'ride', 'carry', 'wear', 'friends'].some((k) => params.has(k))) stopSaving();
   const words = Number(params.get('words'));
   if (words > 0) {
-    // pretend some words were already learned (to try later levels)
-    const all = ['dog', 'cat', 'hat', 'sun', 'bee', 'park', 'cap', 'bow', 'bug', 'egg', 'pie', 'car', 'bus', 'hen', 'fox', 'owl', 'pig', 'rain', 'moon', 'sand', 'sea', 'hill', 'pond', 'farm', 'snow', 'kite', 'ball', 'cake', 'boat', 'bike'];
+    // pretend some words were already learned (to try later levels), easiest first
+    const easy = ['dog', 'cat', 'hat', 'sun', 'bee', 'park', 'cap', 'bow', 'bug', 'car', 'bus', 'hen', 'fox', 'owl', 'pig', 'rain', 'moon', 'sand', 'sea', 'hill', 'pond', 'farm', 'snow', 'kite', 'ball', 'boat', 'bike'];
+    const all = [...easy, ...ALL_WORDS.filter((w) => !easy.includes(w))].filter((w) => ALL_WORDS.includes(w));
     for (const w of all.slice(0, words)) s.learned[w] = s.learned[w] ?? 1;
   }
   const hero = params.get('hero');
@@ -74,10 +79,18 @@ function boot() {
   $('btn-book').innerHTML = ICONS.book;
   $('btn-camera').innerHTML = ICONS.camera;
   $('btn-parents').insertAdjacentHTML('beforeend', ICONS.gear);
-  $('btn-new').innerHTML = ICONS.restart;
-  $('btn-new').addEventListener('click', async () => {
+  $('btn-new').insertAdjacentHTML('beforeend', ICONS.restart);
+  // starting over erases the dressed-up hero and friends, so it needs a hold
+  const btnNew = $('btn-new');
+  holdButton(btnNew, 1000, async () => {
     sfx.tap();
     if (await askNewTrip()) startNewTrip();
+  }, () => {
+    sfx.soft();
+    btnNew.classList.remove('wobble');
+    void btnNew.offsetWidth;
+    btnNew.classList.add('wobble');
+    toast('Hold to start a new trip');
   });
   $('btn-start').innerHTML = ICONS.play;
   $('title-art').innerHTML = `<svg viewBox="0 -20 200 220">${heroArt((s.trip.hero ?? 'dog') as 'dog', { worn: s.trip.hero ? s.trip.worn : { head: 'hat' } })}</svg>`;
@@ -109,9 +122,10 @@ function boot() {
     sfx.unlock();
     sfx.pop();
     const ctx = sfx.context;
-    if (ctx) {
+    const out = sfx.output;
+    if (ctx && out) {
       music.setScene(s.trip.place, s.trip.sky);
-      music.start(ctx, ctx.destination);
+      music.start(ctx, out);
     }
     $('title').classList.add('hidden');
     $('topbar').classList.remove('hidden');
@@ -247,12 +261,12 @@ function choose(d: Decision): Promise<string | null> {
 
 let cancelActivity: (() => void) | null = null;
 
-async function learn(word: string) {
-  const learnedCount = Object.keys(s.learned).length;
-  const mode = s.settings.activity === 'mix' ? (s.rounds % 2 === 1 && word.length <= 5 ? 'trace' : 'tap') : s.settings.activity;
+/** Builds the learning panel: picture, big word and the activity area. */
+function learnLayout(word: string, mode: 'tap' | 'trace') {
   panel.className = 'panel learn';
   panel.innerHTML = '';
-  const top = h('div', 'learn-top');
+  panel.style.setProperty('--n', String(word.length));
+  const top = h('div', `learn-top${word.length >= 6 ? ' long' : ''}`);
   const pic = h('button', 'big-pic', picture(word));
   pic.setAttribute('aria-label', `Hear ${word}`);
   const title = h('button', 'big-word', show(word));
@@ -261,6 +275,57 @@ async function learn(word: string) {
   const act = h('div', `activity ${mode}`);
   panel.append(top, act);
   panel.classList.remove('hidden');
+  return { pic, title, act };
+}
+
+const tapLevel = (learnedCount: number) => (learnedCount < 3 ? 0 : learnedCount < 8 ? 1 : learnedCount < 16 ? 2 : 3);
+
+/** ?debug=learn&word=rainbow&mode=tap|trace&level=0..3: the learning panel alone, for layout checks. */
+function debugLearn() {
+  installDefs();
+  scene.fit();
+  scene.render(s.trip);
+  const word = (params.get('word') ?? 'rainbow').toLowerCase().replace(/[^a-z]/g, '').slice(0, 10) || 'cat';
+  const mode = params.get('mode') === 'trace' ? 'trace' : 'tap';
+  const { title, act } = learnLayout(word, mode);
+  title.innerHTML = [...show(word)].map((c) => `<span>${c}</span>`).join('');
+  if (mode !== 'trace' || !fitTrace(act, word)) {
+    const slots = h('div', 'slots');
+    const bubbles = h('div', 'bubbles');
+    act.append(slots, bubbles);
+    tapWord(slots, bubbles, word, Math.min(3, Math.max(0, Number(params.get('level')) || 0)), s.settings.letterCase === 'upper');
+  }
+  $('btn-book').innerHTML = ICONS.book;
+  $('btn-camera').innerHTML = ICONS.camera;
+  $('btn-parents').insertAdjacentHTML('beforeend', ICONS.gear);
+  $('btn-new').insertAdjacentHTML('beforeend', ICONS.restart);
+  $('topbar').classList.remove('hidden');
+  $('title').classList.add('hidden');
+}
+
+/**
+ * Sets up tracing in the activity area, or returns null (and leaves the area
+ * ready for tapping) when the word is too long for the screen: on a phone a
+ * long word would make tiny trace letters.
+ */
+function fitTrace(act: HTMLElement, word: string, onLetter?: (i: number) => void) {
+  const host = h('div', 'trace-host');
+  act.appendChild(host);
+  const task = traceWord(host, show(word), onLetter);
+  // capitals under 75 CSS px are too fiddly for small fingers
+  if (traceLetterPx(host) >= 75) return task;
+  task.cancel();
+  host.remove();
+  act.className = 'activity tap';
+  return null;
+}
+
+async function learn(word: string) {
+  const learnedCount = Object.keys(s.learned).length;
+  const mode = s.settings.activity === 'mix' ? (s.rounds % 2 === 1 ? 'trace' : 'tap') : s.settings.activity;
+  const { pic, title, act } = learnLayout(word, mode);
+  const traceTask = mode === 'trace' ? fitTrace(act, word, (i) => markLetter(i)) : null;
+  cancelActivity = traceTask?.cancel ?? null;
   const sayWord = () => speech.say(word, { pitch: 1.15 });
   pic.addEventListener('click', sayWord);
   title.addEventListener('click', sayWord);
@@ -268,7 +333,10 @@ async function learn(word: string) {
   await sleep(200);
   await sayWord();
   await sleep(400);
-  if (restart) return;
+  if (restart) {
+    traceTask?.cancel();
+    return;
+  }
 
   const markLetter = (i: number) => {
     const ch = word[i];
@@ -279,18 +347,15 @@ async function learn(word: string) {
   title.innerHTML = [...show(word)].map((c) => `<span>${c}</span>`).join('');
 
   let task: { done: Promise<void>; cancel: () => void };
-  if (mode === 'trace') {
+  if (traceTask) {
     speech.say('Trace the letters!', { queue: true });
-    const host = h('div', 'trace-host');
-    act.appendChild(host);
-    task = traceWord(host, show(word), markLetter);
+    task = traceTask;
   } else {
     speech.say('Tap the letters!', { queue: true });
     const slots = h('div', 'slots');
     const bubbles = h('div', 'bubbles');
     act.append(slots, bubbles);
-    const level = learnedCount < 3 ? 0 : learnedCount < 8 ? 1 : learnedCount < 16 ? 2 : 3;
-    task = tapWord(slots, bubbles, word, level, s.settings.letterCase === 'upper', markLetter);
+    task = tapWord(slots, bubbles, word, tapLevel(learnedCount), s.settings.letterCase === 'upper', markLetter);
   }
   cancelActivity = task.cancel;
   await task.done;

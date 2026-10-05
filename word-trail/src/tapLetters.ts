@@ -1,5 +1,6 @@
 import { speech } from './speech';
 import { sfx } from './sfx';
+import { anyOverlayOpen } from './ui';
 
 // Letter tapping: the word's letters wait in slots and the next slot glows.
 // Tapping any bubble says its letter name; the right one flies into its slot.
@@ -103,6 +104,8 @@ export function tapWord(slotsHost: HTMLElement, bubblesHost: HTMLElement, word: 
   // after a quiet moment, gently say which letter comes next and make it glow
   const timer = window.setInterval(() => {
     if (cancelled || cur >= letters.length) return;
+    // no hints while the sticker book or a menu is open, or the page is hidden
+    if (anyOverlayOpen() || document.hidden) { idle = performance.now(); return; }
     if (performance.now() - idle > 7000) {
       idle = performance.now();
       speech.letter(letters[cur]);

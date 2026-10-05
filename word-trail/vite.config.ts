@@ -32,5 +32,6 @@ function seo(): Plugin {
 export default defineConfig({
   base: '/',
   plugins: [seo()],
-  build: { target: 'es2020' },
+  // never inline fonts as data: URIs: the strict Content-Security-Policy (font-src 'self') would refuse them
+  build: { target: 'es2020', assetsInlineLimit: 0 },
 });
