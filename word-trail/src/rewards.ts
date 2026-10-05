@@ -63,7 +63,7 @@ export function caption(t: Trip): string {
   const things = [...Object.values(t.worn), t.carry, t.air].filter((x): x is string => !!x).map(a);
   const all = [...things, ...t.friends.map(a)];
   let s = `The ${t.hero}`;
-  if (t.ride) s += ` ${['car', 'van'].includes(t.ride) ? 'in' : 'on'} ${a(t.ride)}`;
+  if (t.ride) s += ` ${t.ride === 'car' ? 'in' : 'on'} ${a(t.ride)}`;
   s += ` ${PLACE_TEXT[t.place] ?? `in the ${t.place}`}`;
   if (SKY_TEXT[t.sky]) s += ` ${SKY_TEXT[t.sky]}`;
   if (all.length) s += `, with ${list(all)}`;

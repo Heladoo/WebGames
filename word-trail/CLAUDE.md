@@ -82,7 +82,7 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 - **The view** is fitted per aspect ratio; portrait views zoom in and show more ground.
 - **Panels.** On wide screens (4:3 and wider) the choice panel sits at the left, clear of the top buttons. The learning panel stays wide and centred and may cover the hero: the owner prefers big trace letters to seeing the hero. On short landscape phones the learning panel is two columns. Slots, bubbles and the big word size themselves from the word length (`--n`) and the panel's width (container units), so a 7-letter word fits a 360-wide phone.
 
-**Words.** Every letter A–Z is in at least one word (tested): VAN and PONY (rides), JAR (carried), QUAIL and ZEBRA (friends) were added for J, Q, V, Y and Z. A new word needs its picture, a rig case if a hero wears, carries or rides it, and passing art tests.
+**Words.** Every letter A–Z is in at least one word (tested). For J, Q, V, Y and Z the owner chose JELLYFISH, SQUIRREL, BUNNY, MONKEY and ZEBRA (friends) and VIOLIN and KEY (carried); words must be easy to recognise and not look like another word's picture, so **ask the owner to approve new words before drawing them** (VAN, PONY, JAR and QUAIL were rejected). Words of 8–9 letters appear once 30 words are learned (`maxLength`). A new word needs its picture, a rig case if a hero wears, carries or rides it, and passing art tests.
 
 **Logo.** `public/logo.webp` (640 px) and `logo-small.webp` (256 px) are the owner's logo with the backdrop cut out (transparent). It is the title-screen heading, sits in the top-left corner while playing (`#corner-logo`; the panels on wide screens leave room for it, tested), and is drawn top-left on postcards.
 

@@ -161,7 +161,7 @@ export function wearFace(id: string, a: Anchors): string {
 /** Things that float on a string above the hero. */
 export const AIR = ['kite', 'balloon'];
 /** Things that rest on the hero's back. */
-export const PACK = ['ball', 'star', 'book', 'drum', 'flag', 'bell', 'gift', 'jar'];
+export const PACK = ['ball', 'star', 'book', 'drum', 'flag', 'bell', 'gift', 'violin', 'key'];
 export const CARRY = [...AIR, ...PACK];
 
 /** A carried thing: pack items rest on the back at `at`, kites and balloons fly from it. */
@@ -202,13 +202,21 @@ export function carryArt(id: string, at: Pt): string {
       return g(`${piece(`M${x} ${y - 30} C${x - 12} ${y - 30} ${x - 12} ${y - 14} ${x - 14} ${y - 6} L${x + 14} ${y - 6} C${x + 12} ${y - 14} ${x + 12} ${y - 30} ${x} ${y - 30} Z`, C.mustard, { lift: 1.4 })}
         ${piece(ell(x, y - 3, 3.6, 3.6), shade(C.mustard, -0.3), { lift: 0.4 })}${piece(ell(x, y - 32, 3, 3), shade(C.mustard, -0.2), { lift: 0.4 })}
         ${flat(ell(x - 5, y - 20, 1.8, 5), '#fff', 'opacity="0.45"')}`);
-    case 'jar':
-      return g(`${piece(`M${x - 12} ${y - 22} C${x - 15} ${y - 14} ${x - 15} ${y - 4} ${x - 11} ${y} L${x + 11} ${y} C${x + 15} ${y - 4} ${x + 15} ${y - 14} ${x + 12} ${y - 22} Z`, '#f2b53a', { lift: 1.4 })}
-        ${flat(ell(x - 6, y - 13, 2.2, 5), '#fff', 'opacity="0.55"')}
-        ${piece(`M${x - 9} ${y - 16} L${x + 9} ${y - 16} L${x + 9} ${y - 6} L${x - 9} ${y - 6} Z`, '#fff7e6', { lift: 0.3 })}
-        ${flat(ell(x, y - 11, 4, 2.6), C.coral)}
-        ${piece(`M${x - 13} ${y - 29} L${x + 13} ${y - 29} L${x + 13} ${y - 22} L${x - 13} ${y - 22} Z`, C.coral, { lift: 0.8 })}
-        ${line(`M${x - 13} ${y - 25.5} L${x + 13} ${y - 25.5}`, shade(C.coral, 0.3), 1.6)}`);
+    case 'violin':
+      // a little violin across the back, its neck pointing up and back (away from the head), with its bow
+      return g(`<g transform="translate(${2 * x} 0) scale(-1 1)"><g transform="rotate(-28 ${x} ${y - 12})">
+        ${piece(`M${x - 22} ${y - 12} C${x - 22} ${y - 22} ${x - 14} ${y - 24} ${x - 10} ${y - 19} C${x - 6} ${y - 16} ${x - 2} ${y - 16} ${x + 2} ${y - 19} C${x + 6} ${y - 24} ${x + 14} ${y - 22} ${x + 14} ${y - 12} C${x + 14} ${y - 2} ${x + 6} ${y} ${x + 2} ${y - 5} C${x - 2} ${y - 8} ${x - 6} ${y - 8} ${x - 10} ${y - 5} C${x - 14} ${y} ${x - 22} ${y - 2} ${x - 22} ${y - 12} Z`, '#c06a32', { lift: 1.4 })}
+        ${flat(`M${x - 4} ${y - 15} L${x + 4} ${y - 15} L${x + 4} ${y - 9} L${x - 4} ${y - 9} Z`, '#4a3f47')}
+        ${piece(`M${x + 13} ${y - 14} L${x + 34} ${y - 14} L${x + 34} ${y - 10} L${x + 13} ${y - 10} Z`, '#4a3f47', { lift: 0.5 })}
+        ${piece(ell(x + 37, y - 12, 3.6, 4), '#8a4a24', { lift: 0.5 })}
+        ${line(`M${x - 18} ${y - 13} L${x + 34} ${y - 13} M${x - 18} ${y - 11} L${x + 34} ${y - 11}`, '#f3e6c8', 0.8)}
+        ${flat(`M${x - 13} ${y - 17} c2 2 2 8 0 10 M${x + 5} ${y - 17} c-2 2 -2 8 0 10`, 'none', 'stroke="#5e3b26" stroke-width="1.4"')}</g>
+        ${line(`M${x - 24} ${y + 2} L${x + 20} ${y - 30}`, C.bark, 2.2)}${line(`M${x - 22} ${y + 4} L${x + 22} ${y - 28}`, '#f3e6c8', 1)}</g>`);
+    case 'key':
+      return g(`${line(ell(x - 13, y - 12, 8, 8), '#e2a92e', 5.5)}
+        ${piece(`M${x - 5} ${y - 15} L${x + 22} ${y - 15} L${x + 22} ${y - 9} L${x - 5} ${y - 9} Z`, '#e8b440', { lift: 1.2 })}
+        ${piece(`M${x + 12} ${y - 9} L${x + 12} ${y - 2} L${x + 16} ${y - 2} L${x + 16} ${y - 9} Z M${x + 18} ${y - 9} L${x + 18} ${y - 4} L${x + 22} ${y - 4} L${x + 22} ${y - 9} Z`, '#e8b440', { lift: 0.8 })}
+        ${flat(ell(x - 16, y - 16, 2, 2), '#fff6d8', 'opacity="0.8"')}`);
     case 'gift':
       return g(`${piece(`M${x - 14} ${y} L${x - 14} ${y - 20} L${x + 14} ${y - 20} L${x + 14} ${y} Z`, C.teal, { lift: 1.4 })}
         ${piece(`M${x - 16} ${y - 20} L${x - 16} ${y - 26} L${x + 16} ${y - 26} L${x + 16} ${y - 20} Z`, shade(C.teal, 0.2), { lift: 0.6 })}
@@ -251,7 +259,8 @@ export const ITEM_BOX: Record<string, string> = {
   flag: '68 18 40 56',
   bell: '82 34 36 40',
   gift: '80 30 40 44',
-  jar: '82 36 36 40',
+  violin: '56 26 74 58',
+  key: '74 34 54 48',
 };
 
 /** Card picture for a wearable or carried thing on its own. */

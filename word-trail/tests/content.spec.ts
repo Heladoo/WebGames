@@ -24,8 +24,8 @@ test('captions name the place and the sky', () => {
   const t = { ...newTrip(), hero: 'cat', place: 'sand', sky: 'rainbow' };
   expect(caption(t)).toBe('The cat in the desert under a rainbow');
   expect(caption({ ...t, place: 'snow', sky: 'moon', worn: { head: 'hat' } })).toBe('The cat in the snow under the moon, with a hat');
-  expect(caption({ ...t, ride: 'pony' })).toBe('The cat on a pony in the desert under a rainbow');
-  expect(caption({ ...t, ride: 'van' })).toBe('The cat in a van in the desert under a rainbow');
+  expect(caption({ ...t, ride: 'bike' })).toBe('The cat on a bike in the desert under a rainbow');
+  expect(caption({ ...t, ride: 'car' })).toBe('The cat in a car in the desert under a rainbow');
 });
 
 // Some letters were never practised (no word had J, Q, V, Y or Z).

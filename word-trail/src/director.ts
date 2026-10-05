@@ -26,7 +26,8 @@ const shuffle = <T>(a: T[]) => {
 export function maxLength(learned: number) {
   if (learned < 10) return 4;
   if (learned < 20) return 5;
-  return 7;
+  if (learned < 30) return 7;
+  return 9; // JELLYFISH, SQUIRREL
 }
 
 export function candidates(cat: Category, s: SaveData): string[] {
