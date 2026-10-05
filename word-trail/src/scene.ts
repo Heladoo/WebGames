@@ -1,5 +1,5 @@
 import { heroArt, HeroId } from './art/characters';
-import { friendArt, isFlying } from './art/friends';
+import { friendArt, friendIcon, isFlying } from './art/friends';
 import { cloudArt, GROUND, moonArt, PlaceId, placeLayers, rainbowArt, SkyId, skyBands, sunArt, TILE } from './art/places';
 import { RIDES } from './art/rides';
 import { C, line, piece } from './art/paper';
@@ -267,25 +267,30 @@ export class Scene {
   }
 
   /**
-   * A friend who has to leave (a fourth one joined) waves goodbye from where it
-   * walked, with a paper speech bubble, then walks off the way the trail came.
-   * Call after render(), with the trip as it was before the friend left.
+   * A friend who has to leave (a fourth one joined) waves goodbye from its own
+   * spot and walks off the way the trail came. Call it after rendering the trip
+   * without that friend and before the new one joins, so nobody stands in its
+   * place. The paper bubble floats above everyone (inside the view, with the
+   * friend's picture), so on a phone, where the last friend is out of view, the
+   * child still sees who says goodbye.
    */
   farewell(before: Trip, f: string, text: string) {
     const i = before.friends.length - 1 - before.friends.indexOf(f);
     const spot = friendSpot(f, i, this.heroX);
-    const w = 14 + text.length * 11;
-    // on a narrow screen the friend who walked last is out of view: it says
-    // goodbye from just inside the left edge, so the child sees it go
-    const x = Math.max(spot.x, this.view.x0 + w / 2 + 10);
-    const y = spot.y;
+    const w = 52 + text.length * 11;
+    const h = 44;
+    const v = this.view;
+    const bx = Math.max(v.x0 + 10, Math.min(spot.x - w / 2, v.x0 + v.w - w - 10));
+    const by = GROUND - 215;
+    // the tail points down towards the friend
+    const tx = Math.min(Math.max(spot.x, bx + 26), bx + w - 26);
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'farewell');
-    const bx = x - w / 2, by = y - 46;
-    g.innerHTML = `<g class="farewell-walk">${friendMarkup(before, f, i, this.heroX, 'leaver', x)}</g>
-      <g class="bye-bubble" style="transform-origin:${x}px ${by + 40}px">
-        ${piece(`M${bx} ${by} h${w} a12 12 0 0 1 12 12 v10 a12 12 0 0 1 -12 12 h${-w / 2 + 8} l-8 10 l-4 -10 h${-w / 2 + 4} a12 12 0 0 1 -12 -12 v-10 a12 12 0 0 1 12 -12 Z`, '#fffdf8', { lift: 1.4 })}
-        <text x="${x + 6}" y="${by + 23}" text-anchor="middle" class="bye-text">${text}</text></g>`;
+    g.innerHTML = `<g class="farewell-walk">${friendMarkup(before, f, i, this.heroX, 'leaver')}</g>
+      <g class="bye-bubble" style="transform-origin:${tx}px ${by + h + 10}px">
+        ${piece(`M${bx + 14} ${by} H${bx + w - 14} A14 14 0 0 1 ${bx + w} ${by + 14} V${by + h - 14} A14 14 0 0 1 ${bx + w - 14} ${by + h} H${tx + 8} L${tx} ${by + h + 12} L${tx - 8} ${by + h} H${bx + 14} A14 14 0 0 1 ${bx} ${by + h - 14} V${by + 14} A14 14 0 0 1 ${bx + 14} ${by} Z`, '#fffdf8', { lift: 1.4 })}
+        <g transform="translate(${bx + 6} ${by + 4}) scale(0.18)">${friendIcon(f)}</g>
+        <text x="${bx + 44 + (w - 44) / 2}" y="${by + h / 2 + 1}" text-anchor="middle" dominant-baseline="middle" class="bye-text">${text}</text></g>`;
     this.svg.querySelector('.party')?.appendChild(g);
     setTimeout(() => g.remove(), 3600);
   }

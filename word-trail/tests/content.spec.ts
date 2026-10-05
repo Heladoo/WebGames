@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { ALL_WORDS } from '../src/content';
+import { LOWER, UPPER } from '../src/glyphs';
 import { BADGES, caption } from '../src/rewards';
 import { newTrip } from '../src/state';
 
@@ -23,4 +24,15 @@ test('captions name the place and the sky', () => {
   const t = { ...newTrip(), hero: 'cat', place: 'sand', sky: 'rainbow' };
   expect(caption(t)).toBe('The cat in the desert under a rainbow');
   expect(caption({ ...t, place: 'snow', sky: 'moon', worn: { head: 'hat' } })).toBe('The cat in the snow under the moon, with a hat');
+  expect(caption({ ...t, ride: 'pony' })).toBe('The cat on a pony in the desert under a rainbow');
+  expect(caption({ ...t, ride: 'van' })).toBe('The cat in a van in the desert under a rainbow');
+});
+
+// Some letters were never practised (no word had J, Q, V, Y or Z).
+test('every letter from A to Z is in some word, and can be traced', () => {
+  for (const ch of 'abcdefghijklmnopqrstuvwxyz') {
+    expect(ALL_WORDS.some((w) => w.includes(ch)), `no word uses ${ch.toUpperCase()}`).toBe(true);
+    expect(UPPER[ch.toUpperCase()]?.strokes.length, `no trace strokes for ${ch.toUpperCase()}`).toBeGreaterThan(0);
+    expect(LOWER[ch]?.strokes.length, `no trace strokes for ${ch}`).toBeGreaterThan(0);
+  }
 });

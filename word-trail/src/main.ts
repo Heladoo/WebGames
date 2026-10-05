@@ -3,7 +3,6 @@ import '@fontsource/andika/700.css';
 import '@fontsource/fredoka/500.css';
 import '@fontsource/fredoka/600.css';
 import './styles.css';
-import { heroArt } from './art/characters';
 import { AIR, WEAR_SLOT } from './art/wearables';
 import { ALL_WORDS, Category, CHEERS, picture, prompt } from './content';
 import { Decision, nextDecision } from './director';
@@ -95,7 +94,6 @@ function boot() {
     toast('Hold to start a new trip');
   });
   $('btn-start').innerHTML = ICONS.play;
-  $('title-art').innerHTML = `<svg viewBox="0 -20 200 220">${heroArt((s.trip.hero ?? 'dog') as 'dog', { worn: s.trip.hero ? s.trip.worn : { head: 'hat' } })}</svg>`;
 
   scene.fit();
   scene.render(s.trip);
@@ -183,7 +181,7 @@ async function run() {
     if (restart || !word) continue;
     await learn(word);
     if (restart) continue;
-    apply(word, d.cat);
+    await apply(word, d.cat);
     s.decisions++;
     s.trip.lastCats = [...s.trip.lastCats, d.cat].slice(-6);
     save(s);
@@ -401,7 +399,7 @@ async function learn(word: string) {
 
 // ---------- 3. the choice joins the trip ----------
 
-function apply(word: string, cat: Category) {
+async function apply(word: string, cat: Category) {
   const t = s.trip;
   const before: Trip = structuredClone(t);
   let fade = false;
@@ -432,16 +430,21 @@ function apply(word: string, cat: Category) {
     case 'sky': t.sky = word; fade = true; break;
     case 'ride': t.ride = word; break;
   }
+  if (bye) {
+    // the friend who leaves says goodbye first, while the others keep their
+    // places; then the new friend joins (otherwise someone stands where it waves)
+    scene.render({ ...before, friends: before.friends.filter((f) => f !== bye) });
+    scene.farewell(before, bye, `Bye bye, ${bye}!`);
+    sfx.soft();
+    await speech.say(`Bye bye, ${bye}!`, { queue: true });
+    await sleep(1600);
+  }
   if (fade) scene.crossfade(t);
   else scene.render(t);
   music.setScene(t.place, t.sky);
-  scene.sparkle();
+  scene.sparkle(cat === 'friend' ? word : undefined);
   sfx.chime(4);
   if (handedTo) setTimeout(() => { scene.sparkle(handedTo!); sfx.chime(6); }, 500);
-  if (bye) {
-    scene.farewell(before, bye, `Bye bye, ${bye}!`);
-    speech.say(`Bye bye, ${bye}!`, { queue: true });
-  }
 }
 
 /** Badges are celebrated with pictures and confetti only (no speech). */

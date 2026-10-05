@@ -1,4 +1,4 @@
-import { C, ell, flat, line, piece, shade } from './paper';
+import { C, ell, eye, flat, line, piece, shade } from './paper';
 
 // Paper vehicles wrap around a seated hero drawn in the same 200×200 box
 // (the hero faces right). `under` is drawn before the hero, `over` after it,
@@ -65,6 +65,35 @@ export const RIDES: Record<string, Ride> = {
       ${line('M44 170 L84 134 L128 134 L162 170 M84 134 L100 170 L128 134 M100 170 L96 124 M150 116 L128 134', C.rose, 6)}
       ${line('M86 122 L108 122', C.ink, 7)}${line('M142 112 L160 108', C.ink, 6)}
       ${flat(ell(100, 170, 7, 7), '#4a3f47')}</g>`,
+  },
+  van: {
+    dy: -10,
+    under: piece('M14 70 C14 40 28 30 48 30 L136 30 C156 30 168 44 178 66 L188 92 L188 176 L14 176 Z', '#e6f1ef', { lift: 0 }),
+    over: `<g data-word="van" data-item="vehicle">
+      ${piece('M12 70 C12 38 28 26 50 26 L138 26 C160 26 172 40 182 64 L192 92 C196 100 196 168 190 176 C188 180 184 182 178 182 L22 182 C14 182 12 176 12 168 Z M48 44 C40 44 38 48 38 56 L38 118 C38 124 42 128 48 128 L134 128 C142 128 146 124 146 118 L146 56 C146 48 142 44 134 44 Z', C.teal, { lift: 2 })}
+      ${piece('M156 46 L168 46 C172 54 178 70 182 84 L156 84 Z', '#e9f5f4', { lift: 0.5 })}
+      ${piece('M12 146 L194 146 L194 154 L12 154 Z', C.butter, { lift: 0.4 })}
+      ${piece(ell(188, 164, 4.5, 4.5), C.white, { lift: 0.4 })}
+      ${wheel(48, 180, 15)}${wheel(158, 180, 15)}</g>`,
+  },
+  pony: {
+    dy: -24,
+    under: `<g data-word="pony">
+      ${piece('M34 128 C14 132 10 156 18 168 C24 160 26 150 36 144 Z', '#6b4a3a', { lift: 0.8 })}
+      ${piece('M50 150 L46 190 L58 190 L62 152 Z M76 154 L76 190 L88 190 L88 154 Z', shade('#c98f5f', -0.12), { lift: 1 })}
+      ${piece('M30 144 C30 124 52 116 100 116 C140 116 164 124 166 142 C168 160 146 168 100 168 C56 168 30 162 30 144 Z', '#c98f5f', { lift: 1.6 })}
+      ${flat('M44 190 L60 190 L60 194 L44 194 Z M74 190 L90 190 L90 194 L74 194 Z', '#4a3f47')}</g>`,
+    over: `<g data-word="pony" data-item="vehicle">
+      ${piece('M120 154 L118 190 L130 190 L134 154 Z M146 150 L148 190 L160 190 L158 148 Z', '#c98f5f', { lift: 1 })}
+      ${flat('M116 190 L132 190 L132 194 L116 194 Z M146 190 L162 190 L162 194 L146 194 Z', '#4a3f47')}
+      ${piece('M64 118 L132 118 C136 130 134 140 128 146 L70 146 C64 140 62 130 64 118 Z', C.rose, { lift: 1 })}
+      ${line('M66 140 L130 140', C.butter, 3)}
+      ${piece('M148 128 C150 112 158 100 170 94 L186 102 C178 110 172 124 168 140 Z', '#c98f5f', { lift: 1.4 })}
+      ${piece('M168 86 C178 80 194 84 198 96 C200 106 194 114 184 114 C176 114 168 108 166 100 C164 94 164 90 168 86 Z', '#c98f5f', { lift: 1.4 })}
+      ${piece(ell(193, 104, 6, 7), '#e3b48a', { lift: 0.5 })}${flat(ell(195, 101, 1.4, 1.4), '#4a3f47')}
+      ${piece('M170 86 L172 72 L180 84 Z', shade('#c98f5f', -0.15), { lift: 0.5 })}
+      ${piece('M166 86 C156 92 150 104 148 120 C154 112 156 104 162 100 C160 110 158 116 158 124 C164 112 166 100 170 94 Z', '#6b4a3a', { lift: 0.6 })}
+      ${eye(180, 94, 3.6, 'eye')}</g>`,
   },
 };
 

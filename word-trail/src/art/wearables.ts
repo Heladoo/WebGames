@@ -161,7 +161,7 @@ export function wearFace(id: string, a: Anchors): string {
 /** Things that float on a string above the hero. */
 export const AIR = ['kite', 'balloon'];
 /** Things that rest on the hero's back. */
-export const PACK = ['ball', 'star', 'book', 'drum', 'flag', 'bell', 'gift'];
+export const PACK = ['ball', 'star', 'book', 'drum', 'flag', 'bell', 'gift', 'jar'];
 export const CARRY = [...AIR, ...PACK];
 
 /** A carried thing: pack items rest on the back at `at`, kites and balloons fly from it. */
@@ -202,6 +202,13 @@ export function carryArt(id: string, at: Pt): string {
       return g(`${piece(`M${x} ${y - 30} C${x - 12} ${y - 30} ${x - 12} ${y - 14} ${x - 14} ${y - 6} L${x + 14} ${y - 6} C${x + 12} ${y - 14} ${x + 12} ${y - 30} ${x} ${y - 30} Z`, C.mustard, { lift: 1.4 })}
         ${piece(ell(x, y - 3, 3.6, 3.6), shade(C.mustard, -0.3), { lift: 0.4 })}${piece(ell(x, y - 32, 3, 3), shade(C.mustard, -0.2), { lift: 0.4 })}
         ${flat(ell(x - 5, y - 20, 1.8, 5), '#fff', 'opacity="0.45"')}`);
+    case 'jar':
+      return g(`${piece(`M${x - 12} ${y - 22} C${x - 15} ${y - 14} ${x - 15} ${y - 4} ${x - 11} ${y} L${x + 11} ${y} C${x + 15} ${y - 4} ${x + 15} ${y - 14} ${x + 12} ${y - 22} Z`, '#f2b53a', { lift: 1.4 })}
+        ${flat(ell(x - 6, y - 13, 2.2, 5), '#fff', 'opacity="0.55"')}
+        ${piece(`M${x - 9} ${y - 16} L${x + 9} ${y - 16} L${x + 9} ${y - 6} L${x - 9} ${y - 6} Z`, '#fff7e6', { lift: 0.3 })}
+        ${flat(ell(x, y - 11, 4, 2.6), C.coral)}
+        ${piece(`M${x - 13} ${y - 29} L${x + 13} ${y - 29} L${x + 13} ${y - 22} L${x - 13} ${y - 22} Z`, C.coral, { lift: 0.8 })}
+        ${line(`M${x - 13} ${y - 25.5} L${x + 13} ${y - 25.5}`, shade(C.coral, 0.3), 1.6)}`);
     case 'gift':
       return g(`${piece(`M${x - 14} ${y} L${x - 14} ${y - 20} L${x + 14} ${y - 20} L${x + 14} ${y} Z`, C.teal, { lift: 1.4 })}
         ${piece(`M${x - 16} ${y - 20} L${x - 16} ${y - 26} L${x + 16} ${y - 26} L${x + 16} ${y - 20} Z`, shade(C.teal, 0.2), { lift: 0.6 })}
@@ -244,6 +251,7 @@ export const ITEM_BOX: Record<string, string> = {
   flag: '68 18 40 56',
   bell: '82 34 36 40',
   gift: '80 30 40 44',
+  jar: '82 36 36 40',
 };
 
 /** Card picture for a wearable or carried thing on its own. */

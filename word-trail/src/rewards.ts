@@ -62,7 +62,9 @@ export function caption(t: Trip): string {
   if (!t.hero) return 'Word Trail';
   const things = [...Object.values(t.worn), t.carry, t.air].filter((x): x is string => !!x).map(a);
   const all = [...things, ...t.friends.map(a)];
-  let s = `The ${t.hero} ${PLACE_TEXT[t.place] ?? `in the ${t.place}`}`;
+  let s = `The ${t.hero}`;
+  if (t.ride) s += ` ${['car', 'van'].includes(t.ride) ? 'in' : 'on'} ${a(t.ride)}`;
+  s += ` ${PLACE_TEXT[t.place] ?? `in the ${t.place}`}`;
   if (SKY_TEXT[t.sky]) s += ` ${SKY_TEXT[t.sky]}`;
   if (all.length) s += `, with ${list(all)}`;
   return s;
@@ -137,13 +139,24 @@ export async function makePostcard(t: Trip): Promise<{ png: string; caption: str
   ctx.strokeStyle = '#3f3238';
   roundRect(ctx, pad, pad, W - pad * 2, IH - pad * 2, 28);
   ctx.stroke();
+  // the game logo in the top-left corner of the picture
+  const logo = await loadImage('/logo.webp').catch(() => null);
+  if (logo) {
+    const lw = 190;
+    ctx.save();
+    ctx.shadowColor = 'rgba(58, 42, 32, 0.25)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
+    ctx.drawImage(logo, pad + 16, pad + 12, lw, (lw * logo.height) / logo.width);
+    ctx.restore();
+  }
   // the browser only loads a font face once it is used: load the caption's bold face first
-  await Promise.all(['700 38px Andika', '400 26px Andika'].map((f) => document.fonts?.load(f).catch(() => null)));
+  await Promise.all(['700 38px Andika'].map((f) => document.fonts?.load(f).catch(() => null)));
   const text = caption(t);
   ctx.fillStyle = '#3f3238';
   ctx.textBaseline = 'middle';
   // one line if it fits, else two (shrinking a little if even two are too long)
-  const max = W - pad * 2 - 230;
+  const max = W - pad * 2 - 12;
   let size = 38;
   let lines: string[];
   for (;;) {
@@ -154,10 +167,6 @@ export async function makePostcard(t: Trip): Promise<{ png: string; caption: str
   }
   const mid = IH - pad + foot / 2 - 4;
   lines.forEach((l, i) => ctx.fillText(l, pad + 6, mid + (i - (lines.length - 1) / 2) * size * 1.08));
-  ctx.font = `400 26px ${FONT}`;
-  ctx.fillStyle = '#e3685b';
-  const brand = 'Word Trail';
-  ctx.fillText(brand, W - pad - ctx.measureText(brand).width, IH - pad + foot / 2 - 4);
   return { png: c.toDataURL('image/png'), caption: text };
 }
 
