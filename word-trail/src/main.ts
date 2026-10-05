@@ -16,7 +16,7 @@ import { stats } from './stats';
 import { speech } from './speech';
 import { load, newTrip, save, SaveData, stopSaving } from './state';
 import { tapWord } from './tapLetters';
-import { traceWord } from './trace';
+import { traceLetterPx, traceWord } from './trace';
 import { $, anyOverlayOpen, celebrate, flash, h, holdButton, ICONS, sleep, toast } from './ui';
 import { runDebug } from './debug';
 import { installDefs } from './art/paper';
@@ -266,9 +266,6 @@ function learnLayout(word: string, mode: 'tap' | 'trace') {
   panel.className = 'panel learn';
   panel.innerHTML = '';
   panel.style.setProperty('--n', String(word.length));
-  // on wide screens the panel stays left of the hero, so the hero stays in view
-  const hero = scene.svg.querySelector('.walker')?.getBoundingClientRect();
-  if (hero && hero.width) panel.style.setProperty('--free-w', `${Math.max(420, hero.left - 40)}px`);
   const top = h('div', `learn-top${word.length >= 6 ? ' long' : ''}`);
   const pic = h('button', 'big-pic', picture(word));
   pic.setAttribute('aria-label', `Hear ${word}`);
@@ -292,11 +289,7 @@ function debugLearn() {
   const mode = params.get('mode') === 'trace' ? 'trace' : 'tap';
   const { title, act } = learnLayout(word, mode);
   title.innerHTML = [...show(word)].map((c) => `<span>${c}</span>`).join('');
-  if (mode === 'trace') {
-    const host = h('div', 'trace-host');
-    act.appendChild(host);
-    traceWord(host, show(word));
-  } else {
+  if (mode !== 'trace' || !fitTrace(act, word)) {
     const slots = h('div', 'slots');
     const bubbles = h('div', 'bubbles');
     act.append(slots, bubbles);
@@ -310,10 +303,29 @@ function debugLearn() {
   $('title').classList.add('hidden');
 }
 
+/**
+ * Sets up tracing in the activity area, or returns null (and leaves the area
+ * ready for tapping) when the word is too long for the screen: on a phone a
+ * long word would make tiny trace letters.
+ */
+function fitTrace(act: HTMLElement, word: string, onLetter?: (i: number) => void) {
+  const host = h('div', 'trace-host');
+  act.appendChild(host);
+  const task = traceWord(host, show(word), onLetter);
+  // capitals under 75 CSS px are too fiddly for small fingers
+  if (traceLetterPx(host) >= 75) return task;
+  task.cancel();
+  host.remove();
+  act.className = 'activity tap';
+  return null;
+}
+
 async function learn(word: string) {
   const learnedCount = Object.keys(s.learned).length;
-  const mode = s.settings.activity === 'mix' ? (s.rounds % 2 === 1 && word.length <= 5 ? 'trace' : 'tap') : s.settings.activity;
+  const mode = s.settings.activity === 'mix' ? (s.rounds % 2 === 1 ? 'trace' : 'tap') : s.settings.activity;
   const { pic, title, act } = learnLayout(word, mode);
+  const traceTask = mode === 'trace' ? fitTrace(act, word, (i) => markLetter(i)) : null;
+  cancelActivity = traceTask?.cancel ?? null;
   const sayWord = () => speech.say(word, { pitch: 1.15 });
   pic.addEventListener('click', sayWord);
   title.addEventListener('click', sayWord);
@@ -321,7 +333,10 @@ async function learn(word: string) {
   await sleep(200);
   await sayWord();
   await sleep(400);
-  if (restart) return;
+  if (restart) {
+    traceTask?.cancel();
+    return;
+  }
 
   const markLetter = (i: number) => {
     const ch = word[i];
@@ -332,11 +347,9 @@ async function learn(word: string) {
   title.innerHTML = [...show(word)].map((c) => `<span>${c}</span>`).join('');
 
   let task: { done: Promise<void>; cancel: () => void };
-  if (mode === 'trace') {
+  if (traceTask) {
     speech.say('Trace the letters!', { queue: true });
-    const host = h('div', 'trace-host');
-    act.appendChild(host);
-    task = traceWord(host, show(word), markLetter);
+    task = traceTask;
   } else {
     speech.say('Tap the letters!', { queue: true });
     const slots = h('div', 'slots');

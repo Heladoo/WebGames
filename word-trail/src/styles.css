@@ -154,12 +154,11 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .panel.leaving { animation: panel-out 0.35s ease forwards; }
 @keyframes panel-in { from { opacity: 0; transform: translateX(var(--tx)) translateY(-20px) scale(0.96); } }
 @keyframes panel-out { to { opacity: 0; transform: translateX(var(--tx)) translateY(-16px) scale(0.96); } }
-/* Wide screens: the panels sit at the left, clear of the top buttons (about
-   270px wide) and, while learning, clear of the hero (main.ts sets --free-w). */
+/* Wide screens: the choice panel sits at the left, clear of the top buttons
+   (about 270px wide). The learning panel stays wide and may cover the hero:
+   big tracing letters matter more. */
 @media (min-aspect-ratio: 4/3) {
-  .panel.choose, .panel.learn { --tx: 0px; left: calc(16px + env(safe-area-inset-left, 0px)); }
-  .panel.choose { top: calc(16px + var(--safe-t)); width: min(900px, calc(100vw - 310px)); }
-  .panel.learn { top: calc(16px + var(--safe-t)); width: min(820px, var(--free-w, 56vw)); }
+  .panel.choose { --tx: 0px; left: calc(16px + env(safe-area-inset-left, 0px)); top: calc(16px + var(--safe-t)); width: min(900px, calc(100vw - 310px)); }
 }
 
 .prompt { display: flex; align-items: center; gap: 14px; justify-content: center; margin-bottom: clamp(8px, 2vw, 18px); }
@@ -271,10 +270,14 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .guide-bg { fill: none; stroke: #f4eee2; stroke-width: 22; stroke-linecap: round; stroke-linejoin: round; }
 .guide { fill: none; stroke: #c7b89f; stroke-width: 4; stroke-dasharray: 0.1 11; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.3s, stroke-width 0.3s; }
 .trace-letter.current .guide-bg { stroke: color-mix(in srgb, var(--c, #ffd45c) 20%, #fff); stroke: #fbefd2; }
-.trace-letter.current .guide { stroke: #a8957a; stroke-width: 5; }
+.trace-letter.current .guide { stroke: #8a765c; stroke-width: 5; }
 .trace-letter.done .guide { stroke: var(--c); stroke-width: 15; stroke-dasharray: none; }
 .trace-letter.done .guide-bg { stroke: transparent; }
-.ink-line { fill: none; stroke: var(--c); stroke-width: 13; stroke-linecap: round; stroke-linejoin: round; opacity: 0.75; transition: opacity 0.4s; }
+/* the dotted guide sits above the child's ink; a white halo keeps it readable on any colour */
+.guide-halo { fill: none; stroke: none; }
+.trace-letter.current .guide-halo { stroke: #fff; stroke-width: 10; stroke-dasharray: 0.1 11; stroke-linecap: round; stroke-linejoin: round; opacity: 0.95; }
+.trace-over { pointer-events: none; }
+.ink-line { fill: none; stroke: var(--c); stroke-width: 13; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6; transition: opacity 0.4s; }
 .ink-line.fade { opacity: 0; }
 .start-dot { fill: var(--green); stroke: #fff; stroke-width: 3; animation: dot 1.1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; pointer-events: none; }
 .hint-dot { display: none; fill: var(--yellow); stroke: #fff; stroke-width: 4; pointer-events: none; filter: drop-shadow(0 0 6px #ffd45c); }
@@ -485,7 +488,7 @@ body::after {
 .toast.clickable { padding: 12px 24px 12px 12px; border-radius: 26px; }
 
 /* ---------- learning on wide and short screens ---------- */
-/* landscape: the panel is narrower (it stays left of the hero), so sizes also follow the height */
+/* landscape: sizes also follow the height, so the letters fit on screen */
 @media (min-aspect-ratio: 4/3) {
   .panel.learn .learn-top { --pic-w: min(clamp(96px, 20vw, 170px), 17dvh); }
   .panel.learn .slots { --sw-max: min(clamp(52px, 11vw, 96px), 8dvh); }
@@ -495,6 +498,8 @@ body::after {
    left of the top buttons (this one may cover the hero: there is no room) */
 @media (min-aspect-ratio: 4/3) and (max-height: 500px) {
   .panel.learn {
+    --tx: 0px;
+    left: calc(16px + env(safe-area-inset-left, 0px));
     top: calc(8px + var(--safe-t));
     width: calc(100vw - 310px - env(safe-area-inset-left, 0px));
     max-height: calc(100dvh - 16px - var(--safe-t));

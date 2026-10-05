@@ -3,7 +3,8 @@ import { ALL_WORDS } from '../src/content';
 
 // The learning panel must fit every word on small phones and tablets: the big
 // word stays on one line, slots and bubbles stay inside the panel, and on wide
-// screens the panel leaves the hero and the top buttons uncovered.
+// screens the panel leaves the top buttons uncovered. (It may cover the hero:
+// the owner prefers big tracing letters.)
 // (A 7-letter RAINBOW once wrapped as "RAINB / OW" on a phone.)
 
 const SIZES = {
@@ -36,7 +37,6 @@ async function measure(page: Page) {
       wordLines: word.getBoundingClientRect().height / parseFloat(getComputedStyle(word).fontSize),
       wordOverflow: word.scrollWidth - word.clientWidth,
       parts: [...document.querySelectorAll('.slot, .bubble, .trace-svg, .big-pic')].map((e) => ({ cls: e.getAttribute('class'), ...box(e)! })),
-      hero: box(document.querySelector('#scene .walker')),
       topbar: box(document.querySelector('#topbar')),
     };
   });
@@ -57,11 +57,27 @@ for (const [name, viewport] of Object.entries(SIZES)) {
         expect(inside(m.word, m.panel), `${what}: the big word must be inside the panel`).toBe(true);
         for (const p of m.parts) expect(inside(p, m.panel), `${what}: .${p.cls} must be inside the panel`).toBe(true);
         expect(m.panel.y + m.panel.h, `${what}: the panel must fit on screen`).toBeLessThanOrEqual(m.view.h + 1);
-        if (viewport.width / viewport.height >= 4 / 3 && viewport.width >= 1000) {
-          expect(overlaps(m.panel, m.hero!), `${what}: the panel must not cover the hero`).toBe(false);
-          expect(overlaps(m.panel, m.topbar!), `${what}: the panel must not cover the top buttons`).toBe(false);
-        }
+        expect(overlaps(m.panel, m.topbar!), `${what}: the panel must not cover the top buttons`).toBe(false);
       }
     });
   }
 }
+
+// Tracing a long word on a phone made letters too small to trace: a word whose
+// trace letters would be under 75px tall is tapped instead.
+test('long words are tapped, not traced, when the trace letters would be too small', async ({ page }) => {
+  const cases: [string, { width: number; height: number }, string, 'trace' | 'tap'][] = [
+    ['phone', SIZES.phone, 'cat', 'trace'],
+    ['phone', SIZES.phone, 'frog', 'trace'],
+    ['phone', SIZES.phone, 'crown', 'tap'],
+    ['phone', SIZES.phone, 'rainbow', 'tap'],
+    ['tablet', SIZES.tablet, 'rainbow', 'trace'],
+  ];
+  for (const [name, viewport, word, want] of cases) {
+    await page.setViewportSize(viewport);
+    await page.goto(`/?debug=learn&word=${word}&mode=trace`);
+    await page.waitForSelector('.panel.learn .activity');
+    const got = await page.evaluate(() => (document.querySelector('.trace-svg') ? 'trace' : document.querySelector('.bubble') ? 'tap' : 'none'));
+    expect(got, `${name}, ${word.toUpperCase()}`).toBe(want);
+  }
+});

@@ -32,7 +32,8 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 - **Walking to the choice.** The hero walks until a signpost moving with the ground reaches it. The choice panel then pops out of the sign. A single tap on a card chooses it.
 - **Learning the word.** `learn` alternates two activities:
   - **tap** (`tapLetters.ts`): its level grows with the number of words learned.
-  - **trace** (`trace.ts`, strokes in `glyphs.ts`): a letter completes only when about 80% of each stroke is covered **and** the finger lifts.
+  - **trace** (`trace.ts`, strokes in `glyphs.ts`): a letter completes only when about 80% of each stroke is covered **and** the finger lifts. A word is traced only if its capitals would be at least 75 CSS px tall on this screen (`fitTrace`); otherwise it is tapped. On a phone that means words of up to 4 letters.
+  - The trace area is layered: pale letter shapes, then the child's ink, then the dotted guides (with a white halo on the current letter), the start dot and hint dot, so scribbling never hides the letter or the hints.
   - After either one, the word is spelled aloud, and each letter lights up as it is said (the `speech.spell` callback).
 - **Applying the choice.** `apply` changes only the slot of the chosen item. The rules for what stays and what goes:
   - **Friends:** at most 3; when a fourth joins, the oldest leaves.
@@ -75,8 +76,8 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 **The scene** (`scene.ts`) is rebuilt as markup by `render()`:
 - **Parallax** is CSS (`.walking .layer`). A redraw carries each layer's scroll over (`scroll`/`setScroll`), and the first one starts at a random spot, so the hero doesn't stop in front of the same tree every time.
 - **The signpost** is moved by JS at ground speed: 80 units/s, or 145 when riding.
-- **The view** is fitted per aspect ratio; portrait views zoom in and show more ground. The hero stands at 64% of the width.
-- **Panels.** On wide screens (4:3 and wider) the choice and learning panels sit at the left, clear of the top buttons, and the learning panel stays left of the hero (`--free-w`). On short landscape phones the learning panel is two columns. Slots, bubbles and the big word size themselves from the word length (`--n`) and the panel's width (container units), so a 7-letter word fits a 360-wide phone.
+- **The view** is fitted per aspect ratio; portrait views zoom in and show more ground.
+- **Panels.** On wide screens (4:3 and wider) the choice panel sits at the left, clear of the top buttons. The learning panel stays wide and centred and may cover the hero: the owner prefers big trace letters to seeing the hero. On short landscape phones the learning panel is two columns. Slots, bubbles and the big word size themselves from the word length (`--n`) and the panel's width (container units), so a 7-letter word fits a 360-wide phone.
 
 **Card pictures** come from `content.ts` `picture(word)`. Item cards are framed by `ITEM_BOX` in `wearables.ts`.
 
@@ -90,7 +91,7 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 - **Card frames** (`?debug=frames`): no card picture is cut off.
 - **Scenery** (`?debug=tiles`): every tile repeats, and where neighbouring tiles overlap they agree, including at a scroll position between two pixels (no seam or hairline).
 
-**`layout.spec.ts`** loads `?debug=learn` for the longest words on a small phone, a phone, a tablet and a landscape phone, in both activities, and checks that the big word stays on one line and everything fits in the panel and on screen; on tablets the panel must not cover the hero or the top buttons.
+**`layout.spec.ts`** loads `?debug=learn` for the longest words on a small phone, a phone, a tablet and a landscape phone, in both activities, and checks that the big word stays on one line and everything fits in the panel and on screen, clear of the top buttons. It also checks that long words on a phone are tapped instead of traced.
 
 **`content.spec.ts`**: every badge medal has a picture, and captions say "an owl".
 

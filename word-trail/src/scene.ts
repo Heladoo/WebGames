@@ -158,8 +158,7 @@ export class Scene {
     const h = w / aspect;
     // on tall screens, zoom in a little and show more ground under the trail
     const below = portrait ? Math.min(60, h * 0.07) : 0;
-    // wide screens keep the hero right of centre, so the learning panel fits beside it
-    const heroFrac = 0.64;
+    const heroFrac = aspect < 1 ? 0.64 : 0.58;
     const x0 = this.heroX - w * heroFrac;
     const v = { x0: Math.round(x0), y0: Math.round(H + below - h), w: Math.round(w), h: Math.round(h) };
     const changed = v.w !== this.view.w || v.h !== this.view.h;
