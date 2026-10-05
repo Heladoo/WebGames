@@ -10,12 +10,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |---|---|---|
 | `otter-river/` | Calm pixel-art river game: an otter floats, collects shells, dresses up | `otter-river/CLAUDE.md` |
 | `word-trail/` | Endless English word adventure for young children, in paper-cut SVG art: pick choices, then tap or trace the letters | `word-trail/CLAUDE.md` |
+| `bead-box/` | Calm SVG bracelet-making game that teaches English words; places unlock as bracelets are finished | `bead-box/CLAUDE.md` |
 
 ## Shared stack and workflow
 
-- Each game is Vite + TypeScript, drawn with Canvas 2D (Otter River) or SVG (Word Trail), with no game engine and no runtime libraries (self-hosted font packages are fine). `npm run build` (`tsc --noEmit && vite build`) is the check; there is no linter, and `tsc` runs `strict` with unused-variable errors.
+- Each game is Vite + TypeScript, drawn with Canvas 2D (Otter River) or SVG (Word Trail, Bead Box), with no game engine and no runtime libraries (self-hosted font packages are fine). `npm run build` (`tsc --noEmit && vite build`) is the check; there is no linter, and `tsc` runs `strict` with unused-variable errors.
 - Work from inside the game's folder (`cd otter-river`): `npm install`, `npm run dev`, `npm run build`, `npm run preview`.
-- **Verify in a real browser.** Playwright/Chromium is installed in the sandbox. Each game exposes `?debug=…` query parameters that force scenes, expose state, or render test sheets; use them for screenshots and scripted checks. Add the same kind of hooks to a new game rather than testing by hand. Automated tests differ per game: Word Trail has a Playwright suite (`npm test`), Otter River has none; the game's own `CLAUDE.md` says which.
+- **Verify in a real browser.** Playwright/Chromium is installed in the sandbox. Each game exposes `?debug=…` query parameters that force scenes, expose state, or render test sheets; use them for screenshots and scripted checks. Add the same kind of hooks to a new game rather than testing by hand. Automated tests differ per game: Word Trail and Bead Box have Playwright suites (`npm test`), Otter River has none; the game's own `CLAUDE.md` says which.
 - Keep each game's README in sync with player-facing behavior and setup steps.
 - Commits end with the attribution lines given by the session; develop on the branch named by the task.
 - **Preview before any PR.** Push to the branch, then show the work (screenshots at phone and tablet sizes, or the Vercel branch preview). Open or merge a PR only when the owner asks. Postponed or rejected ideas go in `<game>/BACKLOG.md`.
@@ -23,13 +24,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Deploying to Vercel
 
 - One Vercel project per game with **Root Directory = the game folder** (framework Vite). `<game>/vercel.json` carries the headers.
-- **Strict CSP and security headers** are in `vercel.json` (scripts `'self'` only, `connect-src 'self'`, no framing, `nosniff`, restrictive Permissions-Policy). Any new external host or inline script needs a header change, and the CSP will block it silently in production while working in dev, so test against a server that applies the same headers. Prefer self-hosted fonts (`font-src 'self'`, as in Word Trail); Otter River still loads Google Fonts and its CSP allows those two hosts.
+- **Strict CSP and security headers** are in `vercel.json` (scripts `'self'` only, `connect-src 'self'`, no framing, `nosniff`, restrictive Permissions-Policy). Any new external host or inline script needs a header change, and the CSP will block it silently in production while working in dev, so test against a server that applies the same headers. Prefer self-hosted fonts (`font-src 'self'`, as in Word Trail and Bead Box); Otter River still loads Google Fonts and its CSP allows those two hosts.
+- **Vite inlines small assets as `data:` URIs** and the CSP refuses `data:` fonts; set `build.assetsInlineLimit: 0` when a game bundles fonts (bead-box does).
 - **Build-time SEO:** a small Vite plugin in `vite.config.ts` replaces `%SITE_URL%` in `index.html` (from `SITE_URL`, else Vercel's production URL) and emits `robots.txt` and `sitemap.xml`. Pages need title, description, canonical, Open Graph and Twitter tags, JSON-LD, a manifest and icons; render the social image and icons from the game's own art (a debug page per game, named in its `CLAUDE.md`, plus a Playwright screenshot) and commit them under `public/`.
 - Games are for kids as well as adults: no accounts, no ads, no cookies, no personal data. Say so in the UI (pause menu) wherever anything is counted.
 
 ## Anonymous play statistics (reusable)
 
-Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstash Redis REST, with a private dashboard at `public/stats.html`. Copy all four into a new game and change the Redis key prefix so games sharing one database don't collide. Prefixes in use: `or:` (Otter River) and `wt:` (Word Trail).
+Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstash Redis REST, with a private dashboard at `public/stats.html`. Copy all four into a new game and change the Redis key prefix so games sharing one database don't collide. Prefixes in use: `or:` (Otter River), `wt:` (Word Trail) and `bb:` (Bead Box).
 
 - Counts plays, estimated unique players (HyperLogLog of a random id kept in localStorage) and play time (heartbeat every 2 minutes plus `sendBeacon` on page hide).
 - **Env vars** (set in Vercel → Settings → Environment Variables for all environments, then **redeploy**; variables only apply to new deployments): `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (or the Marketplace names `KV_REST_API_URL/TOKEN`) and `STATS_KEY` (dashboard password).
@@ -42,6 +44,12 @@ Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstas
 - A shareable moment is a framed PNG (stored in IndexedDB, not localStorage) plus a tiny **recipe** that lets another browser re-render the same deterministic scene; the link is `?photo=<base64url recipe>` and the landing page offers "start your own game". Share the image with `navigator.share({files})` and fall back to a download; share the link with `navigator.share({url})` and fall back to the clipboard.
 - This only works if the world is a pure function of a few numbers (seed/distance/time-of-day), so build scenery that way from the start.
 - **Links come from strangers.** The decoder must cap length, accept only base64url, clamp every number, whitelist item/animal ids, and never display text taken from the link (rebuild captions locally). Keep this if the recipe shape changes.
+
+## Painted SVG scenery (reusable, used by bead-box)
+
+- For rich, non-pixel art, write scenes as seeded SVG strings (helpers for clouds, foliage, flowers, light rays) and **paint each once** into a canvas, then show the cached picture as an `<img>` (`blob:` URL, which the CSP allows). Filters and hundreds of shapes cost nothing after that. Keep live things (the pieces the player moves) as light SVG without filters, and put ambient motion in a separate overlay that uses only CSS transforms and respects `prefers-reduced-motion`.
+- Pick the paint scale from the screen (device pixels needed to cover it, capped) so wide, high-DPI screens stay sharp.
+- Test it with numbers, not eyes alone: a debug page that reports paint time and a distinct-color count catches a blank or flat scene.
 
 ## Sound (reusable Web Audio tips)
 

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Bead Box Stats</title>
+    <link rel="icon" href="favicon.png" />
+    <style>
+      :root {
+        --ink: #3f3238; --muted: #8c7866; --cream: #fffdf8; --card: #fff; --grid: #e6dccb;
+        --plays: #3f8f8a; --time: #e3685b; --water: #f6efe3;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--water); color: var(--ink); font-family: ui-rounded, 'Segoe UI', system-ui, sans-serif; }
+      main { max-width: 920px; margin: 0 auto; padding: 16px; }
+      .panel { background: var(--cream); border-radius: 26px; box-shadow: 0 2px 0 rgba(58,42,32,.1), 0 8px 18px rgba(58,42,32,.14); padding: 18px; margin-bottom: 16px; }
+      h1 { margin: 0 0 4px; font-size: 32px; }
+      h2 { margin: 0 0 10px; font-size: 20px; }
+      p { margin: 0 0 10px; }
+      form { display: flex; gap: 8px; flex-wrap: wrap; }
+      input { font: inherit; padding: 8px 10px; border: 3px solid var(--ink); border-radius: 10px; min-width: 220px; flex: 1; }
+      button { font: inherit; font-weight: 700; padding: 8px 16px; background: var(--plays); color: #fff; border: 0; border-radius: 999px; box-shadow: 0 3px 0 #2e6f6b; cursor: pointer; }
+      .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+      .tile { background: var(--card); border-radius: 18px; box-shadow: 0 2px 0 var(--grid); padding: 12px 14px; }
+      .tile .label { font-size: 15px; color: var(--muted); }
+      .tile .value { font-size: 34px; font-weight: 700; line-height: 1.1; }
+      .tile .sub { font-size: 13px; color: var(--muted); }
+      .chart { position: relative; height: 180px; display: flex; align-items: flex-end; gap: 2px; padding: 0 0 22px 36px;
+        background: repeating-linear-gradient(to top, var(--grid) 0 1px, transparent 1px 40px) 36px 0 / calc(100% - 36px) calc(100% - 22px) no-repeat; }
+      .bar-wrap { flex: 1; height: 100%; display: flex; align-items: flex-end; cursor: default; }
+      .bar { width: 100%; min-height: 0; border-radius: 4px 4px 0 0; }
+      .bar-wrap:hover .bar { filter: brightness(1.12); }
+      .axis-y { position: absolute; left: 0; top: 0; bottom: 22px; display: flex; flex-direction: column; justify-content: space-between; font-size: 12px; color: var(--muted); }
+      .axis-x { position: absolute; left: 36px; right: 0; bottom: 0; display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+      .tip { position: fixed; pointer-events: none; background: var(--card); border: 2px solid var(--ink); border-radius: 8px; padding: 4px 8px; font-size: 14px; display: none; z-index: 5; }
+      details { margin-top: 10px; }
+      table { border-collapse: collapse; width: 100%; font-size: 14px; }
+      th, td { text-align: right; padding: 3px 8px; border-bottom: 1px solid var(--grid); }
+      th:first-child, td:first-child { text-align: left; }
+      .msg { color: var(--muted); }
+      ol { margin: 0 0 10px; padding-left: 22px; line-height: 1.5; }
+      code { background: #fff; border: 1px solid var(--grid); border-radius: 4px; padding: 0 4px; font-size: 13px; }
+      a { color: #2e6f6b; }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="panel">
+        <h1>Bead Box · Stats</h1>
+        <p class="msg">Anonymous counts only: plays, estimated unique players, and play time.</p>
+        <form id="login">
+          <input id="key" type="password" autocomplete="current-password" placeholder="Stats key (STATS_KEY)" required />
+          <button>Show stats</button>
+        </form>
+        <p id="status" class="msg"></p>
+      </section>
+      <section class="panel hidden" id="help">
+        <h2>Set up statistics (free, about 5 minutes)</h2>
+        <ol>
+          <li>Create a free account at <a href="https://console.upstash.com" target="_blank" rel="noopener">console.upstash.com</a>.</li>
+          <li>In the <b>Redis</b> tab choose <b>Create Database</b>, pick the <b>Free</b> plan and the region closest to your players.</li>
+          <li>Open the database and copy <code>UPSTASH_REDIS_REST_URL</code> and <code>UPSTASH_REDIS_REST_TOKEN</code> from its <b>REST API</b> section.</li>
+          <li>In Vercel: your project → <b>Settings → Environment Variables</b>. Add those two, plus <code>STATS_KEY</code> with a secret phrase of your choice (all environments).</li>
+          <li><b>Redeploy</b> (Deployments → ⋯ → Redeploy). Variables only apply to new deployments.</li>
+          <li>Come back to this page and enter your <code>STATS_KEY</code>.</li>
+        </ol>
+        <p class="msg">No accounts, cookies or personal data are involved: only counts of plays and minutes played.</p>
+      </section>
+      <div id="out" class="hidden">
+        <section class="panel tiles" id="tiles"></section>
+        <section class="panel"><h2>Plays per day (last 30 days)</h2><div class="chart" id="c-plays"></div></section>
+        <section class="panel">
+          <h2>Minutes played per day (last 30 days)</h2><div class="chart" id="c-time"></div>
+          <details><summary>Show as a table</summary><table id="table"></table></details>
+        </section>
+      </div>
+    </main>
+    <div class="tip" id="tip"></div>
+    <script src="stats.js"></script>
+  </body>
+</html>
