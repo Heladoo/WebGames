@@ -115,7 +115,7 @@ When adding or changing art, add the case to `rigCases()` if needed, then **fix 
 - `?debug=glyphs`: tracing strokes.
 - `?debug=rig`, `?debug=frames`, `?debug=tiles`: what the tests read.
 - `?debug=learn&word=rainbow&mode=tap|trace|find&level=0..3`: the learning panel alone, for layout checks (add `&hero=dog` to see the hero beside it).
-- `?debug=og`: the link-preview art; regenerate `public/og-image.png` by screenshotting it. (`?debug=icon` is the old drawn icon. The favicon and app icons now come from the owner's picture of the dog in a hat, resized onto its blue background; the maskable icon has a 10% blue margin so the hat and ears survive round masks.)
+- `?debug=og`: the link-preview art; regenerate `public/og-image.png` by screenshotting it. (`?debug=icon` is the old drawn icon. The favicon and app icons now come from the owner's picture of the dog in a hat: the favicon is a round crop with transparent corners; the apple-touch and app icons stay square (iOS turns transparent corners black); the maskable icon has a 5% blue margin so the hat survives round masks.)
 
 You can also set up a scene directly from the URL: `?hero=fox&wear=cap,glasses&friends=bee,cat&place=sea&sky=moon&ride=boat&carry=kite,star&words=12`. `words=N` pretends N words are learned, which unlocks harder levels and longer words. Any scene or debug parameter turns saving off (`stopSaving()`), so a pretend trip never replaces the real one.
 
