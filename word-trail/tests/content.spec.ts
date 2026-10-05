@@ -18,3 +18,9 @@ test('captions say "an" before a vowel, for things and friends', () => {
   expect(c).toContain('a bee');
   expect(c).not.toMatch(/\ba [aeiou]/);
 });
+
+test('captions name the place and the sky', () => {
+  const t = { ...newTrip(), hero: 'cat', place: 'sand', sky: 'rainbow' };
+  expect(caption(t)).toBe('The cat in the desert under a rainbow');
+  expect(caption({ ...t, place: 'snow', sky: 'moon', worn: { head: 'hat' } })).toBe('The cat in the snow under the moon, with a hat');
+});

@@ -24,19 +24,22 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 
 - **Preview first.** Show the work before opening a PR: screenshots (phone and tablet sizes), or the Vercel branch preview at `https://word-trail-git-<branch>-heladooo.vercel.app`. The owner reviews on a phone. Open and merge a PR only when asked.
 - Ideas that were postponed or rejected go in `BACKLOG.md`. The favicon redesign is on hold there.
-- The owner wants few spoken lines. Words, letters and the question for each choice are spoken. Achievements, remarks about a choice, goodbyes to friends and photo remarks are **not** spoken: those moments get pictures, sound and confetti only.
+- The owner wants few spoken lines. Words, letters, the question for each choice and "Bye bye, cat!" when a friend leaves are spoken. Achievements, remarks about a choice and photo remarks are **not** spoken: those moments get pictures, sound and confetti only.
+- Children feel bad losing things, so nothing just vanishes: a friend who leaves waves goodbye, and an item the hero swaps away goes to a friend.
 
 ## Game loop (`src/main.ts`, `run()`)
 
 `nextDecision` → `scene.walkToSign` → `choose` → `learn` → `apply` → badges, then repeat.
 - **Walking to the choice.** The hero walks until a signpost moving with the ground reaches it. The choice panel then pops out of the sign. A single tap on a card chooses it.
-- **Learning the word.** `learn` alternates two activities:
+- **Learning the word.** `learn` takes turns between three activities (the grown-ups menu can pick one):
   - **tap** (`tapLetters.ts`): its level grows with the number of words learned.
   - **trace** (`trace.ts`, strokes in `glyphs.ts`): a letter completes only when about 80% of each stroke is covered **and** the finger lifts. A word is traced only if its capitals would be at least 75 CSS px tall on this screen (`fitTrace`); otherwise it is tapped. On a phone that means words of up to 4 letters.
   - The trace area is layered: pale letter shapes, then the child's ink, then the dotted guides (with a white halo on the current letter), the start dot and hint dot, so scribbling never hides the letter or the hints.
-  - After either one, the word is spelled aloud, and each letter lights up as it is said (the `speech.spell` callback).
+  - **find** (`findWord.ts`): the word is shown big above with its picture, and the child picks the same word from 3 word cards (other first letters) or, later, 4 (same first letter or length, like RAIN for RAINBOW). A wrong card wobbles and says its own word; after quiet moments the word is said again and then the right card glows.
+  - After any of them, the word is spelled aloud, and each letter lights up as it is said (the `speech.spell` callback).
 - **Applying the choice.** `apply` changes only the slot of the chosen item. The rules for what stays and what goes:
-  - **Friends:** at most 3; when a fourth joins, the oldest leaves.
+  - **Friends:** at most 3; when a fourth joins, the oldest says "Bye bye" in a paper bubble (spoken too) and hops off (`scene.farewell`, pulled into view on narrow screens).
+  - **Hand-me-downs** (`gear.ts`): an item the hero swaps away goes to the newest animal friend (one drawn like a hero) with that spot free, and stays with it (`trip.gear`) until that friend leaves. Small friends (bee, bird, …) can't wear things.
   - **Carried things:** `carry` (a thing on the back: ball, star, book, drum, flag, bell, gift) and `air` (kite or balloon) are separate slots.
   - **Rides:** a `ride` lasts until the place changes.
 - **Choice variety** (`director.ts`).
@@ -93,7 +96,9 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 
 **`layout.spec.ts`** loads `?debug=learn` for the longest words on a small phone, a phone, a tablet and a landscape phone, in both activities, and checks that the big word stays on one line and everything fits in the panel and on screen, clear of the top buttons. It also checks that long words on a phone are tapped instead of traced.
 
-**`content.spec.ts`**: every badge medal has a picture, and captions say "an owl".
+**`content.spec.ts`**: every badge medal has a picture, captions say "an owl" and name the place and the sky ("in the desert under a rainbow").
+
+**`gear.spec.ts`**: hand-me-downs go to the right friend (or nobody), and find-the-word options are right for each level.
 
 **`director.spec.ts`** simulates 360 choices and checks that categories stay even, never repeat twice in a row, include a friend question regularly, and offer the boat only at sea.
 
@@ -105,7 +110,7 @@ When adding or changing art, add the case to `rigCases()` if needed, then **fix 
 - `?debug=wardrobe`: every hero with every item and ride.
 - `?debug=glyphs`: tracing strokes.
 - `?debug=rig`, `?debug=frames`, `?debug=tiles`: what the tests read.
-- `?debug=learn&word=rainbow&mode=tap|trace&level=0..3`: the learning panel alone, for layout checks (add `&hero=dog` to see the hero beside it).
+- `?debug=learn&word=rainbow&mode=tap|trace|find&level=0..3`: the learning panel alone, for layout checks (add `&hero=dog` to see the hero beside it).
 - `?debug=icon` and `?debug=og`: art for `public/` icons and the link preview; regenerate the PNGs by screenshotting these pages.
 
 You can also set up a scene directly from the URL: `?hero=fox&wear=cap,glasses&friends=bee,cat&place=sea&sky=moon&ride=boat&carry=kite,star&words=12`. `words=N` pretends N words are learned, which unlocks harder levels and longer words. Any scene or debug parameter turns saving off (`stopSaving()`), so a pretend trip never replaces the real one.

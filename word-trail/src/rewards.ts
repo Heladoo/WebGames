@@ -54,14 +54,32 @@ export function checkBadges(s: SaveData): Badge[] {
 const list = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 const a = (w: string) => (['boots', 'glasses', 'shoes', 'socks'].includes(w) ? w : `${/^[aeiou]/.test(w) ? 'an' : 'a'} ${w}`);
 
-/** "The dog in the snow with a hat and a bee" */
+const PLACE_TEXT: Record<string, string> = { sea: 'by the sea', snow: 'in the snow', sand: 'in the desert', hill: 'on the hill', farm: 'on the farm' };
+const SKY_TEXT: Record<string, string> = { sun: 'on a sunny day', cloud: 'on a cloudy day', rain: 'in the rain', rainbow: 'under a rainbow', moon: 'under the moon' };
+
+/** "The dog in the desert under a rainbow, with a hat and a bee" */
 export function caption(t: Trip): string {
   if (!t.hero) return 'Word Trail';
   const things = [...Object.values(t.worn), t.carry, t.air].filter((x): x is string => !!x).map(a);
   const all = [...things, ...t.friends.map(a)];
-  let s = `The ${t.hero} ${t.place === 'sea' ? 'by the sea' : t.place === 'snow' ? 'in the snow' : t.place === 'sand' ? 'in the sand' : `in the ${t.place}`}`;
-  if (all.length) s += ` with ${list(all)}`;
+  let s = `The ${t.hero} ${PLACE_TEXT[t.place] ?? `in the ${t.place}`}`;
+  if (SKY_TEXT[t.sky]) s += ` ${SKY_TEXT[t.sky]}`;
+  if (all.length) s += `, with ${list(all)}`;
   return s;
+}
+
+/** Splits a caption into one or two lines that fit `max` pixels at the current font. */
+function fitLines(ctx: CanvasRenderingContext2D, text: string, max: number): string[] {
+  if (ctx.measureText(text).width <= max) return [text];
+  const words = text.split(' ');
+  let best = [text];
+  let worst = Infinity;
+  for (let i = 1; i < words.length; i++) {
+    const a = words.slice(0, i).join(' '), b = words.slice(i).join(' ');
+    const w = Math.max(ctx.measureText(a).width, ctx.measureText(b).width);
+    if (w < worst) { worst = w; best = [a, b]; }
+  }
+  return best;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -119,15 +137,23 @@ export async function makePostcard(t: Trip): Promise<{ png: string; caption: str
   ctx.strokeStyle = '#3f3238';
   roundRect(ctx, pad, pad, W - pad * 2, IH - pad * 2, 28);
   ctx.stroke();
+  // the browser only loads a font face once it is used: load the caption's bold face first
+  await Promise.all(['700 38px Andika', '400 26px Andika'].map((f) => document.fonts?.load(f).catch(() => null)));
   const text = caption(t);
   ctx.fillStyle = '#3f3238';
   ctx.textBaseline = 'middle';
+  // one line if it fits, else two (shrinking a little if even two are too long)
+  const max = W - pad * 2 - 230;
   let size = 38;
-  do {
+  let lines: string[];
+  for (;;) {
     ctx.font = `700 ${size}px ${FONT}`;
+    lines = fitLines(ctx, text, max);
+    if (lines.every((l) => ctx.measureText(l).width <= max) || size <= 22) break;
     size -= 2;
-  } while (ctx.measureText(text).width > W - pad * 2 - 230 && size > 18);
-  ctx.fillText(text, pad + 6, IH - pad + foot / 2 - 4);
+  }
+  const mid = IH - pad + foot / 2 - 4;
+  lines.forEach((l, i) => ctx.fillText(l, pad + 6, mid + (i - (lines.length - 1) / 2) * size * 1.08));
   ctx.font = `400 26px ${FONT}`;
   ctx.fillStyle = '#e3685b';
   const brand = 'Word Trail';

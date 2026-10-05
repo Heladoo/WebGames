@@ -32,16 +32,21 @@ function heroGroup(t: Trip, heroX: number) {
     </g></g>`;
 }
 
+/** Where friend number i (0 = the newest, walking closest) stands. */
+function friendSpot(f: string, i: number, heroX: number) {
+  const x = heroX - 118 - i * 78;
+  const y = isFlying(f) ? GROUND - 70 - (i % 2) * 24 : GROUND + 40 - 96 * 0.8;
+  return { x, y };
+}
+
+function friendMarkup(t: Trip, f: string, i: number, heroX: number, cls = 'follower', atX?: number) {
+  const spot = friendSpot(f, i, heroX);
+  const x = atX ?? spot.x, y = spot.y;
+  return `<g class="${cls}" data-friend="${f}" style="--d:${i * 0.23}s" transform="translate(${x - 40} ${y}) scale(0.8)">${friendArt(f, t.gear[f])}</g>`;
+}
+
 function friendsGroup(t: Trip, heroX: number) {
-  const out: string[] = [];
-  const list = t.friends.slice().reverse(); // newest walks closest
-  list.forEach((f, i) => {
-    const x = heroX - 118 - i * 78;
-    const fly = isFlying(f);
-    const y = fly ? GROUND - 70 - (i % 2) * 24 : GROUND + 40 - 96 * 0.8;
-    out.push(`<g class="follower" style="--d:${i * 0.23}s" transform="translate(${x - 40} ${y}) scale(0.8)">${friendArt(f)}</g>`);
-  });
-  return out.join('');
+  return t.friends.slice().reverse().map((f, i) => friendMarkup(t, f, i, heroX)).join(''); // newest walks closest
 }
 
 function skyGroup(t: Trip, v: View) {
@@ -261,15 +266,43 @@ export class Scene {
     this.svg.classList.toggle('walking', on);
   }
 
-  /** Little sparkles around a spot of the hero (a new item "pops" on). */
-  sparkle() {
+  /**
+   * A friend who has to leave (a fourth one joined) waves goodbye from where it
+   * walked, with a paper speech bubble, then walks off the way the trail came.
+   * Call after render(), with the trip as it was before the friend left.
+   */
+  farewell(before: Trip, f: string, text: string) {
+    const i = before.friends.length - 1 - before.friends.indexOf(f);
+    const spot = friendSpot(f, i, this.heroX);
+    const w = 14 + text.length * 11;
+    // on a narrow screen the friend who walked last is out of view: it says
+    // goodbye from just inside the left edge, so the child sees it go
+    const x = Math.max(spot.x, this.view.x0 + w / 2 + 10);
+    const y = spot.y;
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'farewell');
+    const bx = x - w / 2, by = y - 46;
+    g.innerHTML = `<g class="farewell-walk">${friendMarkup(before, f, i, this.heroX, 'leaver', x)}</g>
+      <g class="bye-bubble" style="transform-origin:${x}px ${by + 40}px">
+        ${piece(`M${bx} ${by} h${w} a12 12 0 0 1 12 12 v10 a12 12 0 0 1 -12 12 h${-w / 2 + 8} l-8 10 l-4 -10 h${-w / 2 + 4} a12 12 0 0 1 -12 -12 v-10 a12 12 0 0 1 12 -12 Z`, '#fffdf8', { lift: 1.4 })}
+        <text x="${x + 6}" y="${by + 23}" text-anchor="middle" class="bye-text">${text}</text></g>`;
+    this.svg.querySelector('.party')?.appendChild(g);
+    setTimeout(() => g.remove(), 3600);
+  }
+
+  /** Little sparkles around the hero (a new item "pops" on), or around a friend. */
+  sparkle(friend?: string) {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'sparkles');
-    const cx = this.heroX;
-    const cy = GROUND - 80;
+    const t = this.trip;
+    const fi = friend && t ? t.friends.length - 1 - t.friends.indexOf(friend) : -1;
+    const spot = friend && t && fi >= 0 ? friendSpot(friend, fi, this.heroX) : null;
+    const cx = spot ? spot.x : this.heroX;
+    const cy = spot ? spot.y + 40 : GROUND - 80;
+    const k = spot ? 0.55 : 1;
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * Math.PI * 2;
-      const r = 70 + (i % 3) * 18;
+      const r = (70 + (i % 3) * 18) * k;
       g.innerHTML += `<path style="--dx:${(Math.cos(a) * r).toFixed(0)}px;--dy:${(Math.sin(a) * r).toFixed(0)}px" transform="translate(${cx} ${cy})" d="M0 -9 L2.5 -2.5 L9 0 L2.5 2.5 L0 9 L-2.5 2.5 L-9 0 L-2.5 -2.5 Z" fill="${['#ffd45c', '#ff8fb0', '#7fc8f0'][i % 3]}"/>`;
     }
     this.svg.appendChild(g);
