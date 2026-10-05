@@ -23,7 +23,7 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 ## Working with the owner
 
 - **Preview first.** Show the work before opening a PR: screenshots (phone and tablet sizes), or the Vercel branch preview at `https://word-trail-git-<branch>-heladooo.vercel.app`. The owner reviews on a phone. Open and merge a PR only when asked.
-- Ideas that were postponed or rejected go in `BACKLOG.md`. The favicon redesign is on hold there.
+- Ideas that were postponed or rejected go in `BACKLOG.md`.
 - The owner wants few spoken lines. Words, letters, the question for each choice and "Bye bye, cat!" when a friend leaves are spoken. Achievements, remarks about a choice and photo remarks are **not** spoken: those moments get pictures, sound and confetti only.
 - Children feel bad losing things, so nothing just vanishes: a friend who leaves waves goodbye, and an item the hero swaps away goes to a friend.
 
@@ -115,7 +115,7 @@ When adding or changing art, add the case to `rigCases()` if needed, then **fix 
 - `?debug=glyphs`: tracing strokes.
 - `?debug=rig`, `?debug=frames`, `?debug=tiles`: what the tests read.
 - `?debug=learn&word=rainbow&mode=tap|trace|find&level=0..3`: the learning panel alone, for layout checks (add `&hero=dog` to see the hero beside it).
-- `?debug=icon` and `?debug=og`: art for `public/` icons and the link preview; regenerate the PNGs by screenshotting these pages.
+- `?debug=og`: the link-preview art; regenerate `public/og-image.png` by screenshotting it. (`?debug=icon` is the old drawn icon. The favicon and app icons now come from the owner's picture of the dog in a hat: the favicon is a round crop with transparent corners; the apple-touch and app icons stay square (iOS turns transparent corners black); the maskable icon has a 5% blue margin so the hat survives round masks.)
 
 You can also set up a scene directly from the URL: `?hero=fox&wear=cap,glasses&friends=bee,cat&place=sea&sky=moon&ride=boat&carry=kite,star&words=12`. `words=N` pretends N words are learned, which unlocks harder levels and longer words. Any scene or debug parameter turns saving off (`stopSaving()`), so a pretend trip never replaces the real one.
 
