@@ -63,6 +63,7 @@ for (const [name, viewport] of Object.entries(SIZES)) {
         expect(m.panel.y + m.panel.h, `${what}: the panel must fit on screen`).toBeLessThanOrEqual(m.view.h + 1);
         expect(overlaps(m.panel, m.topbar!), `${what}: the panel must not cover the top buttons`).toBe(false);
         expect(overlaps(m.panel, m.logo!), `${what}: the panel must not cover the game logo`).toBe(false);
+        expect(overlaps(m.topbar!, m.logo!), `${what}: the top buttons must not cover the game logo`).toBe(false);
         expect(m.cardOverflow, `${what}: every word must fit its card`).toBeLessThanOrEqual(1);
         // long words in two narrow columns once shrank to 10-17px on phones
         expect(m.cardFont, `${what}: word cards must stay readable`).toBeGreaterThanOrEqual(30);

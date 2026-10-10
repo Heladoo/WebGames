@@ -165,9 +165,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
    (about 270px wide). The learning panel stays wide and may cover the hero:
    big tracing letters matter more. */
 @media (min-aspect-ratio: 4/3) {
-  .panel.choose { --tx: 0px; left: calc(clamp(76px, 8.5vw, 104px) + 20px + env(safe-area-inset-left, 0px)); top: calc(16px + var(--safe-t)); width: min(900px, calc(100vw - 310px - clamp(76px, 8.5vw, 104px))); }
+  .panel.choose { --tx: 0px; left: calc(clamp(64px, 8.5vw, 104px) + 20px + env(safe-area-inset-left, 0px)); top: calc(16px + var(--safe-t)); width: min(900px, calc(100vw - 310px - clamp(64px, 8.5vw, 104px))); }
   /* the learning panel stays centred, but clear of the corner logo on both sides */
-  .panel.learn { width: min(980px, calc(100vw - 2 * (clamp(76px, 8.5vw, 104px) + 20px))); }
+  .panel.learn { width: min(980px, calc(100vw - 2 * (clamp(64px, 8.5vw, 104px) + 20px))); }
 }
 
 .prompt { display: flex; align-items: center; gap: 14px; justify-content: center; margin-bottom: clamp(8px, 2vw, 18px); }
@@ -326,7 +326,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .title-logo { margin: -70px auto 4px; width: min(clamp(220px, 46vw, 340px), 44dvh); }
 .title-logo img { width: 100%; height: auto; display: block; animation: breathe 3.6s ease-in-out infinite; transform-origin: 50% 100%; }
 /* the game logo in the top-left corner while playing (the panels on wide screens start right of it) */
-.corner-logo { position: absolute; z-index: 21; top: calc(6px + var(--safe-t)); left: calc(8px + env(safe-area-inset-left, 0px)); width: clamp(76px, 8.5vw, 104px); height: auto; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(58, 42, 32, 0.18)); }
+.corner-logo { position: absolute; z-index: 21; top: calc(6px + var(--safe-t)); left: calc(8px + env(safe-area-inset-left, 0px)); width: clamp(64px, 8.5vw, 104px); height: auto; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(58, 42, 32, 0.18)); }
 #topbar.hidden + .corner-logo { display: none; }
 .subtitle { margin: 0 0 16px; font-size: clamp(18px, 3vw, 24px); color: #9a7e6a; }
 .play-btn { width: 116px; height: 116px; border-radius: 50%; background: var(--green); box-shadow: 0 7px 0 #2e6f6b; display: grid; place-items: center; margin: 0 auto; animation: pulse 1.6s ease-in-out infinite; }
@@ -534,9 +534,9 @@ body::after {
 @media (min-aspect-ratio: 4/3) and (max-height: 500px) {
   .panel.learn {
     --tx: 0px;
-    left: calc(clamp(76px, 8.5vw, 104px) + 16px + env(safe-area-inset-left, 0px));
+    left: calc(clamp(64px, 8.5vw, 104px) + 16px + env(safe-area-inset-left, 0px));
     top: calc(8px + var(--safe-t));
-    width: calc(100vw - 310px - clamp(76px, 8.5vw, 104px) - env(safe-area-inset-left, 0px));
+    width: calc(100vw - 310px - clamp(64px, 8.5vw, 104px) - env(safe-area-inset-left, 0px));
     max-height: calc(100dvh - 16px - var(--safe-t));
     padding: 10px;
     display: grid;
