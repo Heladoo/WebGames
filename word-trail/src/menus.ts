@@ -126,7 +126,7 @@ export function initMenus(s: SaveData, hooks: MenuHooks) {
     );
   };
   seg('opt-case', s.settings.letterCase, (v) => (s.settings.letterCase = v as 'upper' | 'lower'));
-  seg('opt-activity', s.settings.activity, (v) => (s.settings.activity = v as 'mix' | 'tap' | 'trace' | 'find'));
+  seg('opt-activity', s.settings.activity, (v) => (s.settings.activity = v as 'mix' | 'tap' | 'trace' | 'find' | 'spot'));
 
   const rate = $<HTMLInputElement>('opt-rate');
   rate.value = String(Math.round(s.settings.rate * 100));

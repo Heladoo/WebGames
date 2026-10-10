@@ -4,7 +4,7 @@ import { canWear, type Gear } from './gear';
 
 export interface Settings {
   letterCase: 'upper' | 'lower';
-  activity: 'mix' | 'tap' | 'trace' | 'find';
+  activity: 'mix' | 'tap' | 'trace' | 'find' | 'spot';
   rate: number; // speech speed 0.5..1.2
   voice: string; // voice name ('' = automatic)
   sound: boolean;
@@ -116,7 +116,7 @@ export function load(): SaveData {
       rounds: numIn(s.rounds, 0, 1e7, 0),
       settings: {
         letterCase: pick(ss.letterCase, ['upper', 'lower'] as const, 'upper'),
-        activity: pick(ss.activity, ['mix', 'tap', 'trace', 'find'] as const, 'mix'),
+        activity: pick(ss.activity, ['mix', 'tap', 'trace', 'find', 'spot'] as const, 'mix'),
         rate: numIn(ss.rate, 0.5, 1.2, 0.8),
         voice: typeof ss.voice === 'string' ? ss.voice.slice(0, 200) : '',
         sound: typeof ss.sound === 'boolean' ? ss.sound : true,

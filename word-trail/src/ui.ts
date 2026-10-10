@@ -128,6 +128,11 @@ export const ICONS = {
   /** start over: a paper circle arrow around a little paw */
   restart: icon(`${line('M50 34 A18 18 0 1 1 42 18', C.coral, 6)}${piece('M38 8 L50 16 L38 25 Z', C.coral, { lift: 1 })}
     ${piece(ell(32, 37, 6, 5), C.bark, { lift: 0.6 })}${piece(`${ell(25, 29, 2.6, 3.2)} ${ell(30, 26, 2.6, 3.2)} ${ell(35, 26, 2.6, 3.2)} ${ell(40, 29, 2.6, 3.2)}`, C.bark, { lift: 0.5 })}`),
+  /** a paper hand pointing up with one finger (tap here) */
+  finger: icon(`${piece('M27 30 L27 10 C27 5 35 5 35 10 L35 30 Z', '#f6cfa8', { lift: 1 })}
+    ${piece('M20 34 C20 29 27 28 27 33 M35 30 C35 26 42 26 42 31 C42 27 49 28 49 33 C49 30 55 31 55 36 L55 46 C55 55 48 60 40 60 L33 60 C26 60 21 55 19 49 L13 38 C11 33 17 30 20 34 L24 40 L24 33 C24 29 27 29 27 31 Z', '#f6cfa8', { lift: 1.4 })}
+    ${line('M35 34 L35 40 M42 33 L42 40 M49 35 L49 41', shade('#f6cfa8', -0.25), 1.6)}
+    ${piece(ell(31, 11, 3, 2.4), '#fbe5cf', { lift: 0 })}`),
   /** a big paper starburst that spins behind a new badge */
   burst: `<svg viewBox="-50 -50 100 100" aria-hidden="true">${piece(Array.from({ length: 16 }, (_, i) => {
     const a = (i * Math.PI) / 8, b = a + Math.PI / 16;
