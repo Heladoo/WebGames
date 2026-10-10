@@ -39,6 +39,7 @@ async function measure(page: Page) {
       parts: [...document.querySelectorAll('.slot, .bubble, .trace-svg, .big-pic, .word-card')].map((e) => ({ cls: e.getAttribute('class'), ...box(e)! })),
       topbar: box(document.querySelector('#topbar')),
       logo: box(document.querySelector('#corner-logo')),
+      cardFont: Math.min(99, ...[...document.querySelectorAll<HTMLElement>('.word-card')].map((c) => parseFloat(getComputedStyle(c).fontSize))),
       cardOverflow: Math.max(0, ...[...document.querySelectorAll<HTMLElement>('.word-card')].map((c) => c.scrollWidth - c.clientWidth)),
     };
   });
@@ -48,12 +49,13 @@ for (const [name, viewport] of Object.entries(SIZES)) {
   for (const mode of ['tap', 'trace', 'find'] as const) {
     test(`${name}: ${mode} panel fits ${words.join(', ')}`, async ({ page }) => {
       await page.setViewportSize(viewport);
-      for (const word of words) {
-        await page.goto(`/?debug=learn&word=${word}&mode=${mode}&level=3&hero=dog`);
+      // find the word shows 3 cards at level 0 and 4 at level 3
+      for (const [word, level] of words.flatMap((w) => (mode === 'find' ? [[w, 0], [w, 3]] : [[w, 3]]) as [string, number][])) {
+        await page.goto(`/?debug=learn&word=${word}&mode=${mode}&level=${level}&hero=dog`);
         await page.waitForSelector('.panel.learn');
         await page.waitForTimeout(500); // the panel's entrance animation
         const m = await measure(page);
-        const what = `${name}, ${mode}, ${word.toUpperCase()}`;
+        const what = `${name}, ${mode} (level ${level}), ${word.toUpperCase()}`;
         expect(m.wordLines, `${what}: the big word must stay on one line`).toBeLessThan(1.6);
         expect(m.wordOverflow, `${what}: the big word must not overflow`).toBeLessThanOrEqual(1);
         expect(inside(m.word, m.panel), `${what}: the big word must be inside the panel`).toBe(true);
@@ -62,6 +64,8 @@ for (const [name, viewport] of Object.entries(SIZES)) {
         expect(overlaps(m.panel, m.topbar!), `${what}: the panel must not cover the top buttons`).toBe(false);
         expect(overlaps(m.panel, m.logo!), `${what}: the panel must not cover the game logo`).toBe(false);
         expect(m.cardOverflow, `${what}: every word must fit its card`).toBeLessThanOrEqual(1);
+        // long words in two narrow columns once shrank to 10-17px on phones
+        expect(m.cardFont, `${what}: word cards must stay readable`).toBeGreaterThanOrEqual(30);
       }
     });
   }

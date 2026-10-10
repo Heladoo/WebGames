@@ -32,10 +32,35 @@ export function distractors(word: string, level: number, pool: string[] = ALL_WO
   return [...new Set(picked)].slice(0, n);
 }
 
+/** Card text under this size (CSS px) is too small for a young child to read. */
+export const MIN_CARD_FONT = 30;
+
+/**
+ * Picks how many cards sit side by side: as many as fit while the longest
+ * word on offer stays at least MIN_CARD_FONT, else one card per row. (Long
+ * words in two narrow columns once shrank to 10–17px on phones.)
+ */
+function layout(host: HTMLElement, options: string[]) {
+  const len = Math.max(...options.map((w) => w.length));
+  const width = host.clientWidth || 300;
+  const gap = parseFloat(getComputedStyle(host).columnGap) || 12;
+  // a capital is about 0.72em wide plus 0.08em spacing; a card has about 48px of padding and border
+  const font = (cols: number) => ((width - gap * (cols - 1)) / cols - 48) / (len * 0.8);
+  const choices = [...new Set([options.length, 2, 1])].filter((c) => c <= options.length);
+  const cols = choices.find((c) => font(c) >= MIN_CARD_FONT) ?? 1;
+  // the rows must also fit the height left on screen (a phone held sideways is short);
+  // a card is about 1.1 lines of text plus 16px of padding and border
+  const rows = Math.ceil(options.length / cols);
+  const room = innerHeight - host.getBoundingClientRect().top - 20;
+  const byHeight = ((room - gap * (rows - 1)) / rows - 16) / 1.1;
+  host.style.setProperty('--cols', String(cols));
+  host.style.setProperty('--fs', `${Math.floor(Math.max(MIN_CARD_FONT, Math.min(font(cols), byHeight, 58)))}px`);
+  host.classList.toggle('one-col', cols === 1);
+}
+
 export function findWord(host: HTMLElement, word: string, level: number, show: (w: string) => string): { done: Promise<void>; cancel: () => void } {
   const options = shuffle([word, ...distractors(word, level)]);
   host.classList.add(`n${options.length}`);
-  host.style.setProperty('--len', String(Math.max(...options.map((w) => w.length))));
   let cancelled = false;
   let found = false;
   let idle = performance.now();
@@ -70,6 +95,8 @@ export function findWord(host: HTMLElement, word: string, level: number, show: (
     });
     return b;
   });
+
+  layout(host, options);
 
   // a quiet moment: say the word again; after two, make the right card glow
   const timer = window.setInterval(() => {

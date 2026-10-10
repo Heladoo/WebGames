@@ -249,8 +249,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 @keyframes fill { from { transform: scale(0.6); } }
 
 .find-host { --cols: 2; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: clamp(10px, 2.2vw, 22px); max-width: 720px; margin: 0 auto; }
-.find-host.n3 { --cols: 3; }
-@container (max-width: 520px) { .find-host.n3 { --cols: 1; max-width: 360px; } }
+/* one card per row (long words on narrow screens): lower cards so four still fit */
+.find-host.one-col { max-width: 440px; gap: 10px; }
+.find-host.one-col .word-card { min-height: clamp(52px, 9dvh, 76px); padding: 4px 10px; line-height: 1.1; }
 .word-card {
   min-height: clamp(76px, 12vw, 120px);
   padding: 8px 10px;
@@ -258,8 +259,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   border: 4px solid transparent;
   border-radius: 26px 22px 28px 20px / 22px 28px 20px 26px;
   box-shadow: 0 5px 0 #e6dccb, 0 8px 18px rgba(58, 42, 32, 0.1);
-  /* sized so the longest word on offer fits its card (findWord.ts sets --len) */
-  font-size: min(clamp(32px, 6vw, 58px), calc((min(100cqw, 720px) / var(--cols) - 48px) / (var(--len, 5) * 0.8)));
+  /* findWord.ts picks the columns and a size that fits the longest word on offer */
+  font-size: min(clamp(32px, 6vw, 58px), var(--fs, 32px));
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--ink);
@@ -545,7 +546,7 @@ body::after {
   }
   .panel.learn .learn-top { flex-direction: column; gap: 4px; --pic-w: 22dvh; --top-gap: 0px; }
   .panel.learn .learn-top .big-pic { width: 22dvh; }
-  .panel.learn .big-word { font-size: 30px; }
+  .panel.learn .big-word { font-size: min(30px, calc(150px / (var(--n, 4) * 0.84))); }
   .panel.learn .activity { margin: 0; container-type: inline-size; }
   .panel.learn .slots { --sw-max: 52px; margin-bottom: 10px; }
   .panel.learn .bubbles { --bw: 56px; gap: 10px; }
