@@ -7,25 +7,39 @@ import { ALL_WORDS } from '../src/content';
 // Children felt bad losing things: an item the hero swaps away goes to an
 // animal friend who has that spot free.
 
-test('a swapped item goes to the newest animal friend with a free spot', () => {
+test('a swapped item goes to the newest friend with room for it', () => {
   const t = { ...newTrip(), hero: 'dog', friends: ['cat', 'bee', 'fox'], worn: { head: 'hat' } };
   const r = takeItem(t, 'crown');
   expect(t.worn.head).toBe('crown');
-  expect(r).toEqual({ old: 'hat', to: 'fox' }); // the fox walks closest; the bee can't wear things
+  expect(r).toEqual({ old: 'hat', to: 'fox' }); // the fox walks closest
   expect(t.gear.fox.worn.head).toBe('hat');
-  // the next swapped hat-like item goes to the cat: the fox's head is taken
-  takeItem(t, 'cap');
-  expect(t.gear.cat.worn.head).toBe('crown');
-  // carried things and kites have their own spots
+  // the fox's head is taken, so the next hat-like item goes on the bee's head
+  expect(takeItem(t, 'cap').to).toBe('bee');
+  expect(t.gear.bee.worn.head).toBe('crown');
+  // carried things have their own spot on friends drawn like heroes
   t.carry = 'ball';
   expect(takeItem(t, 'drum').to).toBe('fox');
   expect(t.gear.fox.carry).toBe('ball');
 });
 
-test('nothing is handed down when no friend can take it', () => {
-  const t = { ...newTrip(), hero: 'dog', friends: ['bee', 'hen'], worn: { head: 'hat' } };
-  expect(takeItem(t, 'cap')).toEqual({ old: 'hat', to: null });
-  const u = { ...newTrip(), hero: 'dog', friends: [], carry: null };
+// The owner saw shoes vanish when the hero put on boots while a squirrel and a
+// monkey walked along: small friends could not take anything then.
+test('small friends hold one swapped thing each (shoes swapped for boots)', () => {
+  const t = { ...newTrip(), hero: 'dog', friends: ['squirrel', 'monkey'], worn: { feet: 'shoes' } };
+  expect(takeItem(t, 'boots')).toEqual({ old: 'shoes', to: 'monkey' });
+  expect(t.gear.monkey.hold).toBe('shoes');
+  expect(t.gear.monkey.worn.feet).toBeUndefined();
+  // the monkey's hands are full: the next thing goes to the squirrel
+  t.worn.neck = 'scarf';
+  expect(takeItem(t, 'tie').to).toBe('squirrel');
+  expect(t.gear.squirrel.hold).toBe('scarf');
+  // both hold something now, and nobody has room for another pair of shoes
+  expect(takeItem(t, 'socks')).toEqual({ old: 'boots', to: null });
+});
+
+test('nothing is handed down without friends', () => {
+  const u = { ...newTrip(), hero: 'dog', friends: [], worn: { head: 'hat' } };
+  expect(takeItem(u, 'cap')).toEqual({ old: 'hat', to: null });
   expect(takeItem(u, 'ball')).toEqual({ old: null, to: null });
 });
 

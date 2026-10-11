@@ -165,9 +165,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
    (about 270px wide). The learning panel stays wide and may cover the hero:
    big tracing letters matter more. */
 @media (min-aspect-ratio: 4/3) {
-  .panel.choose { --tx: 0px; left: calc(clamp(76px, 8.5vw, 104px) + 20px + env(safe-area-inset-left, 0px)); top: calc(16px + var(--safe-t)); width: min(900px, calc(100vw - 310px - clamp(76px, 8.5vw, 104px))); }
+  .panel.choose { --tx: 0px; left: calc(clamp(64px, 8.5vw, 104px) + 20px + env(safe-area-inset-left, 0px)); top: calc(16px + var(--safe-t)); width: min(900px, calc(100vw - 310px - clamp(64px, 8.5vw, 104px))); }
   /* the learning panel stays centred, but clear of the corner logo on both sides */
-  .panel.learn { width: min(980px, calc(100vw - 2 * (clamp(76px, 8.5vw, 104px) + 20px))); }
+  .panel.learn { width: min(980px, calc(100vw - 2 * (clamp(64px, 8.5vw, 104px) + 20px))); }
 }
 
 .prompt { display: flex; align-items: center; gap: 14px; justify-content: center; margin-bottom: clamp(8px, 2vw, 18px); }
@@ -194,7 +194,12 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   transition: transform 0.2s, border-color 0.2s, opacity 0.2s;
 }
 .choice .pic { width: 100%; aspect-ratio: 1; max-height: 34dvh; }
-.choice .word { font-size: clamp(28px, 5.4vw, 52px); font-weight: 700; letter-spacing: 0.06em; line-height: 1.2; }
+/* long words: two cards to a row, with smaller pictures so both rows fit */
+.cards.two-rows { max-width: 560px; margin: 0 auto; }
+.cards.two-rows .pic { max-height: min(22dvh, 150px); }
+.cards.n3.two-rows .choice:last-child { grid-column: 1 / -1; justify-self: center; width: calc(50% - 6px); }
+/* fitChoiceWords() shrinks a long word to fit its card (MONKEY once spilled out of a narrow card) */
+.choice .word { font-size: clamp(28px, 5.4vw, 52px); font-weight: 700; letter-spacing: 0.06em; line-height: 1.2; white-space: nowrap; }
 .choice .ok { position: absolute; top: -12px; right: -12px; width: 58px; height: 58px; border-radius: 50%; background: var(--green); display: grid; place-items: center; box-shadow: 0 4px 0 #2e6f6b; transform: scale(0); transition: transform 0.25s cubic-bezier(0.2, 1.6, 0.4, 1); }
 .choice .ok svg { width: 40px; height: 40px; }
 .choice.picked { transform: scale(1.05); border-color: var(--green); }
@@ -249,8 +254,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 @keyframes fill { from { transform: scale(0.6); } }
 
 .find-host { --cols: 2; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: clamp(10px, 2.2vw, 22px); max-width: 720px; margin: 0 auto; }
-.find-host.n3 { --cols: 3; }
-@container (max-width: 520px) { .find-host.n3 { --cols: 1; max-width: 360px; } }
+/* one card per row (long words on narrow screens): lower cards so four still fit */
+.find-host.one-col { max-width: 440px; gap: 10px; }
+.find-host.one-col .word-card { min-height: clamp(52px, 9dvh, 76px); padding: 4px 10px; line-height: 1.1; }
 .word-card {
   min-height: clamp(76px, 12vw, 120px);
   padding: 8px 10px;
@@ -258,8 +264,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   border: 4px solid transparent;
   border-radius: 26px 22px 28px 20px / 22px 28px 20px 26px;
   box-shadow: 0 5px 0 #e6dccb, 0 8px 18px rgba(58, 42, 32, 0.1);
-  /* sized so the longest word on offer fits its card (findWord.ts sets --len) */
-  font-size: min(clamp(32px, 6vw, 58px), calc((min(100cqw, 720px) / var(--cols) - 48px) / (var(--len, 5) * 0.8)));
+  /* findWord.ts picks the columns and a size that fits the longest word on offer */
+  font-size: min(clamp(32px, 6vw, 58px), var(--fs, 32px));
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--ink);
@@ -325,7 +331,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .title-logo { margin: -70px auto 4px; width: min(clamp(220px, 46vw, 340px), 44dvh); }
 .title-logo img { width: 100%; height: auto; display: block; animation: breathe 3.6s ease-in-out infinite; transform-origin: 50% 100%; }
 /* the game logo in the top-left corner while playing (the panels on wide screens start right of it) */
-.corner-logo { position: absolute; z-index: 21; top: calc(6px + var(--safe-t)); left: calc(8px + env(safe-area-inset-left, 0px)); width: clamp(76px, 8.5vw, 104px); height: auto; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(58, 42, 32, 0.18)); }
+.corner-logo { position: absolute; z-index: 21; top: calc(6px + var(--safe-t)); left: calc(8px + env(safe-area-inset-left, 0px)); width: clamp(64px, 8.5vw, 104px); height: auto; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(58, 42, 32, 0.18)); }
 #topbar.hidden + .corner-logo { display: none; }
 .subtitle { margin: 0 0 16px; font-size: clamp(18px, 3vw, 24px); color: #9a7e6a; }
 .play-btn { width: 116px; height: 116px; border-radius: 50%; background: var(--green); box-shadow: 0 7px 0 #2e6f6b; display: grid; place-items: center; margin: 0 auto; animation: pulse 1.6s ease-in-out infinite; }
@@ -347,9 +353,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 .book-count { text-align: center; margin: 4px 0 12px; font-size: 18px; color: #8c7866; }
 .sticker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 12px; }
-.sticker { background: #fff; border-radius: 22px; padding: 8px 6px 4px; box-shadow: 0 4px 0 #e6dccb; display: flex; flex-direction: column; align-items: center; }
+.sticker { container-type: inline-size; background: #fff; border-radius: 22px; padding: 8px 6px 4px; box-shadow: 0 4px 0 #e6dccb; display: flex; flex-direction: column; align-items: center; }
 .sticker .pic { width: 100%; aspect-ratio: 1; }
-.sticker span { font-size: 22px; font-weight: 700; letter-spacing: 0.05em; }
+.sticker span { font-size: min(22px, calc((100cqw - 4px) / (var(--n, 4) * 0.78))); font-weight: 700; letter-spacing: 0.05em; white-space: nowrap; }
 .sticker.locked { cursor: default; box-shadow: none; background: #f3ecdf; }
 .sticker.locked .pic { filter: grayscale(1) brightness(1.5); opacity: 0.3; }
 .sticker.locked span { color: #cdbfa8; }
@@ -533,9 +539,9 @@ body::after {
 @media (min-aspect-ratio: 4/3) and (max-height: 500px) {
   .panel.learn {
     --tx: 0px;
-    left: calc(clamp(76px, 8.5vw, 104px) + 16px + env(safe-area-inset-left, 0px));
+    left: calc(clamp(64px, 8.5vw, 104px) + 16px + env(safe-area-inset-left, 0px));
     top: calc(8px + var(--safe-t));
-    width: calc(100vw - 310px - clamp(76px, 8.5vw, 104px) - env(safe-area-inset-left, 0px));
+    width: calc(100vw - 310px - clamp(64px, 8.5vw, 104px) - env(safe-area-inset-left, 0px));
     max-height: calc(100dvh - 16px - var(--safe-t));
     padding: 10px;
     display: grid;
@@ -545,9 +551,44 @@ body::after {
   }
   .panel.learn .learn-top { flex-direction: column; gap: 4px; --pic-w: 22dvh; --top-gap: 0px; }
   .panel.learn .learn-top .big-pic { width: 22dvh; }
-  .panel.learn .big-word { font-size: 30px; }
+  .panel.learn .big-word { font-size: min(30px, calc(150px / (var(--n, 4) * 0.84))); }
   .panel.learn .activity { margin: 0; container-type: inline-size; }
   .panel.learn .slots { --sw-max: 52px; margin-bottom: 10px; }
   .panel.learn .bubbles { --bw: 56px; gap: 10px; }
   .panel.learn .trace-svg { max-height: calc(100dvh - 60px); }
 }
+
+/* ---------- spot it: "Where is the cloud?" ---------- */
+/* a small bubble at the top, so the scene (and the thing to find) stays in view */
+.panel.spot {
+  width: auto;
+  max-width: min(460px, calc(100vw - 24px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 24px;
+  container-type: normal;
+}
+.spot-pic { flex: none; width: 58px; height: 58px; background: #fff; border-radius: 16px; padding: 3px; box-shadow: 0 3px 0 #e6dccb; }
+.spot-pic .pic { width: 100%; height: 100%; display: block; }
+.spot-text { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
+.spot-where { font-family: var(--title); font-size: 17px; color: #8a7362; white-space: nowrap; }
+.spot-line { white-space: nowrap; }
+/* spotBubble() shrinks a long word to fit beside the picture and the finger */
+.spot-line { display: inline-block; font-size: clamp(26px, 6vw, 36px); }
+.spot-word, .spot-qm { font-size: 1em; letter-spacing: 0.08em; }
+.spot-qm { color: #8a7362; margin-left: 2px; }
+.spot-word span { display: inline-block; transition: transform 0.18s, color 0.18s; }
+.spot-word span.saying { color: var(--pink); transform: translateY(-6px) scale(1.15); }
+/* the finger taps in the air: "tap the picture in the scene" */
+.spot-finger { flex: none; width: 44px; height: 44px; animation: finger-tap 1.2s ease-in-out infinite; transform-origin: 50% 20%; }
+.spot-finger svg, .spot-point svg { width: 100%; height: 100%; display: block; }
+@keyframes finger-tap { 0%, 100% { transform: translateY(0) scale(1); } 45% { transform: translateY(5px) scale(0.92); } 55% { transform: translateY(5px) scale(0.92); } }
+/* the hint: a glowing ring on the thing, and a finger pointing at it */
+.spot-ring { position: fixed; z-index: 15; pointer-events: none; border-radius: 50%; border: 5px solid #ffd45c; box-shadow: 0 0 0 6px rgba(255, 212, 92, 0.35), 0 0 22px 6px rgba(255, 212, 92, 0.6); animation: ring-pulse 1.1s ease-in-out infinite; }
+.spot-ring.found { border-color: var(--green); box-shadow: 0 0 0 8px rgba(63, 143, 138, 0.3); animation: none; }
+.spot-point { position: fixed; z-index: 16; pointer-events: none; width: 56px; height: 56px; transform: rotate(-30deg); animation: point-tap 1s ease-in-out infinite; }
+@keyframes ring-pulse { 50% { transform: scale(1.08); } }
+@keyframes point-tap { 0%, 100% { translate: 0 0; } 50% { translate: -6px -8px; } }
+@media (prefers-reduced-motion: reduce) { .spot-finger, .spot-ring, .spot-point { animation: none; } }

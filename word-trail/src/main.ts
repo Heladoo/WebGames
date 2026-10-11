@@ -18,7 +18,8 @@ import { takeItem } from './gear';
 import { tapWord } from './tapLetters';
 import { traceLetterPx, traceWord } from './trace';
 import { findWord } from './findWord';
-import { $, anyOverlayOpen, celebrate, flash, h, holdButton, ICONS, sleep, toast } from './ui';
+import { spotTargets, spottableWords, spotWord } from './spot';
+import { $, anyOverlayOpen, celebrate, fitText, flash, h, holdButton, ICONS, sleep, toast } from './ui';
 import { runDebug } from './debug';
 import { installDefs } from './art/paper';
 
@@ -37,6 +38,10 @@ const show = (w: string) => (s.settings.letterCase === 'upper' ? w.toUpperCase()
 
 if (params.get('debug') === 'learn') {
   debugLearn();
+} else if (params.get('debug') === 'spot') {
+  debugSpot();
+} else if (params.get('debug') === 'choose') {
+  debugChoose();
 } else if (params.get('debug')) {
   runDebug(params.get('debug')!);
   installDefs();
@@ -179,9 +184,18 @@ async function run() {
     const word = await choose(d);
     scene.clearSign();
     if (restart || !word) continue;
-    await learn(word);
+    const mode = pickActivity();
+    if (mode === 'spot') {
+      // the choice joins the scene first, then: "Where is the cloud?"
+      await apply(word, d.cat);
+      if (restart) continue;
+      await spotRound(word);
+    } else {
+      await learn(word, mode);
+      if (restart) continue;
+      await apply(word, d.cat);
+    }
     if (restart) continue;
-    await apply(word, d.cat);
     s.decisions++;
     s.trip.lastCats = [...s.trip.lastCats, d.cat].slice(-6);
     save(s);
@@ -194,6 +208,57 @@ async function run() {
 }
 
 // ---------- 1. choose ----------
+
+/** A choice card: the picture and the word. */
+function choiceCard(w: string) {
+  const card = h('button', 'choice', `${picture(w)}<span class="word">${show(w)}</span><span class="ok">${ICONS.check}</span>`);
+  card.setAttribute('aria-label', w);
+  return card;
+}
+
+/**
+ * Long words shrink to fit their card. If that would make them smaller than
+ * 18px, the cards go two to a row instead (three long words side by side on
+ * a phone are too narrow to read).
+ */
+function fitChoiceWords() {
+  const grid = panel.querySelector<HTMLElement>('.cards');
+  if (!grid) return;
+  const words = () => [...panel.querySelectorAll<HTMLElement>('.choice')];
+  const fitAll = () => {
+    for (const c of words()) fitText(c.querySelector('.word')!, c.clientWidth - 8, 16);
+    return Math.min(...words().map((c) => parseFloat(getComputedStyle(c.querySelector('.word')!).fontSize)));
+  };
+  const fit = () => {
+    grid.style.removeProperty('--n');
+    grid.classList.remove('two-rows');
+    if (fitAll() < 18 && words().length > 2) {
+      grid.style.setProperty('--n', '2');
+      grid.classList.add('two-rows');
+      fitAll();
+    }
+  };
+  fit();
+  document.fonts?.ready.then(fit);
+}
+
+/** ?debug=choose&words=fish,monkey,zebra: the choice panel alone, for layout checks. */
+function debugChoose() {
+  installDefs();
+  debugChrome();
+  scene.fit();
+  scene.render(s.trip);
+  const words = (params.get('words') ?? 'fish,monkey,zebra').split(',').map((w) => w.replace(/[^a-z]/g, '')).filter(Boolean).slice(0, 4);
+  panel.className = 'panel choose';
+  panel.innerHTML = '';
+  const head = h('div', 'prompt');
+  head.append(h('button', 'say-btn', ICONS.speaker), h('h2', '', 'Who will come along?'));
+  const cards = h('div', `cards n${words.length}`);
+  for (const w of words) cards.appendChild(choiceCard(w));
+  panel.append(head, cards);
+  panel.classList.remove('hidden');
+  fitChoiceWords();
+}
 
 let resolveChoice: ((w: string | null) => void) | null = null;
 
@@ -227,8 +292,7 @@ function choose(d: Decision): Promise<string | null> {
       setTimeout(() => resolve(w), 350);
     };
     for (const w of d.options) {
-      const card = h('button', 'choice', `${picture(w)}<span class="word">${show(w)}</span><span class="ok">${ICONS.check}</span>`);
-      card.setAttribute('aria-label', w);
+      const card = choiceCard(w);
       // one tap chooses: the card is marked, its word is said, and we go on
       card.addEventListener('click', () => {
         if (picked) return;
@@ -253,6 +317,7 @@ function choose(d: Decision): Promise<string | null> {
       panel.classList.add('from-sign');
     }
     panel.classList.remove('hidden');
+    fitChoiceWords();
     readOut();
   });
 }
@@ -308,6 +373,103 @@ function debugLearn() {
     act.append(slots, bubbles);
     tapWord(slots, bubbles, word, level, s.settings.letterCase === 'upper');
   }
+  debugChrome();
+}
+
+// ---------- spot it: "Where is the cloud?" ----------
+
+const PLURAL = ['boots', 'glasses', 'shoes', 'socks'];
+const whereIs = (w: string) => `Where ${PLURAL.includes(w) ? 'are' : 'is'} the ${w}?`;
+
+/** The small question bubble: the word's picture, "Where is the CLOUD?" and a tapping finger. */
+function spotBubble(word: string) {
+  panel.className = 'panel spot';
+  panel.style.removeProperty('--n');
+  panel.innerHTML = '';
+  const pic = h('button', 'spot-pic', picture(word));
+  pic.setAttribute('aria-label', whereIs(word));
+  const text = h('div', 'spot-text', `<span class="spot-where">Where ${PLURAL.includes(word) ? 'are' : 'is'} the</span>
+    <span class="spot-line"><b class="spot-word">${[...show(word)].map((c) => `<span>${c}</span>`).join('')}</b><b class="spot-qm">?</b></span>`);
+  const finger = h('span', 'spot-finger', ICONS.finger);
+  finger.setAttribute('aria-hidden', 'true');
+  panel.append(pic, text, finger);
+  panel.classList.remove('hidden');
+  pic.addEventListener('click', () => speech.say(whereIs(word)));
+  // the bubble may be as wide as the screen allows; the word shrinks to fit beside the picture and finger
+  const line = text.querySelector('.spot-line') as HTMLElement;
+  const fit = () => fitText(line, Math.min(460, innerWidth - 24) - 150, 20);
+  fit();
+  document.fonts?.ready.then(fit);
+  return { word: text.querySelector('.spot-word') as HTMLElement };
+}
+
+/**
+ * Asks for the chosen thing in the scene. When it can't be tapped (a place,
+ * the rain, or it is out of view) another thing on screen is asked instead.
+ */
+async function spotRound(chosen: string) {
+  await sleep(700); // let the new thing pop in first
+  let word = chosen;
+  let ui = spotBubble(word);
+  await sleep(450); // the bubble settles in place before we look at what it covers
+  if (!spotTargets(scene.svg, word).length) {
+    const others = spottableWords(scene.svg).filter((w) => w !== chosen);
+    if (!others.length) {
+      // nothing to spot: practise the letters instead
+      await learn(chosen, 'tap');
+      return;
+    }
+    word = others[Math.floor(Math.random() * others.length)];
+    ui = spotBubble(word);
+  }
+  const ask = () => speech.say(whereIs(word));
+  ask();
+  const task = spotWord(scene.svg, word, { onHint: ask });
+  cancelActivity = task.cancel;
+  const hit = await task.done;
+  cancelActivity = null;
+  if (restart) return;
+
+  for (const w of new Set([word, chosen])) s.learned[w] = (s.learned[w] ?? 0) + 1;
+  for (const ch of word) if (!s.letters.includes(ch)) s.letters.push(ch);
+  s.rounds++;
+  save(s);
+  sfx.success();
+  celebrate('word', hit);
+  const spans = [...ui.word.querySelectorAll('span')];
+  spans.forEach((sp) => sp.classList.add('lit'));
+  await speech.spell(word, (i) => spans.forEach((sp, k) => sp.classList.toggle('saying', k === i || i === -1)));
+  spans.forEach((sp) => sp.classList.remove('saying'));
+  await speech.say(CHEERS[Math.floor(Math.random() * CHEERS.length)], { queue: true, pitch: 1.25 });
+  panel.classList.add('leaving');
+  await sleep(350);
+  panel.classList.add('hidden');
+}
+
+/** ?debug=spot&word=cloud&hint=ms (+ scene parameters): the spot question alone, for tests. */
+function debugSpot() {
+  installDefs();
+  debugChrome();
+  scene.fit();
+  scene.render(s.trip);
+  const word = (params.get('word') ?? 'dog').toLowerCase().replace(/[^a-z]/g, '').slice(0, 10);
+  const state = { done: false, word, targets: [] as { x: number; y: number; w: number; h: number }[] };
+  (window as unknown as { __spot: typeof state }).__spot = state;
+  requestAnimationFrame(() => {
+    spotBubble(word);
+    // measure once the bubble has settled in place
+    setTimeout(() => {
+      state.targets = spotTargets(scene.svg, word).map((e) => {
+        const r = e.getBoundingClientRect();
+        return { x: r.left, y: r.top, w: r.width, h: r.height };
+      });
+      spotWord(scene.svg, word, { hintAfter: Number(params.get('hint')) || 7000 }).done.then(() => (state.done = true));
+    }, 450);
+  });
+}
+
+/** The top buttons and logo on debug pages. */
+function debugChrome() {
   $('btn-book').innerHTML = ICONS.book;
   $('btn-camera').innerHTML = ICONS.camera;
   $('btn-parents').insertAdjacentHTML('beforeend', ICONS.gear);
@@ -333,10 +495,14 @@ function fitTrace(act: HTMLElement, word: string, onLetter?: (i: number) => void
   return null;
 }
 
-async function learn(word: string) {
+/** Which activity comes next: mixed play takes turns between tap, trace, find and spot. */
+function pickActivity(): Activity | 'spot' {
+  const a = s.settings.activity;
+  return a === 'mix' ? (['tap', 'trace', 'find', 'spot'] as const)[s.rounds % 4] : a;
+}
+
+async function learn(word: string, mode: Activity) {
   const learnedCount = Object.keys(s.learned).length;
-  // mixed: tap, trace and find take turns
-  const mode: Activity = s.settings.activity === 'mix' ? (['tap', 'trace', 'find'] as const)[s.rounds % 3] : s.settings.activity;
   const { pic, title, act } = learnLayout(word, mode);
   const traceTask = mode === 'trace' ? fitTrace(act, word, (i) => markLetter(i)) : null;
   cancelActivity = traceTask?.cancel ?? null;

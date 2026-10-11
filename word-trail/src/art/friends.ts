@@ -1,4 +1,5 @@
 import { heroArt, HEROES, HeroId, type Look } from './characters';
+import { AIR, itemArt, ITEM_BOX } from './wearables';
 import { C, ell, eye, flat, line, piece, shade } from './paper';
 
 // Small friends in the paper style, facing right like the hero, drawn in a
@@ -6,8 +7,15 @@ import { C, ell, eye, flat, line, piece, shade } from './paper';
 
 const cheek = (x: number, y: number) => flat(ell(x, y, 4, 2.6), C.blush, 'opacity="0.85"');
 
-const SMALL: Record<string, { art: string; fly?: boolean }> = {
+/**
+ * Small friends also hold hand-me-downs (see gear.ts): `head` is the top of the
+ * head [x, y, hat width] for a hat-like item, `hold` where the one other thing
+ * they hold is shown as a small picture. A kite or balloon string is held at
+ * `air` when the `hold` hand is in front (so the balloon doesn't cover the face).
+ */
+const SMALL: Record<string, { art: string; fly?: boolean; head: [number, number, number]; hold: [number, number]; air?: [number, number] }> = {
   bee: {
+    head: [58, 41, 38], hold: [30, 66],
     fly: true,
     art: `
       <g class="wing">${piece('M40 40 C30 22 42 12 50 24 C54 30 50 40 44 42 Z', '#f4fbfa', { lift: 0.6 })}${piece('M52 36 C52 16 68 14 68 28 C68 36 60 42 54 42 Z', '#f4fbfa', { lift: 0.6 })}</g>
@@ -18,6 +26,7 @@ const SMALL: Record<string, { art: string; fly?: boolean }> = {
       ${line('M64 44 C64 34 68 28 74 27', C.ink, 2)}`,
   },
   bird: {
+    head: [60, 33, 35], hold: [28, 70],
     fly: true,
     art: `
       ${piece('M26 62 L10 52 L14 70 Z', shade(C.indigo, -0.1), { lift: 0.8 })}
@@ -29,6 +38,7 @@ const SMALL: Record<string, { art: string; fly?: boolean }> = {
       ${eye(64, 42, 4, 'eye')}${cheek(62, 50)}`,
   },
   bug: {
+    head: [76, 61, 29], hold: [34, 70],
     art: `
       ${line('M36 90 L30 97 M50 92 L50 98 M64 90 L70 97', C.ink, 2)}
       ${piece('M26 78 C26 62 40 56 52 56 C66 56 76 66 74 80 C72 92 58 96 48 96 C36 96 26 90 26 78 Z', C.coral, { lift: 1.4 })}
@@ -39,6 +49,7 @@ const SMALL: Record<string, { art: string; fly?: boolean }> = {
       ${line('M76 60 C78 50 84 48 86 48 M72 60 C70 50 72 46 74 44', C.ink, 1.8)}`,
   },
   fish: {
+    head: [56, 45, 32], hold: [38, 76],
     fly: true,
     art: `
       ${flat(ell(50, 56, 34, 34), '#dff1f3', 'opacity="0.55"')}${flat(ell(50, 56, 34, 34), 'none', `stroke="#a9d7dc" stroke-width="3"`)}
@@ -50,6 +61,7 @@ const SMALL: Record<string, { art: string; fly?: boolean }> = {
       ${flat(ell(78, 38, 3, 3), 'none', 'stroke="#a9d7dc" stroke-width="2"')}${flat(ell(82, 28, 2, 2), 'none', 'stroke="#a9d7dc" stroke-width="2"')}`,
   },
   mouse: {
+    head: [71, 47, 29], hold: [32, 74],
     art: `
       ${line('M26 84 C12 84 8 74 12 64', '#c9a6b0', 3)}
       ${piece('M24 80 C24 64 38 60 52 62 C66 64 70 76 66 86 C60 96 30 96 24 80 Z', '#c5bdd3', { lift: 1.4 })}
@@ -61,6 +73,7 @@ const SMALL: Record<string, { art: string; fly?: boolean }> = {
       ${line('M38 94 L38 97 M54 94 L54 97', C.ink, 2)}`,
   },
   jellyfish: {
+    head: [52, 20, 51], hold: [24, 72],
     fly: true,
     art: `
       ${line('M34 56 C30 66 38 72 34 82 C31 88 35 92 33 96', '#e88aae', 2.6)}
@@ -73,6 +86,7 @@ const SMALL: Record<string, { art: string; fly?: boolean }> = {
       ${eye(62, 40, 4, 'eye')}${cheek(62, 49)}`,
   },
   squirrel: {
+    head: [64, 32, 35], hold: [70, 72], air: [40, 74],
     art: `
       ${piece('M40 84 C18 84 8 66 14 48 C18 32 32 22 40 30 C46 36 36 42 30 46 C24 54 26 66 36 70 C44 74 48 80 40 84 Z', '#d6874a', { lift: 1.2 })}
       ${flat('M18 50 C22 38 30 30 36 32 C30 36 24 42 22 52 Z', '#efb27e', 'opacity="0.8"')}
@@ -87,6 +101,7 @@ const SMALL: Record<string, { art: string; fly?: boolean }> = {
       ${eye(68, 40, 3.6, 'eye')}${cheek(64, 49)}`,
   },
   bunny: {
+    head: [65, 37, 29], hold: [38, 72],
     art: `
       ${piece(ell(24, 74, 7, 7), '#ffffff', { lift: 0.8 })}
       ${piece('M28 80 C26 62 40 56 52 56 C66 56 74 66 72 80 C70 92 60 96 48 96 C36 96 29 90 28 80 Z', '#f6f1ea', { lift: 1.4 })}
@@ -99,6 +114,7 @@ const SMALL: Record<string, { art: string; fly?: boolean }> = {
       ${eye(70, 47, 3.8, 'eye')}${cheek(68, 56)}`,
   },
   monkey: {
+    head: [58, 27, 45], hold: [76, 70], air: [38, 70],
     art: `
       ${line('M30 82 C14 84 10 70 18 62 C24 56 30 62 26 66', '#8a5a3c', 3.4)}
       ${line('M42 86 L40 96 L34 96 M58 86 L60 96 L66 96', '#7a4e33', 3.4)}
@@ -113,6 +129,7 @@ const SMALL: Record<string, { art: string; fly?: boolean }> = {
       ${eye(62, 41, 3.4, 'eye')}${eye(71, 41, 3, 'eye')}${cheek(60, 50)}`,
   },
   zebra: {
+    head: [86, 20, 29], hold: [40, 50],
     // drawn a little left of the box middle so its head fits the card
     art: `<g transform="translate(-6 0)">
       ${line('M24 60 C16 64 14 72 16 80', '#4a3f47', 2.6)}${piece(ell(16, 82, 3, 4.4), '#4a3f47', { lift: 0.3 })}
@@ -130,6 +147,7 @@ const SMALL: Record<string, { art: string; fly?: boolean }> = {
       ${eye(88, 28, 3.2, 'eye')}</g>`,
   },
   hen: {
+    head: [66, 30, 35], hold: [32, 72],
     art: `
       ${line('M42 88 L42 97 L36 97 M56 88 L56 97 L62 97', C.mustard, 3)}
       ${piece('M24 64 C14 50 20 40 28 44 C30 52 34 58 36 60 Z', '#f5ece0', { lift: 0.8 })}
@@ -148,12 +166,45 @@ export const SMALL_FRIENDS = Object.keys(SMALL);
 export const isFlying = (id: string) => !!SMALL[id]?.fly;
 
 /** A friend drawn in the 100×100 box (animal friends can wear hand-me-downs). */
-export function friendArt(id: string, look?: Look): string {
+export function friendArt(id: string, look?: Look & { hold?: string | null }): string {
   const s = SMALL[id];
-  if (s) return `<g data-word="${id}" class="friend ${s.fly ? 'fly' : 'hop'}" filter="url(#pc)">${s.art}</g>`;
+  if (s) return `<g data-word="${id}" class="friend ${s.fly ? 'fly' : 'hop'}" filter="url(#pc)">${s.art}${smallGear(s, look)}</g>`;
   if ((HEROES as string[]).includes(id))
     return `<g data-word="${id}" class="friend hop"><g transform="translate(0 0) scale(0.5)" filter="url(#pc)">${heroArt(id as HeroId, look)}</g></g>`;
   return '';
+}
+
+/** A card picture of an item, placed in a box: its bottom middle at (x, y) when `onTop`, else centred there. */
+function mini(item: string, x: number, y: number, w: number, onTop: boolean, maxH = 30) {
+  const box = ITEM_BOX[item];
+  if (!box) return '';
+  const [, , bw, bh] = box.split(' ').map(Number);
+  let width = w, height = (w * bh) / bw;
+  if (height > maxH) { width *= maxH / height; height = maxH; }
+  let left = x - width / 2;
+  let top = onTop ? y - height * 0.8 : y - height / 2;
+  if (AIR.includes(item)) {
+    // a kite or balloon hangs from its string: the string's end (the card's pack
+    // point, 100,70) goes in the friend's hand, the balloon floats above
+    const [bx, by] = box.split(' ').map(Number);
+    const k = width / bw;
+    left = x - (100 - bx) * k;
+    top = y - (70 - by) * k;
+  }
+  return `<svg x="${left.toFixed(1)}" y="${top.toFixed(1)}" width="${width.toFixed(1)}" height="${height.toFixed(1)}" viewBox="${box}" overflow="visible" data-item="${item}">${itemArt(item)}</svg>`;
+}
+
+function held(s: (typeof SMALL)[string], item: string) {
+  const air = AIR.includes(item);
+  const [x, y] = air && s.air ? s.air : s.hold;
+  return mini(item, x, y, 40, false, air ? 60 : 46);
+}
+
+/** A small friend's hand-me-downs: a hat-like item on its head, and the one thing it holds. */
+function smallGear(s: (typeof SMALL)[string], look?: Look & { hold?: string | null }) {
+  if (!look) return '';
+  const head = look.worn?.head;
+  return (head ? mini(head, s.head[0], s.head[1], s.head[2], true) : '') + (look.hold ? held(s, look.hold) : '');
 }
 
 /** Card picture (200×200) for a small friend. */

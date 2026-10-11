@@ -4,7 +4,7 @@ import { canWear, type Gear } from './gear';
 
 export interface Settings {
   letterCase: 'upper' | 'lower';
-  activity: 'mix' | 'tap' | 'trace' | 'find';
+  activity: 'mix' | 'tap' | 'trace' | 'find' | 'spot';
   rate: number; // speech speed 0.5..1.2
   voice: string; // voice name ('' = automatic)
   sound: boolean;
@@ -75,14 +75,20 @@ export function load(): SaveData {
     const gear: Trip['gear'] = {};
     for (const f of friends) {
       const g = (t.gear as Record<string, Partial<Gear>> | undefined)?.[f];
-      if (!g || !canWear(f)) continue;
+      if (!g) continue;
       const fw: Gear['worn'] = {};
       for (const [slot, id] of Object.entries(g.worn ?? {})) if (typeof id === 'string' && WEAR_SLOT[id] === slot) fw[slot as Slot] = id;
       gear[f] = {
         worn: fw,
         carry: typeof g.carry === 'string' && PACK.includes(g.carry) ? g.carry : null,
         air: typeof g.air === 'string' && AIR.includes(g.air) ? g.air : null,
+        hold: !canWear(f) && typeof g.hold === 'string' && (WEAR_SLOT[g.hold] || PACK.includes(g.hold) || AIR.includes(g.hold)) ? g.hold : null,
       };
+      // small friends wear only head things; whatever else they have is held
+      if (!canWear(f)) {
+        for (const slot of Object.keys(fw)) if (slot !== 'head') delete fw[slot as Slot];
+        gear[f].carry = gear[f].air = null;
+      }
     }
     const learned: Record<string, number> = {};
     for (const [w, n] of Object.entries(s.learned ?? {})) if (known.has(w)) learned[w] = numIn(n, 0, 1e6, 1);
@@ -110,7 +116,7 @@ export function load(): SaveData {
       rounds: numIn(s.rounds, 0, 1e7, 0),
       settings: {
         letterCase: pick(ss.letterCase, ['upper', 'lower'] as const, 'upper'),
-        activity: pick(ss.activity, ['mix', 'tap', 'trace', 'find'] as const, 'mix'),
+        activity: pick(ss.activity, ['mix', 'tap', 'trace', 'find', 'spot'] as const, 'mix'),
         rate: numIn(ss.rate, 0.5, 1.2, 0.8),
         voice: typeof ss.voice === 'string' ? ss.voice.slice(0, 200) : '',
         sound: typeof ss.sound === 'boolean' ? ss.sound : true,

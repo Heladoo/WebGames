@@ -33,6 +33,7 @@ export function initMenus(s: SaveData, hooks: MenuHooks) {
       for (const w of order) {
         const got = !!s.learned[w];
         const b = h('button', `sticker${got ? '' : ' locked'}`, `${picture(w)}<span>${got ? show(w) : '?'}</span>`);
+        b.style.setProperty('--n', String(got ? w.length : 1));
         b.setAttribute('aria-label', got ? w : 'Not found yet');
         if (got) b.addEventListener('click', () => { sfx.tap(); speech.say(w); b.classList.remove('boing'); void b.offsetWidth; b.classList.add('boing'); });
         grid.appendChild(b);
@@ -126,7 +127,7 @@ export function initMenus(s: SaveData, hooks: MenuHooks) {
     );
   };
   seg('opt-case', s.settings.letterCase, (v) => (s.settings.letterCase = v as 'upper' | 'lower'));
-  seg('opt-activity', s.settings.activity, (v) => (s.settings.activity = v as 'mix' | 'tap' | 'trace' | 'find'));
+  seg('opt-activity', s.settings.activity, (v) => (s.settings.activity = v as 'mix' | 'tap' | 'trace' | 'find' | 'spot'));
 
   const rate = $<HTMLInputElement>('opt-rate');
   rate.value = String(Math.round(s.settings.rate * 100));

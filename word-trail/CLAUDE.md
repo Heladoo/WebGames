@@ -31,15 +31,16 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 
 `nextDecision` → `scene.walkToSign` → `choose` → `learn` → `apply` → badges, then repeat.
 - **Walking to the choice.** The hero walks until a signpost moving with the ground reaches it. The choice panel then pops out of the sign. A single tap on a card chooses it.
-- **Learning the word.** `learn` takes turns between three activities (the grown-ups menu can pick one):
+- **Learning the word.** Mixed play takes turns between four activities (`pickActivity`; the grown-ups menu can pick one):
   - **tap** (`tapLetters.ts`): its level grows with the number of words learned.
   - **trace** (`trace.ts`, strokes in `glyphs.ts`): a letter completes only when about 80% of each stroke is covered **and** the finger lifts. A word is traced only if its capitals would be at least 75 CSS px tall on this screen (`fitTrace`); otherwise it is tapped. On a phone that means words of up to 4 letters.
   - The trace area is layered: pale letter shapes, then the child's ink, then the dotted guides (with a white halo on the current letter), the start dot and hint dot, so scribbling never hides the letter or the hints.
-  - **find** (`findWord.ts`): the word is shown big above with its picture, and the child picks the same word from 3 word cards (other first letters) or, later, 4 (same first letter or length, like RAIN for RAINBOW). A wrong card wobbles and says its own word; after quiet moments the word is said again and then the right card glows.
+  - **find** (`findWord.ts`): the word is shown big above with its picture, and the child picks the same word from 3 word cards (other first letters) or, later, 4 (same first letter or length, like RAIN for RAINBOW). `layout()` picks how many cards sit side by side so the text stays at least 30px (long words on phones get one card per row; the layout test checks this at both levels). A wrong card wobbles and says its own word; after quiet moments the word is said again and then the right card glows.
+  - **spot** (`spot.ts`, `spotRound` in `main.ts`): the choice joins the scene first, then a small bubble at the top asks "Where is the cloud?" with the word's picture and a finger tapping in the air. The child taps the thing in the scene (a padded target, so small things are easy). Taps elsewhere just say what was tapped. After 7 s of no success the question is said again and a glowing ring and pointing finger show the answer. When the choice can't be tapped (a place, the rain, out of view or under the bubble) another word on screen is asked. The bubble is kept small so the scene stays in view (tested).
   - After any of them, the word is spelled aloud, and each letter lights up as it is said (the `speech.spell` callback).
 - **Applying the choice.** `apply` changes only the slot of the chosen item. The rules for what stays and what goes:
   - **Friends:** at most 3; when a fourth joins, the oldest says "Bye bye" first (`scene.farewell`, spoken too) from its own spot while the others keep theirs, then hops off; only then does the new friend join, so nobody stands where it waves. The paper bubble, with the friend's picture, floats above everyone inside the view (on a phone the oldest friend is out of view).
-  - **Hand-me-downs** (`gear.ts`): an item the hero swaps away goes to the newest animal friend (one drawn like a hero) with that spot free, and stays with it (`trip.gear`) until that friend leaves. Small friends (bee, bird, …) can't wear things.
+  - **Hand-me-downs** (`gear.ts`): an item the hero swaps away goes to the newest friend with room for it, and stays with it (`trip.gear`) until that friend leaves. Friends drawn like heroes wear it like the hero. Small friends (bee, squirrel, monkey, …) put a hat-like item on their head and hold one other thing, drawn as a small card picture at their `head` / `hold` anchors in `friends.ts`. (Shoes once vanished because only hero-like friends could take things.)
   - **Carried things:** `carry` (a thing on the back: ball, star, book, drum, flag, bell, gift) and `air` (kite or balloon) are separate slots.
   - **Rides:** a `ride` lasts until the place changes.
 - **Choice variety** (`director.ts`).
@@ -100,6 +101,12 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 
 **`layout.spec.ts`** loads `?debug=learn` for the longest words on a small phone, a phone, a tablet and a landscape phone, in both activities, and checks that the big word stays on one line and everything fits in the panel and on screen, clear of the top buttons. It also checks that long words on a phone are tapped instead of traced.
 
+**`spot.spec.ts`** loads `?debug=spot` for a sky thing, friends, clothes, a carried thing, a ride and the hero on four screen sizes: the question is small, has its picture and finger, and the thing is on screen and not behind it. Tapping the thing answers, tapping elsewhere doesn't, and the hint ring lands on it.
+
+**`overflow.spec.ts`**: text never spills out of its box. On four screen sizes, choice cards with the longest words (2, 3 and 4 cards), the spot bubble and the sticker book labels must keep each word inside its box and on one line, at a readable size. Choice words are measured and shrunk to fit (`fitText` in `ui.ts`); if a word would go below 18px the cards go two to a row. (MONKEY once spilled out of a narrow card on a phone.)
+
+**`friends.spec.ts`**: a small friend's held thing (balloon, kite, …) never covers its eyes. (A balloon once floated over the monkey's face; balloons and kites hang from their string at the friend's `air` point when its `hold` hand is in front.)
+
 **`content.spec.ts`**: every badge medal has a picture, captions say "an owl" and name the place and the sky ("in the desert under a rainbow").
 
 **`gear.spec.ts`**: hand-me-downs go to the right friend (or nobody), and find-the-word options are right for each level.
@@ -114,6 +121,8 @@ When adding or changing art, add the case to `rigCases()` if needed, then **fix 
 - `?debug=wardrobe`: every hero with every item and ride.
 - `?debug=glyphs`: tracing strokes.
 - `?debug=rig`, `?debug=frames`, `?debug=tiles`: what the tests read.
+- `?debug=choose&words=fish,monkey,zebra`: the choice panel alone, for layout checks.
+- `?debug=spot&word=cloud&hint=ms` plus scene parameters (`sky=cloud`, `friends=bee`, …): the spot question alone; `window.__spot` reports the targets and whether it was answered.
 - `?debug=learn&word=rainbow&mode=tap|trace|find&level=0..3`: the learning panel alone, for layout checks (add `&hero=dog` to see the hero beside it).
 - `?debug=og`: the link-preview art; regenerate `public/og-image.png` by screenshotting it. (`?debug=icon` is the old drawn icon. The favicon and app icons now come from the owner's picture of the dog in a hat: the favicon is a round crop with transparent corners; the apple-touch and app icons stay square (iOS turns transparent corners black); the maskable icon has a 5% blue margin so the hat survives round masks.)
 
