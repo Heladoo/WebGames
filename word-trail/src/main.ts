@@ -19,7 +19,7 @@ import { tapWord } from './tapLetters';
 import { traceLetterPx, traceWord } from './trace';
 import { findWord } from './findWord';
 import { spotTargets, spottableWords, spotWord } from './spot';
-import { $, anyOverlayOpen, celebrate, flash, h, holdButton, ICONS, sleep, toast } from './ui';
+import { $, anyOverlayOpen, celebrate, fitText, flash, h, holdButton, ICONS, sleep, toast } from './ui';
 import { runDebug } from './debug';
 import { installDefs } from './art/paper';
 
@@ -40,6 +40,8 @@ if (params.get('debug') === 'learn') {
   debugLearn();
 } else if (params.get('debug') === 'spot') {
   debugSpot();
+} else if (params.get('debug') === 'choose') {
+  debugChoose();
 } else if (params.get('debug')) {
   runDebug(params.get('debug')!);
   installDefs();
@@ -207,6 +209,57 @@ async function run() {
 
 // ---------- 1. choose ----------
 
+/** A choice card: the picture and the word. */
+function choiceCard(w: string) {
+  const card = h('button', 'choice', `${picture(w)}<span class="word">${show(w)}</span><span class="ok">${ICONS.check}</span>`);
+  card.setAttribute('aria-label', w);
+  return card;
+}
+
+/**
+ * Long words shrink to fit their card. If that would make them smaller than
+ * 18px, the cards go two to a row instead (three long words side by side on
+ * a phone are too narrow to read).
+ */
+function fitChoiceWords() {
+  const grid = panel.querySelector<HTMLElement>('.cards');
+  if (!grid) return;
+  const words = () => [...panel.querySelectorAll<HTMLElement>('.choice')];
+  const fitAll = () => {
+    for (const c of words()) fitText(c.querySelector('.word')!, c.clientWidth - 8, 16);
+    return Math.min(...words().map((c) => parseFloat(getComputedStyle(c.querySelector('.word')!).fontSize)));
+  };
+  const fit = () => {
+    grid.style.removeProperty('--n');
+    grid.classList.remove('two-rows');
+    if (fitAll() < 18 && words().length > 2) {
+      grid.style.setProperty('--n', '2');
+      grid.classList.add('two-rows');
+      fitAll();
+    }
+  };
+  fit();
+  document.fonts?.ready.then(fit);
+}
+
+/** ?debug=choose&words=fish,monkey,zebra: the choice panel alone, for layout checks. */
+function debugChoose() {
+  installDefs();
+  debugChrome();
+  scene.fit();
+  scene.render(s.trip);
+  const words = (params.get('words') ?? 'fish,monkey,zebra').split(',').map((w) => w.replace(/[^a-z]/g, '')).filter(Boolean).slice(0, 4);
+  panel.className = 'panel choose';
+  panel.innerHTML = '';
+  const head = h('div', 'prompt');
+  head.append(h('button', 'say-btn', ICONS.speaker), h('h2', '', 'Who will come along?'));
+  const cards = h('div', `cards n${words.length}`);
+  for (const w of words) cards.appendChild(choiceCard(w));
+  panel.append(head, cards);
+  panel.classList.remove('hidden');
+  fitChoiceWords();
+}
+
 let resolveChoice: ((w: string | null) => void) | null = null;
 
 function choose(d: Decision): Promise<string | null> {
@@ -239,8 +292,7 @@ function choose(d: Decision): Promise<string | null> {
       setTimeout(() => resolve(w), 350);
     };
     for (const w of d.options) {
-      const card = h('button', 'choice', `${picture(w)}<span class="word">${show(w)}</span><span class="ok">${ICONS.check}</span>`);
-      card.setAttribute('aria-label', w);
+      const card = choiceCard(w);
       // one tap chooses: the card is marked, its word is said, and we go on
       card.addEventListener('click', () => {
         if (picked) return;
@@ -265,6 +317,7 @@ function choose(d: Decision): Promise<string | null> {
       panel.classList.add('from-sign');
     }
     panel.classList.remove('hidden');
+    fitChoiceWords();
     readOut();
   });
 }
@@ -342,6 +395,11 @@ function spotBubble(word: string) {
   panel.append(pic, text, finger);
   panel.classList.remove('hidden');
   pic.addEventListener('click', () => speech.say(whereIs(word)));
+  // the bubble may be as wide as the screen allows; the word shrinks to fit beside the picture and finger
+  const line = text.querySelector('.spot-line') as HTMLElement;
+  const fit = () => fitText(line, Math.min(460, innerWidth - 24) - 150, 20);
+  fit();
+  document.fonts?.ready.then(fit);
   return { word: text.querySelector('.spot-word') as HTMLElement };
 }
 

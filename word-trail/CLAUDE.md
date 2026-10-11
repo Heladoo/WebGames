@@ -103,6 +103,8 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 
 **`spot.spec.ts`** loads `?debug=spot` for a sky thing, friends, clothes, a carried thing, a ride and the hero on four screen sizes: the question is small, has its picture and finger, and the thing is on screen and not behind it. Tapping the thing answers, tapping elsewhere doesn't, and the hint ring lands on it.
 
+**`overflow.spec.ts`**: text never spills out of its box. On four screen sizes, choice cards with the longest words (2, 3 and 4 cards), the spot bubble and the sticker book labels must keep each word inside its box and on one line, at a readable size. Choice words are measured and shrunk to fit (`fitText` in `ui.ts`); if a word would go below 18px the cards go two to a row. (MONKEY once spilled out of a narrow card on a phone.)
+
 **`friends.spec.ts`**: a small friend's held thing (balloon, kite, …) never covers its eyes. (A balloon once floated over the monkey's face; balloons and kites hang from their string at the friend's `air` point when its `hold` hand is in front.)
 
 **`content.spec.ts`**: every badge medal has a picture, captions say "an owl" and name the place and the sky ("in the desert under a rainbow").
@@ -119,6 +121,7 @@ When adding or changing art, add the case to `rigCases()` if needed, then **fix 
 - `?debug=wardrobe`: every hero with every item and ride.
 - `?debug=glyphs`: tracing strokes.
 - `?debug=rig`, `?debug=frames`, `?debug=tiles`: what the tests read.
+- `?debug=choose&words=fish,monkey,zebra`: the choice panel alone, for layout checks.
 - `?debug=spot&word=cloud&hint=ms` plus scene parameters (`sky=cloud`, `friends=bee`, …): the spot question alone; `window.__spot` reports the targets and whether it was answered.
 - `?debug=learn&word=rainbow&mode=tap|trace|find&level=0..3`: the learning panel alone, for layout checks (add `&hero=dog` to see the hero beside it).
 - `?debug=og`: the link-preview art; regenerate `public/og-image.png` by screenshotting it. (`?debug=icon` is the old drawn icon. The favicon and app icons now come from the owner's picture of the dog in a hat: the favicon is a round crop with transparent corners; the apple-touch and app icons stay square (iOS turns transparent corners black); the maskable icon has a 5% blue margin so the hat survives round masks.)

@@ -172,6 +172,18 @@ export function holdButton(el: HTMLElement, ms: number, onHold: () => void, onTa
   });
 }
 
+/**
+ * Shrinks a one-line word just enough to fit `avail` pixels (measured, not
+ * guessed), never below `min`. Text must never spill out of its box: MONKEY
+ * once overflowed a narrow choice card on a phone.
+ */
+export function fitText(el: HTMLElement, avail: number, min = 16) {
+  el.style.fontSize = '';
+  const max = parseFloat(getComputedStyle(el).fontSize);
+  const need = el.getBoundingClientRect().width;
+  if (need > avail && need > 0) el.style.fontSize = `${Math.max(min, Math.floor(((max * avail) / need) * 0.97))}px`;
+}
+
 /** Open an overlay; resolves when it is closed. */
 export function openOverlay(id: string): Promise<void> {
   const o = $(id);

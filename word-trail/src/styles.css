@@ -194,7 +194,12 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   transition: transform 0.2s, border-color 0.2s, opacity 0.2s;
 }
 .choice .pic { width: 100%; aspect-ratio: 1; max-height: 34dvh; }
-.choice .word { font-size: clamp(28px, 5.4vw, 52px); font-weight: 700; letter-spacing: 0.06em; line-height: 1.2; }
+/* long words: two cards to a row, with smaller pictures so both rows fit */
+.cards.two-rows { max-width: 560px; margin: 0 auto; }
+.cards.two-rows .pic { max-height: min(22dvh, 150px); }
+.cards.n3.two-rows .choice:last-child { grid-column: 1 / -1; justify-self: center; width: calc(50% - 6px); }
+/* fitChoiceWords() shrinks a long word to fit its card (MONKEY once spilled out of a narrow card) */
+.choice .word { font-size: clamp(28px, 5.4vw, 52px); font-weight: 700; letter-spacing: 0.06em; line-height: 1.2; white-space: nowrap; }
 .choice .ok { position: absolute; top: -12px; right: -12px; width: 58px; height: 58px; border-radius: 50%; background: var(--green); display: grid; place-items: center; box-shadow: 0 4px 0 #2e6f6b; transform: scale(0); transition: transform 0.25s cubic-bezier(0.2, 1.6, 0.4, 1); }
 .choice .ok svg { width: 40px; height: 40px; }
 .choice.picked { transform: scale(1.05); border-color: var(--green); }
@@ -348,9 +353,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 .book-count { text-align: center; margin: 4px 0 12px; font-size: 18px; color: #8c7866; }
 .sticker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 12px; }
-.sticker { background: #fff; border-radius: 22px; padding: 8px 6px 4px; box-shadow: 0 4px 0 #e6dccb; display: flex; flex-direction: column; align-items: center; }
+.sticker { container-type: inline-size; background: #fff; border-radius: 22px; padding: 8px 6px 4px; box-shadow: 0 4px 0 #e6dccb; display: flex; flex-direction: column; align-items: center; }
 .sticker .pic { width: 100%; aspect-ratio: 1; }
-.sticker span { font-size: 22px; font-weight: 700; letter-spacing: 0.05em; }
+.sticker span { font-size: min(22px, calc((100cqw - 4px) / (var(--n, 4) * 0.78))); font-weight: 700; letter-spacing: 0.05em; white-space: nowrap; }
 .sticker.locked { cursor: default; box-shadow: none; background: #f3ecdf; }
 .sticker.locked .pic { filter: grayscale(1) brightness(1.5); opacity: 0.3; }
 .sticker.locked span { color: #cdbfa8; }
@@ -570,7 +575,9 @@ body::after {
 .spot-text { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
 .spot-where { font-family: var(--title); font-size: 17px; color: #8a7362; white-space: nowrap; }
 .spot-line { white-space: nowrap; }
-.spot-word, .spot-qm { font-size: clamp(26px, 6vw, 36px); letter-spacing: 0.08em; }
+/* spotBubble() shrinks a long word to fit beside the picture and the finger */
+.spot-line { display: inline-block; font-size: clamp(26px, 6vw, 36px); }
+.spot-word, .spot-qm { font-size: 1em; letter-spacing: 0.08em; }
 .spot-qm { color: #8a7362; margin-left: 2px; }
 .spot-word span { display: inline-block; transition: transform 0.18s, color 0.18s; }
 .spot-word span.saying { color: var(--pink); transform: translateY(-6px) scale(1.15); }

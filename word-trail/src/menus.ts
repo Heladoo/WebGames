@@ -33,6 +33,7 @@ export function initMenus(s: SaveData, hooks: MenuHooks) {
       for (const w of order) {
         const got = !!s.learned[w];
         const b = h('button', `sticker${got ? '' : ' locked'}`, `${picture(w)}<span>${got ? show(w) : '?'}</span>`);
+        b.style.setProperty('--n', String(got ? w.length : 1));
         b.setAttribute('aria-label', got ? w : 'Not found yet');
         if (got) b.addEventListener('click', () => { sfx.tap(); speech.say(w); b.classList.remove('boing'); void b.offsetWidth; b.classList.add('boing'); });
         grid.appendChild(b);
