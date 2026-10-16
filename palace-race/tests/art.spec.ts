@@ -12,8 +12,8 @@ async function open(page: Page, q: string) {
   expect(errors).toEqual([]);
 }
 
-interface Runner { seat: { x: number; y: number }; top: number; ground: number; nose: number; runnerTop: number; riderHead: { x: number; y: number }; rein: { x: number; y: number } }
-interface Rig { runners: Record<string, Runner>; obstacles: Record<string, { act: string; w: number; top: number; bottom: number }>; DUCK_GAP: number; JUMP_PEAK: number }
+interface Runner { eyeR: number; seat: { x: number; y: number }; top: number; ground: number; nose: number; runnerTop: number; riderHead: { x: number; y: number }; rein: { x: number; y: number } }
+interface Rig { runners: Record<string, Runner>; obstacles: Record<string, { act: string; w: number; top: number; bottom: number }>; DUCK_GAP: number; JUMP_PEAK: number; kidEye: number; draw: number; farLane: number }
 
 test.describe('rigs', () => {
   let rig: Rig;
@@ -48,6 +48,13 @@ test.describe('rigs', () => {
     for (const [k, o] of Object.entries(rig.obstacles)) if (o.act === 'duck') expect(-o.bottom, k).toBeGreaterThanOrEqual(rig.DUCK_GAP - 30);
   });
 
+  test('faces stay clear at game size: every eye is at least 4 px even in the far lane of a 1280 x 720 screen', () => {
+    // the 1600 x 900 stage is shown at 0.8 on a 1280 x 720 screen
+    const px = (r: number) => r * rig.draw * rig.farLane * 0.8;
+    for (const [k, r] of Object.entries(rig.runners)) expect(px(r.eyeR), k).toBeGreaterThanOrEqual(4);
+    expect(px(rig.kidEye), 'children').toBeGreaterThanOrEqual(4);
+  });
+
   test('every jump obstacle is lower than the top of a jump', () => {
     for (const [k, o] of Object.entries(rig.obstacles)) if (o.act === 'jump') expect(-o.top, k).toBeLessThan(rig.JUMP_PEAK - 10);
   });
@@ -75,7 +82,7 @@ test('scenery tiles repeat without a seam, paint quickly and have detail', async
 
 test('every art sheet renders without errors', async ({ page }) => {
   test.setTimeout(120_000);
-  for (const q of ['animals&scale=0.2', 'riders&scale=0.3', 'wardrobe&scale=0.3', 'obstacles&scale=0.3', 'podium&scale=0.4', 'logo', 'icons', 'icon&size=128', 'mock']) await open(page, `/?debug=${q}`);
+  for (const q of ['animals&scale=0.2', 'riders&scale=0.3', 'wardrobe&scale=0.3', 'obstacles&scale=0.3', 'podium&scale=0.4', 'icons', 'mock']) await open(page, `/?debug=${q}`);
 });
 
 test('every button has a picture and a label, so children who cannot read can use it', async ({ page }) => {
@@ -108,5 +115,21 @@ for (const size of [{ width: 844, height: 390 }, { width: 1024, height: 768 }, {
         const overlap = a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
         expect(overlap, `${JSON.stringify(a)} vs ${JSON.stringify(b)}`).toBe(false);
       }
+  });
+}
+
+for (const size of [{ width: 844, height: 390 }, { width: 1024, height: 768 }, { width: 390, height: 844 }]) {
+  test(`the title logo and Play button fit on screen at ${size.width}x${size.height}`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await open(page, '/');
+    const [logo, play] = await page.locator('.title-box .logo, #btn-play').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect));
+    for (const b of [logo, play]) {
+      expect(b.top).toBeGreaterThanOrEqual(0);
+      expect(b.left).toBeGreaterThanOrEqual(0);
+      expect(b.bottom).toBeLessThanOrEqual(size.height + 0.5);
+      expect(b.right).toBeLessThanOrEqual(size.width + 0.5);
+    }
+    expect(logo.bottom).toBeLessThanOrEqual(play.top);
+    expect(logo.width).toBeGreaterThan(200);
   });
 }

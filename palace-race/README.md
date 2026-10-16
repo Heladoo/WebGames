@@ -25,7 +25,11 @@ npm test         # art checks (Playwright + Chromium)
 - `?debug=obstacles`: obstacles per track, and the candies.
 - `?debug=track&track=forest`: one track's painted layers.
 - `?debug=podium`: the end-of-race picture.
-- `?debug=logo`, `?debug=icons`, `?debug=icon`: the logo, the button icons and the app icon.
+- `?debug=faces`: close-ups of every animal's and child's face.
+- `?debug=palace`: the palace close up.
+- `?debug=icons`: the button icons.
+
+The logo, the app icon and the favicon are the owner's own pictures (`public/`).
 
 ## Deploy on Vercel
 

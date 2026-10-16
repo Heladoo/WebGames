@@ -9,7 +9,7 @@ import { add, blob, curve, f, inked, linG, pt, rot, shade, type P } from './geom
 let uidN = 0;
 
 /** How much larger a child is drawn on an animal than standing. */
-export const RIDER_SCALE = 1.35;
+export const RIDER_SCALE = 1.55;
 
 /** Which rider pose goes with an animal pose. */
 export function riderPoseFor(p: PoseId): RiderPose {

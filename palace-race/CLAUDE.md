@@ -6,7 +6,7 @@
 
 **Stage 1 (art) is done; stage 2 (the game) waits for the owner's approval of the art.** What exists:
 - the drawings, their debug sheets and tests;
-- a title screen whose Play button opens a still of a race (`?debug=mock`);
+- a title screen (the owner's logo) whose Play button opens a still of a race (`?debug=mock`);
 - the public images.
 
 The approved plan for stage 2 is summarised under "Next" below.
@@ -35,11 +35,16 @@ The approved plan for stage 2 is summarised under "Next" below.
   - **Ground fit:** the figure is moved so its lowest foot touches y = 0 (minus `lift`).
   - **Near legs** join the body silhouette; their lower parts are redrawn with a thin outline so they read over the belly.
   - **Anchors:** `seat`, `seatAngle`, `rein`, `headTop`, `top`, `nose`, `ground`.
+- **Faces must be cute and clear** (owner's request).
+  - Big glossy eyes with a large iris, two highlights and a sparkle; lashes (except the dragon and reindeer); a soft brow; rosy cheeks and a clear smile.
+  - Animal heads are short and round. Children have big heads (`HEAD_R` = 30) with the eyes set low and a high forehead.
+  - The helmet chin strap runs behind the ear, never across the face.
+  - Check `?debug=faces`. A test keeps every eye at least 4 px in the far lane of a 1280 × 720 screen (`EYE_R` in animals.ts, `eyeR` on the anchors).
 - **Children** (`art/riders.ts`): `maya`, `tamar` (girls), `yoav`, `ari` (boys). Big round heads in a 3/4 turn: both eyes, the far one narrower.
   - **Poses:** `ride0-2`, `jump`, `duck`, `bump`, `wave`, `stand`, `clap0/1`, `trophy`.
   - **Items:** helmets (`basic` in the child's colour, `rainbow`, `stars`, `crown`, `flowers`), braids (`pink`, `gold`, `rainbow`, replacing the hair at the back) and saddles (in `runner.ts`).
   - **Anchors:** `hands`, `head`, `feet`, `chest`.
-- **Runner** (`art/runner.ts`): animal, saddle at `seat`, child at the saddle's hip (drawn `RIDER_SCALE` = 1.35× larger when riding), a stirrup to the foot, and reins from the hands to `rein`. `riderPoseFor` maps animal poses to rider poses.
+- **Runner** (`art/runner.ts`): animal, saddle at `seat`, child at the saddle's hip (drawn `RIDER_SCALE` = 1.55× larger when riding: the owner asked for bigger children), a stirrup to the foot, and reins from the hands to `rein`. `riderPoseFor` maps animal poses to rider poses.
 - **Tracks** (`art/tracks.ts`): `forest`, `meadow`, `snow`, `canyon`, `garden`. Each has five layers on a 1600 × 900 stage:
   - `sky`: still, with the palace on the horizon.
   - `far`, `mid`, `ground`, `front`: the scrolling layers (`PARALLAX`).
@@ -50,11 +55,19 @@ The approved plan for stage 2 is summarised under "Next" below.
   - **Jump obstacles** are drawn `JUMP_SCALE` larger and stay lower than `JUMP_PEAK`.
   - **Candies:** `wrapped`, `lolly`, `swirl`, and a rare `gold` star.
 - **Ceremony** (`art/podium.ts`): the palace garden.
-  - The winner holds the `trophy()` on the top step; the others clap, with medals.
+  - The winner holds the `trophy()` in front of the tummy (never over the face) on the top step.
+  - 2nd and 3rd stand on their steps with medals. **4th and 5th have no medal and no number** (owner's request): they stand on the lawn and clap.
   - Children right of the winner are mirrored to face it. Medals are drawn outside the mirrored group so their numbers read correctly.
   - The animals stand behind their children.
-- **Palace** (`art/palace.ts`): used in every sky, in the logo and in the ceremony. `haze` mixes it toward the sky for distance.
-- **Logo** (`art/logo.ts`): live inline SVG, not painted, so its Hebrew letters use the page's self-hosted Fredoka (an SVG painted into a canvas cannot use page fonts).
+- **Palace** (`art/palace.ts`, close-up at `?debug=palace`): drawn in the spirit of the owner's logo.
+  - Purple and blue (`PALACE_LOOK`) conical roofs with fish-scale shingles, gold rings and finials, and dormers.
+  - Eleven spires and turrets, arched blue-glass windows in gold frames, stone courses and battlements.
+  - A crown and balcony on the keep, a golden gate with lanterns, pennants, and a golden glow with sparkles.
+  - Used in every sky and in the ceremony; `haze` mixes it toward the sky for distance.
+- **The owner's pictures** (not drawn in code; only the processed results are committed, in `public/`). The processing was done once with a Python/PIL script outside the repo.
+  - `logo.webp` (900 px) and `logo-small.webp` (360 px) come from the logo on black. A cutout would eat into the logo's own dark outlines, so the black was lifted to a deep indigo night sky and the picture given soft, feathered edges that follow its shape. It is the title-screen heading and is drawn on the link preview.
+  - `icon-512.png`, `icon-192.png` and `apple-touch-icon.png` come from the logo in its frame: the black corners outside the rounded frame were filled with the frame's light-blue rim, since iOS turns transparent corners black.
+  - `favicon.png` is a round crop of the unicorn-and-palace picture, with transparent corners. `icon-maskable-512.png` is that picture whole, because its full purple background survives round masks.
 - **Painting:** `art/sprite.ts` `paint()` turns an SVG string into a canvas (`raster.ts`, copied from bead-box). Characters are drawn in local coordinates with the ground at y = 0, inside `RUNNER_BOX`. Debug sheets paint each piece into its own canvas, so gradient ids never collide.
 - **Paint helpers:** `art/paint.ts` is bead-box's painter's toolkit (clouds, foliage, trunks, pines, ferns, blossoms, rays). `art/geom.ts` adds blob and curve paths, ribbons, capsules, `inked`, `shade` and `mix`.
 
@@ -67,11 +80,9 @@ All of them set `window.__ready`; screenshot after it.
 - `?debug=obstacles`.
 - `?debug=track&track=forest&x=` (layers stacked and scrolled).
 - `?debug=podium&order=unicorn,horse,…`.
-- `?debug=logo`, `?debug=icons`.
+- `?debug=faces` (close-ups of every face), `?debug=palace`, `?debug=icons`.
 - `?debug=mock&track=` (a race still with HUD and touch buttons).
-- **Public images** (render with Playwright and commit to `public/`):
-  - `?debug=icon&size=512` (`&round=1` for the transparent round favicon, `&pad=1` for the maskable icon);
-  - `?debug=og` for `og-image.png`.
+- **Link preview:** render `?debug=og` (`#og`) with Playwright and commit it as `public/og-image.png`.
 - **Numbers for the tests:** `?debug=rig` → `window.__rig`; `?debug=seams` → `window.__seams` (seam difference, paint ms and colour count per layer).
 
 ## Tests
@@ -83,7 +94,9 @@ All of them set `window.__ready`; screenshot after it.
 - jump obstacles stay under `JUMP_PEAK`, and every track has both kinds of obstacle;
 - tiles have no seam, paint quickly and have detail;
 - every sheet renders without errors;
+- every eye is big enough to read at game size;
 - every button has an icon and a label;
+- the title logo and Play button fit on screen;
 - the HUD stays on screen without overlaps at a landscape phone, a tablet and a portrait phone.
 
 When art changes, fix the art until these pass; don't loosen a rule.

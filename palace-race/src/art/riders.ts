@@ -65,23 +65,23 @@ function poseOf(p: RiderPose): RP {
     case 'ride1': return ride(18, 2);
     case 'ride2': return ride(16, -1);
     case 'jump': return { ...ride(30, -4), armN: [62, 92], armF: [66, 96], mouth: 'grin', thigh: 70, shin: -24 };
-    case 'duck': return { ...ride(76, 8), head: -56, armN: [96, 110], armF: [100, 114], thigh: 70, shin: -16 };
+    case 'duck': return { ...ride(76, 8), head: -30, armN: [108, 116], armF: [112, 120], thigh: 70, shin: -16 };
     case 'bump': return { ...ride(-6, -2), head: 6, armN: [62, 104], armF: [70, 116], eyes: 'happy', mouth: 'open' };
-    case 'wave': return { ...ride(4, 0), armN: [118, 152], armF: [40, 86], eyes: 'happy', mouth: 'grin' };
+    case 'wave': return { ...ride(4, 0), armN: [70, 105], armF: [64, 100], eyes: 'happy', mouth: 'grin' };
     case 'stand': return { seated: false, lean: 2, head: 0, bob: 0, thigh: 4, shin: -2, legF: [-6, -6], armN: [10, 14], armF: [-8, -4], eyes: 'open', mouth: 'smile' };
-    case 'clap0': return { seated: false, lean: 4, head: -4, bob: 0, thigh: 4, shin: -2, legF: [-6, -6], armN: [48, 112], armF: [44, 106], eyes: 'happy', mouth: 'grin' };
-    case 'clap1': return { seated: false, lean: 4, head: -8, bob: -2, thigh: 6, shin: -2, legF: [-8, -6], armN: [36, 76], armF: [62, 136], eyes: 'happy', mouth: 'open' };
-    case 'trophy': return { seated: false, lean: 0, head: -10, bob: -2, thigh: 6, shin: -2, legF: [-10, -8], armN: [132, 160], armF: [124, 152], eyes: 'happy', mouth: 'grin' };
+    case 'clap0': return { seated: false, lean: 4, head: -4, bob: 0, thigh: 4, shin: -2, legF: [-6, -6], armN: [36, 92], armF: [32, 86], eyes: 'happy', mouth: 'grin' };
+    case 'clap1': return { seated: false, lean: 4, head: -8, bob: -2, thigh: 6, shin: -2, legF: [-8, -6], armN: [24, 64], armF: [44, 100], eyes: 'happy', mouth: 'open' };
+    case 'trophy': return { seated: false, lean: 0, head: -10, bob: -2, thigh: 6, shin: -2, legF: [-10, -8], armN: [26, 70], armF: [34, 78], eyes: 'happy', mouth: 'grin' };
   }
 }
 
-export interface RiderArt { back: string; front: string; hands: P[]; head: P; headR: number; feet: P[]; chest: P }
+export interface RiderArt { back: string; front: string; hands: P[]; head: P; headR: number; feet: P[]; chest: P; eyeR: number }
 
 let uidN = 0;
 
 const LEG = { thigh: 24, shin: 24 };
 const TORSO = 34;
-const HEAD_R = 24;
+const HEAD_R = 30;
 
 /** The standing height of a child's hip above the ground. */
 export const HIP_H = LEG.thigh + LEG.shin + 7;
@@ -150,7 +150,7 @@ export function drawKid(id: KidId, pose: RiderPose, outfit: Outfit, at: P, tilt 
   const armN = limb(sN, p.armN, [16, 15], [11, 10, 9], `url(#${shirtG})`, `url(#${skinG})`, 5.6);
   front += inked(armN.sh, INK, 2);
 
-  return { back: `<defs>${defs.join('')}</defs>${back}`, front, hands: [armN.end, armF.end], head: headC, headR: HEAD_R, feet: [legN.end], chest: T(4, -22) };
+  return { back: `<defs>${defs.join('')}</defs>${back}`, front, hands: [armN.end, armF.end], head: headC, headR: HEAD_R, feet: [legN.end], chest: T(4, -22), eyeR: HEAD_R * 0.19 };
 }
 
 function head(k: Kid, c: P, p: RP, o: Outfit, defs: string[], uid: string, skinG: string): string {
@@ -160,33 +160,40 @@ function head(k: Kid, c: P, p: RP, o: Outfit, defs: string[], uid: string, skinG
   let s = '';
   // hair behind the head
   s += hairBack(k, H, o, defs, uid);
-  // the head: round, with a small nose and a soft chin facing right
-  const shape = [H(-r, 0), H(-r * 0.7, -r * 0.72), H(0, -r), H(r * 0.72, -r * 0.7), H(r * 0.96, -r * 0.1), H(r * 1.06, r * 0.12), H(r * 0.94, r * 0.3), H(r * 0.82, r * 0.62), H(r * 0.36, r * 0.94), H(-r * 0.3, r * 0.92), H(-r * 0.8, r * 0.6)];
-  const ear = H(-r * 0.18, r * 0.12);
-  s += inked([{ d: blob(shape, 1), fill: `url(#${skinG})` }, { d: ellipse(ear, 5.5, 7), fill: shade(k.skin, -0.05) }], INK, 2);
-  s += `<path d="${ellipse(add(ear, pt(0.8, 0)), 2.6, 4)}" fill="${shade(k.skin, -0.2)}"/>`;
-  // face
-  const eyeN = H(r * 0.36, -r * 0.02);
-  const eyeF = H(r * 0.78, -r * 0.05);
+  // the head: big and round with chubby cheeks, a button nose and a soft chin, facing right
+  const shape = [H(-r, 0), H(-r * 0.72, -r * 0.72), H(0, -r), H(r * 0.72, -r * 0.72), H(r * 0.98, -r * 0.1), H(r * 1.04, r * 0.2), H(r * 0.98, r * 0.4), H(r * 0.8, r * 0.7), H(r * 0.36, r * 0.94), H(-r * 0.3, r * 0.9), H(-r * 0.82, r * 0.58)];
+  const ear = H(-r * 0.2, r * 0.14);
+  s += inked([{ d: blob(shape, 1), fill: `url(#${skinG})` }, { d: ellipse(ear, r * 0.2, r * 0.26), fill: shade(k.skin, -0.05) }], INK, 2);
+  s += `<path d="${ellipse(add(ear, pt(1, 0)), r * 0.09, r * 0.15)}" fill="${shade(k.skin, -0.2)}"/>`;
+  // big, glossy eyes set low in the face (a high forehead reads as young and sweet)
+  const eyeN = H(r * 0.3, r * 0.1);
+  const eyeF = H(r * 0.74, r * 0.08);
+  const rx = r * 0.19;
+  const ry = r * 0.27;
   if (p.eyes === 'happy') {
-    s += `<path d="M${f(eyeN.x - 5)} ${f(eyeN.y + 1)} Q${f(eyeN.x)} ${f(eyeN.y - 6)} ${f(eyeN.x + 5)} ${f(eyeN.y + 1)} M${f(eyeF.x - 3)} ${f(eyeF.y + 1)} Q${f(eyeF.x)} ${f(eyeF.y - 5)} ${f(eyeF.x + 3)} ${f(eyeF.y + 1)}" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+    const arc = (e: P, w: number) => `M${f(e.x - w)} ${f(e.y + 2)} Q${f(e.x)} ${f(e.y - w * 1.3)} ${f(e.x + w)} ${f(e.y + 2)}`;
+    s += `<path d="${arc(eyeN, rx * 1.1)} ${arc(eyeF, rx * 0.8)}" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
   } else {
-    const one = (e: P, rx: number, ry: number) =>
-      `<path d="${ellipse(e, rx, ry)}" fill="${INK}"/><path d="${ellipse(add(e, pt(0.3, 1.2)), rx * 0.7, ry * 0.62)}" fill="${k.eyes}"/>` +
-      `<circle cx="${f(e.x - rx * 0.25)}" cy="${f(e.y - ry * 0.35)}" r="${f(rx * 0.42)}" fill="#fff"/><circle cx="${f(e.x + rx * 0.3)}" cy="${f(e.y + ry * 0.4)}" r="${f(rx * 0.2)}" fill="#fff" opacity=".8"/>`;
-    s += one(eyeN, 4.4, 5.6) + one(eyeF, 3.2, 5.2);
-    if (k.girl) s += `<path d="M${f(eyeN.x - 4)} ${f(eyeN.y - 4)} l-3 -2.5 M${f(eyeN.x - 1.5)} ${f(eyeN.y - 5.5)} l-1.5 -3" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`;
+    const one = (e: P, w: number, h: number) =>
+      `<path d="${ellipse(e, w, h)}" fill="${INK}"/>` +
+      `<path d="${ellipse(add(e, pt(w * 0.06, h * 0.18)), w * 0.78, h * 0.72)}" fill="${k.eyes}"/>` +
+      `<path d="${ellipse(add(e, pt(w * 0.08, h * 0.26)), w * 0.42, h * 0.4)}" fill="${INK}"/>` +
+      `<circle cx="${f(e.x - w * 0.3)}" cy="${f(e.y - h * 0.32)}" r="${f(w * 0.46)}" fill="#fff"/>` +
+      `<circle cx="${f(e.x + w * 0.36)}" cy="${f(e.y + h * 0.42)}" r="${f(w * 0.2)}" fill="#fff" opacity=".9"/>`;
+    s += one(eyeN, rx, ry) + one(eyeF, rx * 0.72, ry * 0.94);
+    if (k.girl) s += `<path d="M${f(eyeN.x - rx * 0.9)} ${f(eyeN.y - ry * 0.4)} l-5 -2 M${f(eyeN.x - rx * 0.7)} ${f(eyeN.y - ry * 0.78)} l-4 -4 M${f(eyeN.x - rx * 0.2)} ${f(eyeN.y - ry * 1.0)} l-2 -5" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`;
   }
-  // brows, blush, nose and mouth
-  s += `<path d="M${f(eyeN.x - 4)} ${f(eyeN.y - 9)} q4 -3 8 -1 M${f(eyeF.x - 2)} ${f(eyeF.y - 9)} q3 -2 5 0" stroke="${shade(k.hair, -0.2)}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
-  s += `<path d="${ellipse(H(r * 0.2, r * 0.36), 5, 3.2)}" fill="#ff8f8f" opacity=".42"/><path d="${ellipse(H(r * 0.86, r * 0.32), 3, 2.4)}" fill="#ff8f8f" opacity=".42"/>`;
-  s += `<path d="M${f(H(r * 0.96, r * 0.08).x)} ${f(H(r * 0.96, r * 0.08).y)} q2 3 -2 4" stroke="${shade(k.skin, -0.35)}" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
-  const m = H(r * 0.6, r * 0.5);
-  if (p.mouth === 'smile') s += `<path d="M${f(m.x - 6)} ${f(m.y - 1)} Q${f(m.x)} ${f(m.y + 5)} ${f(m.x + 6)} ${f(m.y - 2)}" stroke="${INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+  // brows, rosy cheeks, a button nose and a wide smile
+  s += `<path d="M${f(eyeN.x - rx)} ${f(eyeN.y - ry * 1.45)} q${f(rx)} ${f(-ry * 0.45)} ${f(rx * 2)} ${f(-ry * 0.1)} M${f(eyeF.x - rx * 0.6)} ${f(eyeF.y - ry * 1.4)} q${f(rx * 0.7)} ${f(-ry * 0.35)} ${f(rx * 1.3)} 0" stroke="${shade(k.hair, -0.2)}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+  s += `<path d="${ellipse(H(r * 0.1, r * 0.46), r * 0.22, r * 0.14)}" fill="#ff7f8f" opacity=".45"/><path d="${ellipse(H(r * 0.86, r * 0.44), r * 0.12, r * 0.1)}" fill="#ff7f8f" opacity=".45"/>`;
+  s += `<path d="${ellipse(H(r * 0.98, r * 0.28), r * 0.07, r * 0.055)}" fill="${shade(k.skin, -0.18)}"/>`;
+  const m = H(r * 0.56, r * 0.6);
+  const mw = r * 0.24;
+  if (p.mouth === 'smile') s += `<path d="M${f(m.x - mw)} ${f(m.y - 2)} Q${f(m.x)} ${f(m.y + mw * 0.9)} ${f(m.x + mw)} ${f(m.y - 3)}" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
   else {
-    const open = p.mouth === 'open' ? 7 : 5;
-    s += `<path d="M${f(m.x - 7)} ${f(m.y - 2)} Q${f(m.x)} ${f(m.y + open + 2)} ${f(m.x + 7)} ${f(m.y - 3)} Q${f(m.x)} ${f(m.y)} ${f(m.x - 7)} ${f(m.y - 2)}Z" fill="#a8323e" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>`;
-    s += `<path d="M${f(m.x - 3)} ${f(m.y + open * 0.5)} q3 2 6 0" stroke="#ff8a96" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+    const open = p.mouth === 'open' ? mw * 1.1 : mw * 0.8;
+    s += `<path d="M${f(m.x - mw)} ${f(m.y - 3)} Q${f(m.x)} ${f(m.y + open + 2)} ${f(m.x + mw)} ${f(m.y - 4)} Q${f(m.x)} ${f(m.y - 1)} ${f(m.x - mw)} ${f(m.y - 3)}Z" fill="#a8323e" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`;
+    s += `<path d="M${f(m.x - mw * 0.45)} ${f(m.y + open * 0.55)} q${f(mw * 0.45)} ${f(mw * 0.3)} ${f(mw * 0.9)} 0" stroke="#ff8a96" stroke-width="3" fill="none" stroke-linecap="round"/>`;
   }
   // hair on top, then the helmet
   s += hairFront(k, H, defs, uid);
@@ -295,8 +302,8 @@ function helmet(k: Kid, H: (x: number, y: number) => P, id: HelmetId, defs: stri
   }
   s += `<g clip-path="url(#${clip})">${deco}<path d="${curve([H(-r * 0.7, -r * 0.9), H(-r * 0.1, -r * 1.2), H(r * 0.5, -r * 1.06)])}" stroke="#fff" stroke-width="4" fill="none" opacity=".55" stroke-linecap="round"/></g>`;
   s += `<path d="${blob(dome, 0.9)}" fill="none" stroke="${INK}" stroke-width="2"/>`;
-  // chin strap
-  s += `<path d="${curve([H(-r * 0.3, -r * 0.42), H(-r * 0.12, r * 0.3), H(r * 0.34, r * 0.86)])}" stroke="${shade(base, -0.35)}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+  // chin strap: down behind the ear and along the jaw, clear of the face
+  s += `<path d="${curve([H(-r * 0.42, -r * 0.3), H(-r * 0.4, r * 0.42), H(-r * 0.06, r * 0.9)])}" stroke="${shade(base, -0.35)}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
   return s;
 }
 

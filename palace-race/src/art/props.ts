@@ -25,7 +25,7 @@ const INK = '#4a2c18';
 let uidN = 0;
 
 /** How high the bottom of an overhead obstacle is (near lane): a ducking rider fits under it, a sitting one does not. */
-export const DUCK_GAP = 268;
+export const DUCK_GAP = 292;
 /** How high a jump lifts the feet at its peak (near lane); every jump obstacle is lower than this. */
 export const JUMP_PEAK = 160;
 /** Jump obstacles are drawn this much larger, so they read clearly next to the big animals. */

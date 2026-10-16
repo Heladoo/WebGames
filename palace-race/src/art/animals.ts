@@ -38,6 +38,7 @@ export interface Anchors {
   headTop: P; // top of the head (for a crown-like hit box)
   top: number; // highest point of the figure (y, negative up)
   ground: number; // lowest point of the feet (0 on the ground, negative when lifted)
+  eyeR: number; // eye radius, for the test that faces stay clear at game size
   nose: number; // front-most x
 }
 
@@ -255,46 +256,56 @@ interface Head { sh: Sh[]; over: string; rein: P; top: P; nose: number }
 
 function eye(c: Ctx, at: P, r: number, mode: 'open' | 'happy', lashes: boolean, tilt = 0): string {
   const sp = c.sp;
+  const brow = `<path d="M${f(at.x - r * 0.7)} ${f(at.y - r * 1.75)} Q${f(at.x + r * 0.1)} ${f(at.y - r * 2.15)} ${f(at.x + r * 0.9)} ${f(at.y - r * 1.65)}" stroke="${sp.ink}" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".55"/>`;
   if (mode === 'happy') {
-    return `<path d="M${f(at.x - r)} ${f(at.y + 1)} Q${f(at.x)} ${f(at.y - r * 1.1)} ${f(at.x + r)} ${f(at.y + 1)}" stroke="${sp.ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>` +
-      (lashes ? `<path d="M${f(at.x - r)} ${f(at.y)} l-4 -3 M${f(at.x - r * 0.4)} ${f(at.y - r * 0.6)} l-2 -4" stroke="${sp.ink}" stroke-width="1.8" stroke-linecap="round"/>` : '');
+    return `<g transform="rotate(${tilt} ${f(at.x)} ${f(at.y)})">` +
+      `<path d="M${f(at.x - r)} ${f(at.y + 2)} Q${f(at.x)} ${f(at.y - r * 1.3)} ${f(at.x + r)} ${f(at.y + 2)}" stroke="${sp.ink}" stroke-width="3.6" fill="none" stroke-linecap="round"/>` +
+      (lashes ? `<path d="M${f(at.x - r)} ${f(at.y + 1)} l-6 -3 M${f(at.x - r * 0.55)} ${f(at.y - r * 0.6)} l-4 -5" stroke="${sp.ink}" stroke-width="2.2" stroke-linecap="round"/>` : '') +
+      brow + `</g>`;
   }
   const id = `${c.uid}iris`;
-  c.defs.push(radG(id, [[0, shade(sp.eyeColor, 0.45)], [0.6, sp.eyeColor], [1, shade(sp.eyeColor, -0.5)]], 0.45, 0.35, 0.6));
+  c.defs.push(radG(id, [[0, shade(sp.eyeColor, 0.55)], [0.55, sp.eyeColor], [1, shade(sp.eyeColor, -0.5)]], 0.5, 0.65, 0.6));
+  const sparkle = (x: number, y: number, k: number) => `<path d="M${f(x)} ${f(y - k)} L${f(x + k * 0.3)} ${f(y)} L${f(x)} ${f(y + k)} L${f(x - k * 0.3)} ${f(y)}Z M${f(x - k)} ${f(y)} L${f(x)} ${f(y - k * 0.3)} L${f(x + k)} ${f(y)} L${f(x)} ${f(y + k * 0.3)}Z" fill="#fff"/>`;
   return (
     `<g transform="rotate(${tilt} ${f(at.x)} ${f(at.y)})">` +
-    `<path d="${ellipse(at, r * 0.95, r * 1.15)}" fill="#fff" stroke="${sp.ink}" stroke-width="2"/>` +
-    `<path d="${ellipse(pt(at.x + r * 0.22, at.y + r * 0.1), r * 0.68, r * 0.88)}" fill="url(#${id})"/>` +
-    `<path d="${ellipse(pt(at.x + r * 0.3, at.y + r * 0.18), r * 0.34, r * 0.46)}" fill="#1a0f12"/>` +
-    `<circle cx="${f(at.x + r * 0.02)}" cy="${f(at.y - r * 0.3)}" r="${f(r * 0.3)}" fill="#fff"/>` +
-    `<circle cx="${f(at.x + r * 0.5)}" cy="${f(at.y + r * 0.45)}" r="${f(r * 0.13)}" fill="#fff" opacity=".9"/>` +
+    `<path d="${ellipse(at, r * 0.95, r * 1.15)}" fill="#fff" stroke="${sp.ink}" stroke-width="2.2"/>` +
+    // a big iris that fills most of the eye, looking forward
+    `<path d="${ellipse(pt(at.x + r * 0.18, at.y + r * 0.1), r * 0.76, r * 0.98)}" fill="url(#${id})"/>` +
+    `<path d="${ellipse(pt(at.x + r * 0.24, at.y + r * 0.2), r * 0.4, r * 0.54)}" fill="#1a0f12"/>` +
+    `<circle cx="${f(at.x - r * 0.08)}" cy="${f(at.y - r * 0.32)}" r="${f(r * 0.34)}" fill="#fff"/>` +
+    `<circle cx="${f(at.x + r * 0.5)}" cy="${f(at.y + r * 0.52)}" r="${f(r * 0.15)}" fill="#fff" opacity=".95"/>` +
+    sparkle(at.x + r * 0.5, at.y - r * 0.3, r * 0.2) +
     // upper lid line
-    `<path d="M${f(at.x - r * 1.05)} ${f(at.y - r * 0.2)} Q${f(at.x - r * 0.1)} ${f(at.y - r * 1.55)} ${f(at.x + r * 1.0)} ${f(at.y - r * 0.55)}" stroke="${sp.ink}" stroke-width="3" fill="none" stroke-linecap="round"/>` +
-    (lashes ? `<path d="M${f(at.x - r * 0.9)} ${f(at.y - r * 0.55)} l-5 -4 M${f(at.x - r * 0.45)} ${f(at.y - r * 0.95)} l-3 -6 M${f(at.x + r * 0.1)} ${f(at.y - r * 1.12)} l-1 -6" stroke="${sp.ink}" stroke-width="2" stroke-linecap="round"/>` : '') +
-    `</g>`
+    `<path d="M${f(at.x - r * 1.05)} ${f(at.y - r * 0.15)} Q${f(at.x - r * 0.1)} ${f(at.y - r * 1.6)} ${f(at.x + r * 1.02)} ${f(at.y - r * 0.5)}" stroke="${sp.ink}" stroke-width="3.6" fill="none" stroke-linecap="round"/>` +
+    (lashes ? `<path d="M${f(at.x - r * 0.95)} ${f(at.y - r * 0.45)} l-7 -4 M${f(at.x - r * 0.55)} ${f(at.y - r * 0.92)} l-5 -7 M${f(at.x)} ${f(at.y - r * 1.12)} l-2 -7" stroke="${sp.ink}" stroke-width="2.4" stroke-linecap="round"/>` : '') +
+    brow + `</g>`
   );
 }
+
+/** Eye radius per animal (units at full size), for drawing and for the "faces are clear" test. */
+const EYE_R: Record<AnimalId, number> = { horse: 12, unicorn: 12.5, deer: 12, reindeer: 10.5, dragon: 11.5 };
 
 function horseHead(c: Ctx, H: P, ang: number, eyes: 'open' | 'happy', wave: number): Head {
   const sp = c.sp;
   const T = (x: number, y: number) => rot(add(H, pt(x, y)), H, -ang + 34);
   const fill = coatGrad(c, 'hd', sp.light, sp.coat, sp.dark);
-  const head: P[] = [T(-2, -4), T(16, -2), T(30, 8), T(44, 28), T(54, 46), T(60, 60), T(56, 72), T(44, 76), T(32, 70), T(22, 58), T(6, 48), T(-8, 30), T(-10, 10)];
+  const head: P[] = [T(-4, -6), T(18, -6), T(33, 6), T(43, 24), T(51, 40), T(55, 54), T(51, 66), T(39, 71), T(26, 67), T(12, 60), T(-2, 50), T(-12, 32), T(-14, 12)];
   const earN = [T(4, -2), T(0, -26), T(10, -32), T(14, -6)];
   const sh: Sh[] = [
     { d: blob([T(-4, -2), T(-6, -24), T(4, -30), T(6, -4)], 0.9), fill: shade(sp.coat, -0.15) },
     { d: blob(head, 1), fill },
     { d: blob(earN, 0.9), fill },
   ];
-  const cheek = T(14, 40);
+  const cheek = T(12, 42);
   let over =
-    `<path d="${ellipse(cheek, 14, 13)}" fill="${sp.dark}" opacity=".18"/>` +
+    `<path d="${ellipse(cheek, 15, 13)}" fill="${sp.dark}" opacity=".15"/>` +
+    `<path d="${ellipse(T(22, 44), 9, 6)}" fill="#ff8fa8" opacity=".4"/>` +
     `<path d="${blob([T(3, -6), T(3, -22), T(9, -26), T(10, -7)], 0.9)}" fill="${c.id === 'unicorn' ? '#ffc4e1' : shade(sp.coat, -0.2)}"/>` +
     // muzzle shade, nostril and smile
-    `<path d="${blob([T(44, 44), T(58, 58), T(56, 72), T(42, 74), T(36, 60)], 1)}" fill="${c.id === 'unicorn' ? '#ffd8ea' : shade(sp.coat, -0.12)}" opacity=".9"/>` +
-    `<path d="M${f(T(49, 56).x)} ${f(T(49, 56).y)} q4 1 5 6" stroke="${sp.ink}" stroke-width="2.4" fill="none" stroke-linecap="round"/>` +
-    `<path d="M${f(T(40, 70).x)} ${f(T(40, 70).y)} q6 3 13 0" stroke="${sp.ink}" stroke-width="2" fill="none" stroke-linecap="round"/>` +
-    eye(c, T(21, 17), 9.2, eyes, c.id === 'unicorn', -ang * 0.2);
+    `<path d="${blob([T(38, 46), T(53, 52), T(54, 65), T(40, 71), T(31, 60)], 1)}" fill="${c.id === 'unicorn' ? '#ffd8ea' : shade(sp.coat, 0.18)}" opacity=".95"/>` +
+    `<path d="${ellipse(T(47, 55), 3.4, 2.4)}" fill="${sp.ink}" opacity=".85"/>` +
+    `<path d="M${f(T(29, 61).x)} ${f(T(29, 61).y)} Q${f(T(38, 69).x)} ${f(T(38, 69).y)} ${f(T(49, 64).x)} ${f(T(49, 64).y)}" stroke="${sp.ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>` +
+    eye(c, T(19, 18), EYE_R[c.id], eyes, c.id !== 'dragon', -ang * 0.2);
   if (c.id === 'unicorn') {
     // the golden spiral horn
     const b1 = T(10, -6);
@@ -314,7 +325,7 @@ function horseHead(c: Ctx, H: P, ang: number, eyes: 'open' | 'happy', wave: numb
   // forelock: a lock falling forward over the brow
   const fw = Math.sin(2 * Math.PI * wave) * 2;
   over += drawLock(c, [T(-2, -6), T(12, -4), T(20, 4 + fw), T(18, 14)], 13, lockColors(c)[1]);
-  return { sh, over, rein: T(42, 64), top: T(4, -30), nose: Math.max(...head.map((p) => p.x)) };
+  return { sh, over, rein: T(40, 62), top: T(4, -30), nose: Math.max(...head.map((p) => p.x)) };
 }
 
 function deerHead(c: Ctx, H: P, ang: number, eyes: 'open' | 'happy', reindeer: boolean): Head {
@@ -346,8 +357,9 @@ function deerHead(c: Ctx, H: P, ang: number, eyes: 'open' | 'happy', reindeer: b
     `<path d="${blob(reindeer ? [T(36, 40), T(54, 46), T(54, 58), T(38, 62), T(30, 52)] : [T(30, 34), T(48, 40), T(48, 50), T(34, 54), T(26, 46)], 1)}" fill="${sp.belly}"/>` +
     `<path d="${ellipse(reindeer ? T(52, 46) : T(47, 40), reindeer ? 7 : 6, reindeer ? 6 : 5)}" fill="#24140c"/>` +
     `<circle cx="${f((reindeer ? T(50, 44) : T(45, 38)).x)}" cy="${f((reindeer ? T(50, 44) : T(45, 38)).y)}" r="1.8" fill="#fff" opacity=".8"/>` +
-    `<path d="M${f((reindeer ? T(36, 58) : T(32, 50)).x)} ${f((reindeer ? T(36, 58) : T(32, 50)).y)} q6 3 12 -1" stroke="${sp.ink}" stroke-width="2" fill="none" stroke-linecap="round"/>` +
-    eye(c, T(18, 14), reindeer ? 7 : 8.6, eyes, !reindeer, -ang * 0.2);
+    `<path d="M${f((reindeer ? T(32, 54) : T(27, 46)).x)} ${f((reindeer ? T(32, 54) : T(27, 46)).y)} Q${f((reindeer ? T(40, 62) : T(34, 54)).x)} ${f((reindeer ? T(40, 62) : T(34, 54)).y)} ${f((reindeer ? T(48, 57) : T(42, 50)).x)} ${f((reindeer ? T(48, 57) : T(42, 50)).y)}" stroke="${sp.ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>` +
+    `<path d="${ellipse(reindeer ? T(20, 40) : T(16, 34), 8, 5.5)}" fill="#ff8fa8" opacity=".4"/>` +
+    eye(c, reindeer ? T(17, 13) : T(16, 13), EYE_R[c.id], eyes, !reindeer, -ang * 0.2);
   if (!reindeer) {
     // a fawn's forehead tuft
     over += `<path d="M${f(T(4, -6).x)} ${f(T(4, -6).y)} q6 -9 10 -2 q2 -8 7 -1" fill="${sp.light}" stroke="${sp.ink}" stroke-width="1.6"/>`;
@@ -383,7 +395,7 @@ function dragonHead(c: Ctx, H: P, ang: number, eyes: 'open' | 'happy'): Head {
   const sp = c.sp;
   const T = (x: number, y: number) => rot(add(H, pt(x, y)), H, -ang + 58);
   const fill = coatGrad(c, 'hd', sp.light, sp.coat, sp.dark);
-  const head: P[] = [T(-10, -6), T(14, -10), T(34, -2), T(52, 12), T(68, 22), T(72, 34), T(64, 44), T(44, 48), T(26, 50), T(10, 46), T(-6, 32), T(-14, 12)];
+  const head: P[] = [T(-12, -8), T(14, -12), T(34, -4), T(50, 10), T(62, 20), T(66, 32), T(60, 44), T(42, 49), T(24, 51), T(8, 47), T(-8, 32), T(-16, 12)];
   const hornCol = '#fff0c8';
   const horn = (bx: number, by: number, len: number, a: number) => {
     const base = T(bx, by);
@@ -399,13 +411,13 @@ function dragonHead(c: Ctx, H: P, ang: number, eyes: 'open' | 'happy'): Head {
   let over =
     `<path d="${blob([T(-8, 18), T(-24, 26), T(-14, 34), T(-26, 44), T(-6, 44), T(6, 38)], 0.8)}" fill="${sp.mane[0]}" stroke="${sp.ink}" stroke-width="2" stroke-linejoin="round"/>` +
     `<path d="${blob([T(20, 40), T(46, 42), T(66, 38), T(60, 46), T(40, 50), T(22, 48)], 1)}" fill="${sp.belly}" opacity=".95"/>` +
-    `<path d="M${f(T(30, 40).x)} ${f(T(30, 40).y)} Q${f(T(46, 46).x)} ${f(T(46, 46).y)} ${f(T(62, 36).x)} ${f(T(62, 36).y)}" stroke="${sp.ink}" stroke-width="2.4" fill="none" stroke-linecap="round"/>` +
-    `<path d="M${f(T(62, 22).x)} ${f(T(62, 22).y)} q5 -1 4 5" stroke="${sp.ink}" stroke-width="2.4" fill="none" stroke-linecap="round"/>` +
+    `<path d="M${f(T(26, 38).x)} ${f(T(26, 38).y)} Q${f(T(42, 50).x)} ${f(T(42, 50).y)} ${f(T(58, 36).x)} ${f(T(58, 36).y)}" stroke="${sp.ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>` +
+    `<path d="${ellipse(T(56, 22), 3.2, 2.4)}" fill="${sp.ink}" opacity=".85"/>` +
     `<path d="M${f(T(8, 2).x)} ${f(T(8, 2).y)} Q${f(T(22, -6).x)} ${f(T(22, -6).y)} ${f(T(34, 4).x)} ${f(T(34, 4).y)}" stroke="#ffd25a" stroke-width="4" fill="none" stroke-linecap="round"/>` +
-    eye(c, T(22, 14), 8, eyes, false, -ang * 0.2);
+    eye(c, T(21, 13), EYE_R.dragon, eyes, false, -ang * 0.2);
   // cheek blush
   over += `<path d="${ellipse(T(10, 30), 8, 5)}" fill="#ff8a7a" opacity=".45"/>`;
-  return { sh, over, rein: T(52, 44), top: T(-26, -20), nose: Math.max(...head.map((p) => p.x)) };
+  return { sh, over, rein: T(48, 44), top: T(-26, -20), nose: Math.max(...head.map((p) => p.x)) };
 }
 
 // ---------------------------------------------------------------- hair
@@ -613,6 +625,7 @@ export function drawAnimal(id: AnimalId, poseId: PoseId): AnimalArt {
     top: Math.min(head.top.y, ...bodyPts.map((p) => p.y)),
     nose: head.nose,
     ground: -pose.lift,
+    eyeR: EYE_R[id],
   };
   return { svg: `<defs>${c.defs.join('')}</defs>${svg}`, anchors };
 }

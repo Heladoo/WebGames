@@ -10,7 +10,7 @@
 
 import { FX, blossom, butterfly, cloud, fern, foliage, grass, mushroom, pine, rays, rng, trunk } from './paint';
 import { blob, ellipse, f, linG, mix, pt, radG, shade, type P } from './geom';
-import { palace } from './palace';
+import { PALACE_LOOK, palace } from './palace';
 
 export const STAGE_W = 1600;
 export const STAGE_H = 900;
@@ -100,7 +100,7 @@ function sky(id: TrackId): string {
   if (id !== 'garden') {
     s += `<path d="M${P.x - 380} ${P.y + 140} Q${P.x - 200} ${P.y - 20} ${P.x} ${P.y - 6} Q${P.x + 200} ${P.y - 20} ${P.x + 380} ${P.y + 140}Z" fill="${mix(L.verge[1], L.haze, 0.55)}" filter="url(#b3)"/>`;
   }
-  s += `<g filter="url(#soften)">${palace(P.x, P.y, P.s, { wall: '#f4ecfa', roofA: '#8a6ad6', roofB: '#ee8cbf', haze: L.haze, hazeK: P.k, wave: 0.2 })}</g>`;
+  s += `<g filter="url(#soften)">${palace(P.x, P.y, P.s, { ...PALACE_LOOK, haze: L.haze, hazeK: P.k, wave: 0.2 })}</g>`;
   return s;
 }
 

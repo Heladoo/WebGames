@@ -97,21 +97,23 @@ export function podiumSVG(order: Racer[]): string {
     s += `<circle cx="${st.x}" cy="${(st.top + FLOOR) / 2 + 18}" r="38" fill="#fff" stroke="#4a2a5c" stroke-width="4"/><text x="${st.x}" y="${(st.top + FLOOR) / 2 + 36}" font-size="52" text-anchor="middle" font-family="sans-serif" font-weight="700" fill="#4a2a5c">${st.label}</text>`;
   });
   // the children
-  const K = 1.7;
+  const K = 1.85;
   order.forEach((rc, i) => {
     const sp = spots[i];
     const pose = i === 0 ? 'trophy' : i % 2 ? 'clap0' : 'clap1';
     const k = drawKid(rc.kid, pose, rc.outfit, pt(0, -HIP_H));
     let body = `<ellipse cx="0" cy="2" rx="34" ry="7" fill="#2a3a10" opacity=".25"/>` + k.back + k.front;
     if (i === 0) {
-      const mid = pt((k.hands[0].x + k.hands[1].x) / 2, Math.min(k.hands[0].y, k.hands[1].y) + 6);
-      body += trophy(mid, 0.62);
+      // the cup is held in front of the tummy, below the face
+      const mid = pt((k.hands[0].x + k.hands[1].x) / 2 + 4, Math.max(k.hands[0].y, k.hands[1].y) + 10);
+      body += trophy(mid, 0.4);
       // little stars of joy around the winner
       body += [[-40, -170], [44, -180], [-52, -120], [56, -110]].map(([x, y]) => `<path d="M${x} ${y - 8} L${x + 2.4} ${y - 2.4} L${x + 8} ${y} L${x + 2.4} ${y + 2.4} L${x} ${y + 8} L${x - 2.4} ${y + 2.4} L${x - 8} ${y} L${x - 2.4} ${y - 2.4}Z" fill="#ffe066" stroke="#c8700e" stroke-width="1.2"/>`).join('');
     }
     s += `<g transform="translate(${sp.x} ${sp.y}) scale(${f(K * sp.face)} ${K})">${body}</g>`;
-    // medals are drawn outside the mirrored group, so their numbers read the right way round
-    if (i > 0) s += medal(pt(sp.x + k.chest.x * K * sp.face, sp.y + k.chest.y * K), K, ['#ffcf3a', '#d8dce8', '#e8a26a', '#8fd0f0', '#c9a0ff'][i], i + 1);
+    // medals for 2nd and 3rd only (4th and 5th just clap); drawn outside the mirrored group, so their numbers read
+    // the right way round
+    if (i === 1 || i === 2) s += medal(pt(sp.x + k.chest.x * K * sp.face, sp.y + k.chest.y * K), K, ['#ffcf3a', '#d8dce8', '#e8a26a', '#8fd0f0', '#c9a0ff'][i], i + 1);
   });
   s += confetti(17);
   // a soft frame

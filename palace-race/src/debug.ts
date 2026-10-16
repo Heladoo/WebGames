@@ -1,13 +1,15 @@
 // Debug pages (open with ?debug=...). They render test sheets for screenshots and expose numbers on `window`
 // so Playwright can check the art without anyone looking at it by hand.
 //   ?debug=animals   every animal in every pose (window.__animals has the anchors)
+//   ?debug=riders, wardrobe, faces, palace, obstacles, track, podium, icons, mock, og   art sheets and stills
+//   ?debug=rig, seams   numbers for the tests (window.__rig, window.__seams)
 
 import { ANIMALS, POSES, drawAnimal } from './art/animals';
-import { RUNNER_BOX, paint } from './art/sprite';
-import { drawRunner } from './art/runner';
+import { RUNNER_BOX, RUNNER_DRAW, paint } from './art/sprite';
+import { RIDER_SCALE, drawRunner } from './art/runner';
 import { DUCK_GAP, JUMP_PEAK, type ObstacleId } from './art/props';
 import { podiumSVG } from './art/podium';
-import { logoSVG } from './art/logo';
+import { palace } from './art/palace';
 import { ICONS } from './art/icons';
 import { CANDIES, TRACK_OBSTACLES, candy, obstacle } from './art/props';
 import { LANE_SCALE, LANE_Y, LAYERS, PARALLAX, STAGE_H, STAGE_W, trackLayer, type TrackId } from './art/tracks';
@@ -115,7 +117,7 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     const scroll = 260;
     const pics = await Promise.all(LAYERS.map((l) => paint(trackLayer(id, l), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, 1)));
     // things on the track, far lane first: [x, lane, svg]
-    const R = 0.86;
+    const R = RUNNER_DRAW;
     const items: { x: number; lane: number; svg: string; box: typeof RUNNER_BOX }[] = [];
     const runners: [typeof ANIMALS[number], 'maya' | 'tamar' | 'yoav' | 'ari', number, number, string, Outfit][] = [
       ['deer', 'tamar', 0, 380, 'run2', PLAIN],
@@ -164,33 +166,6 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     w.__ready = true;
     return true;
   }
-  if (kind === 'icon') {
-    // the app icon / favicon: the unicorn's head in a round sky badge under a rainbow. &size=512, &round=1 for the
-    // favicon (transparent corners), &pad=1 for the maskable icon (a safe margin)
-    const size = Number(params.get('size')) || 512;
-    const round = params.get('round') === '1';
-    const pad = params.get('pad') === '1' ? 0.8 : 1;
-    const a = drawAnimal('unicorn', 'stand');
-    const { headTop, rein } = a.anchors;
-    const hw = 236;
-    const hx = rein.x - 160;
-    const hy = headTop.y - 44;
-    const rainbow = ['#ff6b6b', '#ffa94d', '#ffd43b', '#69db7c', '#4dabf7', '#b197fc'];
-    const bg = `<defs><radialGradient id="ib" cx=".5" cy=".38" r=".7"><stop offset="0" stop-color="#fff8e6"/><stop offset=".55" stop-color="#ffd9ec"/><stop offset="1" stop-color="#b9a4f0"/></radialGradient><clipPath id="ic"><circle cx="256" cy="256" r="${round ? 250 : 400}"/></clipPath></defs>`;
-    let body = `<g clip-path="url(#ic)"><rect width="512" height="512" fill="url(#ib)"/>`;
-    rainbow.forEach((c, i) => (body += `<path d="M${40 + i * 18} 560 V420 A${216 - i * 18} ${216 - i * 18} 0 0 1 ${472 - i * 18} 420 V560" fill="none" stroke="${c}" stroke-width="19" opacity=".9"/>`));
-    body += `<g transform="translate(256 256) scale(${pad}) translate(-256 -256)"><svg x="30" y="30" width="480" height="480" viewBox="${hx} ${hy} ${hw} ${hw}">${a.svg}</svg></g></g>`;
-    if (round) body += `<circle cx="256" cy="256" r="248" fill="none" stroke="#6a4d8c" stroke-width="8"/>`;
-    const cv = await paint(bg + body, { x: 0, y: 0, w: 512, h: 512 }, size / 512);
-    cv.id = 'icon';
-    const sheet = page('');
-    sheet.style.background = round ? 'transparent' : '#fdf6e8';
-    if (round) document.documentElement.style.background = document.body.style.background = 'transparent';
-    sheet.style.padding = '0';
-    sheet.appendChild(cv);
-    w.__ready = true;
-    return true;
-  }
   if (kind === 'og') {
     // the 1200 x 630 link preview: a race moment with the logo
     const id = 'forest';
@@ -215,8 +190,43 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     await put(sh + drawRunner('horse', 'maya', 'run0', { helmet: 'stars', braids: 'none', saddle: 'stars' }).svg, 2, 1470);
     const url = cv.toDataURL('image/png');
     page(`<div id="og" style="position:relative;width:1200px;height:630px;overflow:hidden;background:url(${url}) 70% 100%/cover no-repeat">
-      <div style="position:absolute;left:24px;top:16px;width:560px">${logoSVG('og')}</div></div>`).style.padding = '0';
-    await document.fonts.ready;
+      <img id="og-logo" src="/logo-small.webp" alt="" style="position:absolute;left:26px;top:14px;width:360px"></div>`).style.padding = '0';
+    await document.querySelector<HTMLImageElement>('#og-logo')!.decode().catch(() => {});
+    w.__ready = true;
+    return true;
+  }
+  if (kind === 'palace') {
+    // the palace close up, on a night sky like the logo's and on a day sky
+    const sheet = page('');
+    for (const bg of ['#2a2370', '#bfe0f6']) sheet.appendChild(await paint(`<rect x="-300" y="-520" width="600" height="560" fill="${bg}"/>` + palace(0, 0, 1), { x: -300, y: -520, w: 600, h: 560 }, 1));
+    w.__ready = true;
+    return true;
+  }
+  if (kind === 'faces') {
+    // close-ups of every animal's and every child's face, normal and happy, to judge them
+    const sheet = page('');
+    const box = 150;
+    for (const a of ANIMALS) {
+      const row = document.createElement('div');
+      row.style.whiteSpace = 'nowrap';
+      sheet.appendChild(row);
+      for (const p of ['stand', 'happy', 'run1'] as const) {
+        const art = drawAnimal(a, p);
+        const { headTop, rein } = art.anchors;
+        const cx = (headTop.x + rein.x) / 2 + 4;
+        const cy = (Math.max(headTop.y, rein.y - 110) + rein.y) / 2;
+        row.appendChild(await paint(`<rect x="-400" y="-400" width="900" height="900" fill="#cfe8f6"/>` + art.svg, { x: cx - box / 2 - 10, y: cy - box / 2, w: box, h: box }, 2));
+      }
+    }
+    for (const kid of KIDS) {
+      const row = document.createElement('div');
+      row.style.whiteSpace = 'nowrap';
+      sheet.appendChild(row);
+      for (const p of ['stand', 'clap0', 'ride0'] as const) {
+        const k = drawKid(kid, p, PLAIN, { x: 0, y: -HIP_H });
+        row.appendChild(await paint(`<rect x="-400" y="-400" width="900" height="900" fill="#fbe6c8"/>` + k.back + k.front, { x: k.head.x - 55, y: k.head.y - 60, w: 110, h: 110 }, 2.7));
+      }
+    }
     w.__ready = true;
     return true;
   }
@@ -230,7 +240,8 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     }
     const obstacles: Record<string, unknown> = {};
     for (const t of Object.keys(TRACK_OBSTACLES) as TrackId[]) for (const id of TRACK_OBSTACLES[t]) obstacles[`${t}:${id}`] = (({ act, w: ww, top, bottom }) => ({ act, w: ww, top, bottom }))(obstacle(id as ObstacleId, t));
-    w.__rig = { runners, obstacles, DUCK_GAP, JUMP_PEAK };
+    const kidEye = Math.min(...KIDS.map((kd) => drawKid(kd, 'ride0', PLAIN, { x: 0, y: 0 }).eyeR)) * RIDER_SCALE;
+    w.__rig = { runners, obstacles, DUCK_GAP, JUMP_PEAK, kidEye, draw: RUNNER_DRAW, farLane: LANE_SCALE[0] };
     w.__ready = true;
     return true;
   }
@@ -274,13 +285,6 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     const sheet = page('');
     sheet.style.padding = '0';
     sheet.appendChild(cv);
-    w.__ready = true;
-    return true;
-  }
-  if (kind === 'logo') {
-    const sheet = page(`<div id="logo" style="width:800px;background:#bfe0f6;padding:10px">${logoSVG()}</div>`);
-    void sheet;
-    await document.fonts.ready;
     w.__ready = true;
     return true;
   }
