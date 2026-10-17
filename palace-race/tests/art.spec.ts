@@ -86,8 +86,10 @@ test('every art sheet renders without errors', async ({ page }) => {
 });
 
 test('every button has a picture and a label, so children who cannot read can use it', async ({ page }) => {
-  for (const q of ['/?debug=mock', '/']) {
-    await open(page, q);
+  for (const q of ['/?debug=mock', '/', '/?screen=map', '/?screen=animal', '/?screen=kid', '/?screen=shop', '/?debug=race']) {
+    await page.goto(q);
+    await page.waitForFunction(() => (window as unknown as { __ready?: boolean }).__ready === true, null, { timeout: 45_000 });
+    if (q.includes('race')) await page.waitForFunction(() => (window as unknown as { game?: { started: boolean } }).game?.started, null, { timeout: 45_000 });
     const buttons = await page.locator('button').evaluateAll((bs) => bs.map((b) => ({ icon: !!b.querySelector('svg.icon'), label: b.getAttribute('aria-label') ?? '' })));
     expect(buttons.length).toBeGreaterThan(0);
     for (const b of buttons) {
@@ -97,10 +99,11 @@ test('every button has a picture and a label, so children who cannot read can us
   }
 });
 
-for (const size of [{ width: 844, height: 390 }, { width: 1024, height: 768 }, { width: 390, height: 844 }]) {
-  test(`HUD and touch buttons stay on screen and apart at ${size.width}x${size.height}`, async ({ page }) => {
+for (const size of [{ width: 844, height: 390 }, { width: 1024, height: 768 }, { width: 390, height: 844 }]) for (const q of ['/?debug=mock', '/?debug=race']) {
+  test(`HUD and touch buttons stay on screen and apart at ${size.width}x${size.height} (${q})`, async ({ page }) => {
     await page.setViewportSize(size);
-    await open(page, '/?debug=mock');
+    await open(page, q);
+    if (q.includes('race')) await page.waitForFunction(() => (window as unknown as { game?: { started: boolean } }).game?.started, null, { timeout: 45_000 });
     const boxes = await page.locator('.hud button, .place, .pill, .speed .bar').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect));
     for (const b of boxes) {
       expect(b.left).toBeGreaterThanOrEqual(0);

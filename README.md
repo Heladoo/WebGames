@@ -200,7 +200,7 @@ Import `Heladoo/WebGames` as another project and set **Root Directory** to `bead
 
 A stress-free racing game for young children, in Hebrew and playable without reading: every button is a picture. The child picks a royal animal (unicorn, horse, fawn, reindeer or dragon) and a child rider, and races the other animals to the palace. They jump and duck past friendly obstacles and collect candies to go faster. At the end the winner holds a golden cup while everyone claps. Coins (everyone earns some) open new tracks and buy helmets, braids and saddles.
 
-**Stage 1 (art) is ready for review; the playable race comes next.** See `palace-race/README.md` for the art preview pages.
+Controls: ⬆ jump, ⬇ duck, ↖ ↘ change lane (arrow keys on a keyboard, big round buttons or swipes on a touch screen). There is no timer and no losing: a bump is a little stumble, everyone earns coins, and help mode lets the animal dodge by itself sometimes. Anonymous play counts use the prefix `pr:`. See `palace-race/README.md`.
 
 ### Run locally
 

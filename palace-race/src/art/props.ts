@@ -13,6 +13,9 @@ export type Act = 'jump' | 'duck';
 export interface Obstacle { svg: string; back: string; act: Act; w: number; top: number; bottom: number }
 export type ObstacleId = 'log' | 'rock' | 'bush' | 'snowman' | 'cactus' | 'hedge' | 'branch' | 'garland' | 'icebough' | 'arch' | 'rosearch';
 
+/** How each obstacle is passed. */
+export const OBSTACLE_ACT: Record<ObstacleId, Act> = { log: 'jump', rock: 'jump', bush: 'jump', snowman: 'jump', cactus: 'jump', hedge: 'jump', branch: 'duck', garland: 'duck', icebough: 'duck', arch: 'duck', rosearch: 'duck' };
+
 export const TRACK_OBSTACLES: Record<TrackId, ObstacleId[]> = {
   forest: ['log', 'bush', 'branch'],
   meadow: ['rock', 'bush', 'garland'],

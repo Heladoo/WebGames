@@ -4,12 +4,9 @@
 
 ## Status
 
-**Stage 1 (art) is done; stage 2 (the game) waits for the owner's approval of the art.** What exists:
-- the drawings, their debug sheets and tests;
-- a title screen (the owner's logo) whose Play button opens a still of a race (`?debug=mock`);
-- the public images.
-
-The approved plan for stage 2 is summarised under "Next" below.
+**The game is playable.** The owner approved the art; stage 2 built the game around it:
+- **Flow:** title → map → animal → rider → race → ceremony with coins.
+- **Also:** a shop, a grown-ups panel, sound and music, and anonymous stats.
 
 ## Principles (the owner asked for these; tests check them)
 
@@ -101,12 +98,72 @@ All of them set `window.__ready`; screenshot after it.
 
 When art changes, fix the art until these pass; don't loosen a rule.
 
-## Next (stage 2, after approval)
+## The game (`src/`)
 
-- **Screens:** title → track map (locked tracks show a lock and a coin price) → pick an animal (picture) → pick a child → shop → race → ceremony → coins.
-- **Race** (Canvas 2D, from the painted sprites):
-  - Controls: ⬆ jump, ⬇ duck, ←/→ change lane (far/near). Keyboard and the on-screen buttons.
-  - A hint bubble shows above each obstacle; the first race has a tutorial hand.
-  - Gentle rubber-band opponents; a race lasts about 60–90 s.
-- **Coins:** 50 / 40 / 35 / 30 / 25 by place, plus one per candy. Track prices are 0 / 80 / 120 / 160 / 200.
-- **The rest:** save key `palace-race-save-v1`, stats prefix `pr:`, synthesized sound, grown-ups settings behind a hold button, and a portrait-phone layout.
+| File | Purpose |
+|---|---|
+| `content.ts` | Pure data. Track prices (0/80/120/160/200), shop items and prices (the first of each kind is free), coins by place (50/40/35/30/25) plus 1 per 4 candies (`raceCoins`), per-track `DIFFICULTY`, and `TUTORIAL_RACES`. |
+| `state.ts` | Save key `palace-race-save-v1`. Every field is validated on load, and nothing unowned is ever worn. Saving is debounced 400 ms. `stopSaving()` is for pretend games. |
+| `race/sim.ts` | The race as a pure, deterministic simulation (`Race`, `buildCourse`), described in the next section. |
+| `race/calibrate.ts` | `simulate()` / `simulateAll()`: hundreds of races without drawing, for `?debug=sim` and `sim.spec.ts`. |
+| `race/sprites.ts` | Paints everything a race needs before it starts (runners × 10 poses, track layers, props, candies, hint icons, the palace). The scale comes from the screen (`paintScale`), and the results are cached. |
+| `race/view.ts` | Canvas 2D drawing, described under "Drawing" below. |
+| `race/input.ts` | Keyboard (arrows/WASD/Space, Esc or P to pause), on-screen buttons on `pointerdown`, and swipes on the stage. |
+| `race/race.ts` | One race: a hoof-print loading bar, the 3-2-1 lights and horn, the frame loop, the HUD, sounds, the tutorial hand and the pause screen. `racersFor` gives the opponents: the other four animals, ridden by the other children in random outfits. The repeated child always gets a different helmet. |
+| `app.ts` | Screen routing, the top bar (home, coins, shop, and the grown-ups gear that needs a 1.5 s hold), the grown-ups panel, and settings. |
+| `screens.ts` | Title, map, animal and rider choice, shop, race and ceremony. Buying shows coins flying (`flyCoins`); "not yet" is a wobble with a coin jar (`jar`). The ceremony paints `podiumSVG` with the real order, then confetti, claps, a coin count-up, and buttons for again, map, shop and share (`navigator.share` with a file, else a download). |
+| `ui.ts` | Cached painted pictures (`animalPic`, `kidPic`, `trackPic`, `skyPic`), `holdButton`, `flyCoins`, `jar` and `coinTag`. |
+| `sfx.ts`, `music.ts` | Synthesized effects through a limiter (no error sounds: a stumble is a soft boing). A music box over a soft pad, with a mood for each track. No oscillator drives a gain. |
+| `stats.ts`, `api/stats.js`, `public/stats.*` | The shared stats pattern with prefix **`pr:`** and anon id `palace-race-anon`. A play is counted when the first race of a visit starts; time ticks only while racing. |
+
+## How the race works (`race/sim.ts`)
+
+- **Speed:** a base of 330 units/s.
+  - **Candies** fill the rainbow bar (+12%, gold +30%) for up to +35% speed. A full bar gives a 2.2 s rainbow dash (+40%).
+  - **A stumble** (`BUMP_TIME`) dips speed to 55% and brings it back; it never stops the runner.
+- **Forgiving timing:** a jump pressed up to 1.3 s early is *aimed*. It waits a moment and/or floats longer (up to `MAX_JUMP`) so the runner is in the air as it passes. A duck lasts until the obstacle is passed.
+- **Courses:** built from a seed.
+  - An obstacle covers one lane, or two on harder tracks, never three.
+  - There are candy lines between obstacles, and candies above some jump obstacles that can only be taken by jumping.
+- **Tutorial** (the first `TUTORIAL_RACES` races): before each of the first three obstacles everything slows to 30%, and the right button glows with a pointing hand. After 2.6 s the animal acts by itself.
+- **Help mode** (the grown-ups switch, on by default): when the child does nothing, the animal dodges by itself 60% of the time.
+- **Opponents:**
+  - Each one plans every obstacle once: act (with probability `skill`), dodge to a free lane, or miss. They also steer toward candies.
+  - The rubber band is gentle: up to −10% when ahead of the child and +4% when behind.
+- **Calibration** (`?debug=sim`), as checked by `sim.spec.ts`:
+  - **An average child** (70%) wins about 60% of races, and **a perfect child** about 80%.
+  - **A child who never presses** still always finishes, at most about 12 s behind, with at least 25 coins.
+  - **Races** last 55–75 s.
+- **The end:** the order is fixed when the child has finished and the others have too, or 3 s later.
+
+## Drawing (`race/view.ts`)
+
+- **Landscape:** the stage covers the screen by its height.
+- **Portrait:** the stage is about 720 units wide at the top, and the big buttons sit below it.
+- **Camera:** the child's runner stays at 36% of the width.
+- **Depth:** lanes are drawn far to near. Within a lane, the obstacle's back is drawn first, then candies, runners, and the obstacle's front.
+- **The child's runner never disappears:** it stands in a golden glow, and an opponent in a nearer lane that overlaps it is drawn see-through.
+- **Hints:** a hint bubble (⬆ above a low obstacle, ⬇ in front of an overhead one) shows for the next obstacle in the child's lane.
+- **Particles:** sparkles, stumble stars, dust and a rainbow trail. They are reduced under `prefers-reduced-motion`.
+- **The finish:** in the last 35% the horizon palace grows and sharpens in place. There is a checkered strip and a flag gate at the finish.
+
+## Debug and test hooks for the game
+
+- `?debug=race&track=&animal=&kid=&seed=&autopilot=0.9&speed=4&tutorial=1&help=0` starts a race at once, with `window.game` (the `Race`) and `window.__result`.
+- `?debug=sim&n=60` shows the calibration table and sets `window.__sim` and `window.__det` (the determinism check).
+- In the real game:
+  - `window.__drive = { autopilot, speed }` (set before load) drives races, and is what `flow.spec.ts` uses.
+  - `?screen=map|animal|kid|shop`, `?coins=N`, `?open=all` and `?races=N` set up a pretend game; these turn saving off.
+- **Playwright:** the breathing Play buttons never become "stable", so tests click them with `force`.
+
+## Tests (game)
+
+- **`sim.spec.ts`:** the promises above, on every track, for every kind of player, plus determinism.
+- **`flow.spec.ts`:**
+  - the whole flow with saving;
+  - unlocking with and without enough coins;
+  - buying, wearing, and not enough coins;
+  - keyboard and buttons, and pause;
+  - the long press for the grown-ups panel.
+- **`art.spec.ts`** also checks that every button on every screen has an icon and a label, and that the live race HUD fits at three sizes.
+- **Before shipping:** build and check the production preview against `vercel.json`'s headers. The CSP must report no violations through a whole race and the ceremony.

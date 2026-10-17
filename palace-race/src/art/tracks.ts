@@ -79,6 +79,12 @@ const LOOK: Record<TrackId, Look> = {
   garden: { sky: ['#6fb4ec', '#c0e2f8', '#fff1d6'], sun: '#fffbe6', haze: '#f1e6f4', clouds: ['#d4c8ee', '#f4ecfa', '#ffffff'], palace: { x: 800, y: 600, s: 1.15, k: 0.12 }, dirt: ['#f6ead6', '#e2cfb0', '#bba582'], verge: ['#3f8f48', '#5fae5a', '#a6d77c'] },
 };
 
+/** Where the palace stands in the sky picture (stage units), so the race can grow it there near the finish. */
+export const skyPalace = (id: TrackId) => LOOK[id].palace;
+
+/** The colour of the track's ground, for filling the screen below the stage on tall phones. */
+export const trackFloor = (id: TrackId) => LOOK[id].dirt[2];
+
 // ---------------------------------------------------------------- sky
 
 function sky(id: TrackId): string {

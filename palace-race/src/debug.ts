@@ -8,6 +8,9 @@ import { ANIMALS, POSES, drawAnimal } from './art/animals';
 import { RUNNER_BOX, RUNNER_DRAW, paint } from './art/sprite';
 import { RIDER_SCALE, drawRunner } from './art/runner';
 import { DUCK_GAP, JUMP_PEAK, type ObstacleId } from './art/props';
+import { simulate, simulateAll } from './race/calibrate';
+import { runRace } from './race/race';
+import { sfx } from './sfx';
 import { podiumSVG } from './art/podium';
 import { palace } from './art/palace';
 import { ICONS } from './art/icons';
@@ -192,6 +195,42 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     page(`<div id="og" style="position:relative;width:1200px;height:630px;overflow:hidden;background:url(${url}) 70% 100%/cover no-repeat">
       <img id="og-logo" src="/logo-small.webp" alt="" style="position:absolute;left:26px;top:14px;width:360px"></div>`).style.padding = '0';
     await document.querySelector<HTMLImageElement>('#og-logo')!.decode().catch(() => {});
+    w.__ready = true;
+    return true;
+  }
+  if (kind === 'race') {
+    // a race straight away: ?debug=race&track=forest&animal=unicorn&kid=maya&seed=3&autopilot=0.9&speed=4&tutorial=1
+    const ap = params.get('autopilot');
+    const res = runRace(document.getElementById('app')!, {
+      track: (params.get('track') ?? 'forest') as TrackId,
+      animal: (params.get('animal') ?? 'unicorn') as never,
+      kid: (params.get('kid') ?? 'maya') as never,
+      outfit: { helmet: (params.get('helmet') ?? 'rainbow') as never, braids: (params.get('braids') ?? 'pink') as never, saddle: (params.get('saddle') ?? 'royal') as never },
+      seed: Number(params.get('seed')) || 1,
+      tutorial: params.get('tutorial') === '1',
+      help: params.get('help') !== '0',
+      autopilot: ap === null ? undefined : Number(ap),
+      speed: Number(params.get('speed')) || 1,
+      coins: 120,
+    }, { onSoundToggle: () => (sfx.enabled = !sfx.enabled), soundOn: () => sfx.enabled });
+    addEventListener('pointerdown', () => sfx.unlock(), { once: true });
+    w.__ready = true;
+    w.__result = null;
+    void res.then((r) => (w.__result = r));
+    return true;
+  }
+  if (kind === 'sim') {
+    // many races without drawing: how often each kind of player wins, how close it is, how slow it ever gets
+    const n = Number(params.get('n')) || 60;
+    const t0 = performance.now();
+    const rep = simulateAll(n);
+    w.__sim = rep;
+    // the same seed and inputs always give the same race
+    const a = simulate('average', 'meadow', 3, 77);
+    const b = simulate('average', 'meadow', 3, 77);
+    w.__det = JSON.stringify(a) === JSON.stringify(b);
+    const rows = Object.entries(rep).map(([k, r]) => `<tr><td>${k}</td>${[r.winRate, r.avgPlace, r.worstPlace, r.minCoins, r.minTime, r.maxTime, r.maxGap, r.minSpeed, r.obstacles].map((v) => `<td>${typeof v === 'number' ? v.toFixed(2) : v}</td>`).join('')}</tr>`).join('');
+    page(`<p>${n} races each, ${Math.round(performance.now() - t0)} ms</p><table border="1" cellpadding="4" style="border-collapse:collapse;font:13px monospace"><tr><th></th><th>win</th><th>avg place</th><th>worst</th><th>min coins</th><th>min s</th><th>max s</th><th>max gap s</th><th>min speed</th><th>obstacles</th></tr>${rows}</table>`);
     w.__ready = true;
     return true;
   }
