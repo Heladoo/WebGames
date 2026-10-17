@@ -15,6 +15,7 @@ class Sfx {
   private master!: GainNode;
   private out!: GainNode;
   private noise!: AudioBuffer;
+  private pink!: AudioBuffer;
   private walk = 0;
   private dir = 1;
   private lap = 0;
@@ -55,6 +56,21 @@ class Sfx {
       this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this.noise.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      // pink noise (softer, like air) for the whooshes; white stays for crisp hooves and claps
+      this.pink = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const pk = this.pink.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      for (let i = 0; i < len; i++) {
+        const w = d[i];
+        b0 = 0.99886 * b0 + w * 0.0555179;
+        b1 = 0.99332 * b1 + w * 0.0750759;
+        b2 = 0.969 * b2 + w * 0.153852;
+        b3 = 0.8665 * b3 + w * 0.3104856;
+        b4 = 0.55 * b4 + w * 0.5329522;
+        b5 = -0.7616 * b5 - w * 0.016898;
+        pk[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.2;
+        b6 = w * 0.115926;
+      }
     } catch {
       this.ctx = null;
     }
@@ -91,12 +107,12 @@ class Sfx {
   }
 
   /** A short burst of filtered noise (hooves, whooshes, claps). */
-  private hiss(at: number, dur: number, freq: number, gain: number, q = 1, sweepTo?: number) {
+  private hiss(at: number, dur: number, freq: number, gain: number, q = 1, sweepTo?: number, pink = false) {
     const c = this.ctx;
     if (!c || !this.enabled) return;
     const t = c.currentTime + at;
     const src = c.createBufferSource();
-    src.buffer = this.noise;
+    src.buffer = pink ? this.pink : this.noise;
     const f = c.createBiquadFilter();
     f.type = 'bandpass';
     f.frequency.setValueAtTime(freq, t);
@@ -158,16 +174,16 @@ class Sfx {
   }
 
   jump() {
-    this.hiss(0, 0.32, 500, 0.16, 1.2, 1800);
+    this.hiss(0, 0.32, 500, 0.22, 1.2, 1800, true);
     this.tone(midi(67), 0, 0.25, 'sine', 0.12, midi(79));
   }
 
   duck() {
-    this.hiss(0, 0.25, 1400, 0.12, 1.2, 500);
+    this.hiss(0, 0.25, 1400, 0.17, 1.2, 500, true);
   }
 
   lane() {
-    this.hiss(0, 0.12, 1100, 0.07, 1.5);
+    this.hiss(0, 0.12, 1100, 0.1, 1.5, undefined, true);
   }
 
   /** A stumble: a soft, round "boing", a little funny, never alarming. */

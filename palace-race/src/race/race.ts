@@ -3,7 +3,7 @@
 // sounds and shows the tutorial hand. Resolves with the result, or null if the child went home from the pause screen.
 
 import { ANIMALS, type AnimalId } from '../art/animals';
-import { KID, KIDS, type KidId, type Outfit } from '../art/riders';
+import { BRAID_STYLES, KID, KIDS, type HairId, type KidId, type Outfit } from '../art/riders';
 import type { Racer } from '../art/podium';
 import { ICONS } from '../art/icons';
 import type { TrackId } from '../art/tracks';
@@ -44,7 +44,7 @@ export function racersFor(s: { animal: AnimalId; kid: KidId; outfit: Outfit; see
       animal,
       kid: kids[i],
       // the repeated child always looks different from its twin
-      outfit: { helmet: (i === 3 ? 'stars' : pick(of('helmet'))) as Outfit['helmet'], braids: (KID[kids[i]].girl ? pick(of('braids')) : 'none') as Outfit['braids'], saddle: pick(of('saddle')) as Outfit['saddle'] },
+      outfit: { helmet: (i === 3 ? 'stars' : pick(of('helmet'))) as Outfit['helmet'], hair: pick(of('hair').filter((h) => KID[kids[i]].girl || !BRAID_STYLES.includes(h as HairId))) as Outfit['hair'], saddle: pick(of('saddle')) as Outfit['saddle'] },
     })),
   ];
 }
@@ -95,7 +95,7 @@ export async function runRace(root: HTMLElement, setup: RaceSetup, hooks: RaceHo
   const trackJ = trackJobs(setup.track, k);
   const propJ = propJobs(setup.track, k);
   const candyJ = candyJobs(k);
-  const extraJ = extraJobs(k);
+  const extraJ = extraJobs(k, setup.track);
   const all: (() => Promise<unknown>)[] = [...trackJ, ...runnerJ.flat(), ...propJ, ...candyJ, ...extraJ];
   const pics = await inBatches(all, (d, n) => (bar.style.width = `${Math.round((d / n) * 100)}%`));
   let i = 0;

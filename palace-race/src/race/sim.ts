@@ -25,7 +25,8 @@ export const STRIDE = 320; // stage units per gallop cycle
 const AIM = 1.3; // how early (seconds) a press still counts for the next obstacle
 
 export interface Obst { x: number; lanes: number[]; act: Act; kind: number; hit: number[] }
-export interface Candy { x: number; lane: number; high: boolean; kind: CandyId; tone: number; taken: number }
+/** `taken` lists who has taken it: every runner takes its own, so an opponent never takes a candy away from the child. */
+export interface Candy { x: number; lane: number; high: boolean; kind: CandyId; tone: number; taken: number[] }
 export interface Course { length: number; obstacles: Obst[]; candies: Candy[] }
 
 export interface Runner {
@@ -79,7 +80,7 @@ export function buildCourse(track: TrackId, seed: number, tutorial: boolean): Co
   const candyKinds: CandyId[] = ['wrapped', 'lolly', 'swirl'];
   const addCandy = (x: number, lane: number, high: boolean) => {
     const gold = r() < 0.06;
-    candies.push({ x, lane, high, kind: gold ? 'gold' : candyKinds[Math.floor(r() * 3)], tone: Math.floor(r() * 5), taken: -1 });
+    candies.push({ x, lane, high, kind: gold ? 'gold' : candyKinds[Math.floor(r() * 3)], tone: Math.floor(r() * 5), taken: [] });
   };
   let x = tutorial ? 2600 : 2000;
   let n = 0;
@@ -214,7 +215,7 @@ export class Race {
     // between obstacles, steer toward candies in the next lane now and then (as a child would)
     if ((!a || a.t > 1.6) && this.t >= ru.seek && Math.round(ru.laneF) === ru.lane) {
       ru.seek = this.t + 0.7;
-      const c = this.course.candies.find((c) => c.taken < 0 && c.x - ru.x > 200 && c.x - ru.x < 900 && Math.abs(c.lane - ru.lane) === 1 && !c.high);
+      const c = this.course.candies.find((c) => !c.taken.includes(ru.id) && c.x - ru.x > 200 && c.x - ru.x < 900 && Math.abs(c.lane - ru.lane) === 1 && !c.high);
       if (c && this.laneFree(c.lane, ru.x, c.x + 300) && this.r() < ru.skill * 0.7) this.changeLane(ru, (c.lane - ru.lane) as -1 | 1);
     }
     if (!a) return;
@@ -296,7 +297,7 @@ export class Race {
     if (ru.bump > 0) target *= 0.55 + 0.45 * (1 - ru.bump / BUMP_TIME);
     if (ru.id !== this.player) {
       const d = ru.x - me.x;
-      target *= d > 0 ? 1 - Math.min(0.1, (d / 2500) * 0.1) : 1 + Math.min(0.04, (-d / 2500) * 0.04);
+      target *= d > 0 ? 1 - Math.min(0.12, (d / 2000) * 0.12) : 1 + Math.min(0.04, (-d / 2500) * 0.04);
     }
     if (ru.finish >= 0) target = BASE_SPEED * 0.3;
     ru.speed += (target - ru.speed) * Math.min(1, dt * (ru.speed < 60 ? 1.5 : 3));
@@ -337,9 +338,9 @@ export class Race {
     }
     // candies
     for (const c of this.course.candies) {
-      if (c.taken >= 0 || c.x <= x0 - 20 || c.x > ru.x + 20 || c.lane !== lane) continue;
+      if (c.taken.includes(ru.id) || c.x <= x0 - 20 || c.x > ru.x + 20 || c.lane !== lane) continue;
       if (c.high && ru.air < 0) continue;
-      c.taken = ru.id;
+      c.taken.push(ru.id);
       ru.candies++;
       ru.bar += c.kind === 'gold' ? 0.3 : 0.12;
       this.events.push({ type: 'candy', id: ru.id, candy: c });

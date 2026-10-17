@@ -2,14 +2,15 @@
 // game), wrapped in try/catch for private mode. Debug and scene URLs turn saving off (`stopSaving`).
 
 import { ANIMALS, type AnimalId } from './art/animals';
-import { BRAIDS, HELMETS, KIDS, SADDLES, type KidId, type Outfit } from './art/riders';
+import { HAIRS, HELMETS, KIDS, SADDLES, type KidId, type Outfit } from './art/riders';
 import { TRACKS, type TrackId } from './art/tracks';
-import { FREE_ITEMS, ITEMS, itemKey } from './content';
+import { FREE_ITEMS, ITEMS, itemKey, openTracks } from './content';
 
 export interface Settings { music: boolean; sound: boolean; volume: number; help: boolean }
 
 export interface SaveData {
   coins: number;
+  medals: number; // places 1–3 ever won; they open tracks and are never spent
   unlocked: TrackId[];
   owned: string[]; // item keys, e.g. "helmet:stars"
   outfit: Outfit;
@@ -27,9 +28,10 @@ let saving = true;
 export function defaults(): SaveData {
   return {
     coins: 0,
+    medals: 0,
     unlocked: ['forest'],
     owned: [...FREE_ITEMS],
-    outfit: { helmet: 'basic', braids: 'none', saddle: 'basic' },
+    outfit: { helmet: 'basic', hair: 'none', saddle: 'basic' },
     animal: 'unicorn',
     kid: 'maya',
     track: 'forest',
@@ -49,23 +51,29 @@ export function load(): SaveData {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return d;
-    const s = JSON.parse(raw) as Omit<Partial<SaveData>, 'settings' | 'outfit'> & { settings?: Partial<Settings>; outfit?: Partial<Outfit> };
-    const unlocked = Array.isArray(s.unlocked) ? TRACKS.filter((t) => (s.unlocked as unknown[]).includes(t)) : [];
-    if (!unlocked.includes('forest')) unlocked.unshift('forest');
-    const owned = [...new Set([...FREE_ITEMS, ...(Array.isArray(s.owned) ? s.owned.filter((k): k is string => typeof k === 'string' && KNOWN.has(k)) : [])])];
-    const o: Partial<Outfit> = s.outfit ?? {};
+    const s = JSON.parse(raw) as Omit<Partial<SaveData>, 'settings' | 'outfit'> & { settings?: Partial<Settings>; outfit?: Partial<Outfit> & { braids?: unknown } };
+    // early saves had no medals: count their wins, which were medals too
+    const medals = num(s.medals, 0, 1e7, num(s.wins, 0, 1e7, 0));
+    // tracks bought with coins in early saves stay open
+    const had = Array.isArray(s.unlocked) ? (s.unlocked as unknown[]) : [];
+    const unlocked = TRACKS.filter((t) => had.includes(t) || openTracks(medals).includes(t));
+    // "braids" became "hair" when more hairstyles came
+    const keys = Array.isArray(s.owned) ? s.owned.filter((k): k is string => typeof k === 'string').map((k) => k.replace(/^braids:/, 'hair:')) : [];
+    const owned = [...new Set([...FREE_ITEMS, ...keys.filter((k) => KNOWN.has(k))])];
+    const o = s.outfit ?? {};
     const outfit: Outfit = {
       helmet: pick(o.helmet, HELMETS, 'basic'),
-      braids: pick(o.braids, BRAIDS, 'none'),
+      hair: pick(o.hair ?? o.braids, HAIRS, 'none'),
       saddle: pick(o.saddle, SADDLES, 'basic'),
     };
     // never wear something that isn't owned
     if (!owned.includes(`helmet:${outfit.helmet}`)) outfit.helmet = 'basic';
-    if (!owned.includes(`braids:${outfit.braids}`)) outfit.braids = 'none';
+    if (!owned.includes(`hair:${outfit.hair}`)) outfit.hair = 'none';
     if (!owned.includes(`saddle:${outfit.saddle}`)) outfit.saddle = 'basic';
     const st: Partial<Settings> = s.settings ?? {};
     return {
       coins: num(s.coins, 0, 1e7, 0),
+      medals,
       unlocked,
       owned,
       outfit,

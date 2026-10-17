@@ -71,6 +71,9 @@ interface Look {
   verge: [string, string, string];
 }
 
+/** The colour of the palace's own hill on each track (snowy on the snow track, sandy in the canyon). */
+export const palaceGrass = (id: TrackId) => LOOK[id].verge[1];
+
 const LOOK: Record<TrackId, Look> = {
   forest: { sky: ['#8fc3d8', '#f4d9a4', '#ffe7b0'], sun: '#fff3c4', haze: '#f3dcae', clouds: ['#e8b98c', '#f9dcb6', '#fff6e2'], palace: { x: 820, y: 478, s: 0.62, k: 0.35 }, dirt: ['#f0cf8e', '#d9ab68', '#b07c42'], verge: ['#3f8a3a', '#68ad48', '#a5d36a'] },
   meadow: { sky: ['#5fb0ea', '#a9daf6', '#e8f6ff'], sun: '#fffbe0', haze: '#d8eefa', clouds: ['#c3d3f0', '#eef2fb', '#ffffff'], palace: { x: 1060, y: 470, s: 0.5, k: 0.42 }, dirt: ['#f4dca0', '#e2be7a', '#bf9454'], verge: ['#4f9e3e', '#7cc152', '#b8e27a'] },
@@ -106,7 +109,7 @@ function sky(id: TrackId): string {
   if (id !== 'garden') {
     s += `<path d="M${P.x - 380} ${P.y + 140} Q${P.x - 200} ${P.y - 20} ${P.x} ${P.y - 6} Q${P.x + 200} ${P.y - 20} ${P.x + 380} ${P.y + 140}Z" fill="${mix(L.verge[1], L.haze, 0.55)}" filter="url(#b3)"/>`;
   }
-  s += `<g filter="url(#soften)">${palace(P.x, P.y, P.s, { ...PALACE_LOOK, haze: L.haze, hazeK: P.k, wave: 0.2 })}</g>`;
+  s += `<g filter="url(#soften)">${palace(P.x, P.y, P.s, { ...PALACE_LOOK, grass: palaceGrass(id), haze: L.haze, hazeK: P.k, wave: 0.2 })}</g>`;
   return s;
 }
 

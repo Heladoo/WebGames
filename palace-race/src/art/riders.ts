@@ -1,23 +1,27 @@
 // The four children who ride, and the things they can wear. A child is a small puppet in side view facing right,
 // with a big round head in a 3/4 turn (both eyes visible, the far one narrower), drawn with the same ink line and cel
 // shading as the animals. Every pose is a set of joint angles (measured from straight down, positive = forward).
-// Items sit on named anchors: helmets on the head (`head`, `headR`), braids at the back of the head (`nape`), and the
+// Items sit on named anchors: helmets on the head (`head`, `headR`), hairstyles at the back of the head, and the
 // saddle on the animal's `seat`.
 
 import { add, blob, capsule, circle, curve, down, ellipse, f, inked, linG, lockPath, pt, radG, rot, shade, type P, type Sh } from './geom';
 
 export type KidId = 'maya' | 'tamar' | 'yoav' | 'ari';
 export const KIDS: KidId[] = ['maya', 'tamar', 'yoav', 'ari'];
+export const KID_NAME: Record<KidId, string> = { maya: 'מאיה', tamar: 'תמר', yoav: 'יואב', ari: 'ארי' };
 
 export type HelmetId = 'basic' | 'rainbow' | 'stars' | 'crown' | 'flowers';
-export type BraidsId = 'none' | 'pink' | 'gold' | 'rainbow';
+// hair: 'none' is the child's own hair; braids come in pink, gold and rainbow; the other styles suit anyone
+export type HairId = 'none' | 'ponytail' | 'curls' | 'spikes' | 'surfer' | 'pink' | 'gold' | 'rainbow';
 export type SaddleId = 'basic' | 'royal' | 'flowers' | 'stars' | 'rainbow';
 export const HELMETS: HelmetId[] = ['basic', 'rainbow', 'stars', 'crown', 'flowers'];
-export const BRAIDS: BraidsId[] = ['none', 'pink', 'gold', 'rainbow'];
+export const HAIRS: HairId[] = ['none', 'spikes', 'curls', 'surfer', 'ponytail', 'pink', 'gold', 'rainbow'];
+/** The braids (the rest of the hairstyles suit boys as well as girls). */
+export const BRAID_STYLES: HairId[] = ['pink', 'gold', 'rainbow'];
 export const SADDLES: SaddleId[] = ['basic', 'royal', 'flowers', 'stars', 'rainbow'];
 
-export interface Outfit { helmet: HelmetId; braids: BraidsId; saddle: SaddleId }
-export const PLAIN: Outfit = { helmet: 'basic', braids: 'none', saddle: 'basic' };
+export interface Outfit { helmet: HelmetId; hair: HairId; saddle: SaddleId }
+export const PLAIN: Outfit = { helmet: 'basic', hair: 'none', saddle: 'basic' };
 
 interface Kid {
   girl: boolean;
@@ -54,6 +58,7 @@ interface RP {
   armN: [number, number]; // near arm: upper, fore
   armF: [number, number];
   legF?: [number, number]; // far leg when standing
+  reach?: [P, P]; // where the near and far hands reach, from the shoulder (overrides the arm angles; for clapping)
   eyes: 'open' | 'happy';
   mouth: 'smile' | 'open' | 'grin';
 }
@@ -69,8 +74,9 @@ function poseOf(p: RiderPose): RP {
     case 'bump': return { ...ride(-6, -2), head: 6, armN: [62, 104], armF: [70, 116], eyes: 'happy', mouth: 'open' };
     case 'wave': return { ...ride(4, 0), armN: [70, 105], armF: [64, 100], eyes: 'happy', mouth: 'grin' };
     case 'stand': return { seated: false, lean: 2, head: 0, bob: 0, thigh: 4, shin: -2, legF: [-6, -6], armN: [10, 14], armF: [-8, -4], eyes: 'open', mouth: 'smile' };
-    case 'clap0': return { seated: false, lean: 4, head: -4, bob: 0, thigh: 4, shin: -2, legF: [-6, -6], armN: [36, 92], armF: [32, 86], eyes: 'happy', mouth: 'grin' };
-    case 'clap1': return { seated: false, lean: 4, head: -8, bob: -2, thigh: 6, shin: -2, legF: [-8, -6], armN: [24, 64], armF: [44, 100], eyes: 'happy', mouth: 'open' };
+    // clapping: hands apart (0), then together in front of the chest (1)
+    case 'clap0': return { seated: false, lean: 4, head: -4, bob: 0, thigh: 4, shin: -2, legF: [-6, -6], armN: [0, 0], armF: [0, 0], reach: [pt(22, 16), pt(25, -6)], eyes: 'happy', mouth: 'grin' };
+    case 'clap1': return { seated: false, lean: 4, head: -8, bob: -2, thigh: 6, shin: -2, legF: [-8, -6], armN: [0, 0], armF: [0, 0], reach: [pt(25, 7), pt(28, 6)], eyes: 'happy', mouth: 'open' };
     case 'trophy': return { seated: false, lean: 0, head: -10, bob: -2, thigh: 6, shin: -2, legF: [-10, -8], armN: [26, 70], armF: [34, 78], eyes: 'happy', mouth: 'grin' };
   }
 }
@@ -91,7 +97,22 @@ export const HIP_H = LEG.thigh + LEG.shin + 7;
  * slope it rests on (degrees, nose up > 0). Returns the drawing in two layers: `back` (the far arm and leg, drawn
  * before the saddle) and `front`.
  */
-export function drawKid(id: KidId, pose: RiderPose, outfit: Outfit, at: P, tilt = 0): RiderArt {
+/** Upper and fore arm angles that put a hand at `to`, with the elbow bent downward. */
+function reachAngles(from: P, to: P, a: number, b: number): [number, number] {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const d = Math.min(a + b - 0.5, Math.max(Math.abs(a - b) + 0.5, Math.hypot(dx, dy)));
+  const base = (Math.atan2(dx, dy) * 180) / Math.PI;
+  const alpha = (Math.acos((a * a + d * d - b * b) / (2 * a * d)) * 180) / Math.PI;
+  const upper = base - alpha;
+  const elbow = down(from, upper, a);
+  return [upper, (Math.atan2(to.x - elbow.x, to.y - elbow.y) * 180) / Math.PI];
+}
+
+/** A medal on a ribbon, worn on the chest. `mirror` turns the number back when the child is drawn mirrored. */
+export interface Medal { n: number; color: string; mirror?: boolean }
+
+export function drawKid(id: KidId, pose: RiderPose, outfit: Outfit, at: P, tilt = 0, medal?: Medal): RiderArt {
   const k = KID[id];
   const p = poseOf(pose);
   const uid = `k${(uidN++).toString(36)}`;
@@ -125,6 +146,11 @@ export function drawKid(id: KidId, pose: RiderPose, outfit: Outfit, at: P, tilt 
 
   // far arm and far leg (behind the body; the far leg only shows when standing)
   const sF = add(shoulder, pt(-3, -2));
+  const sN = add(shoulder, pt(2, 0));
+  if (p.reach) {
+    p.armN = reachAngles(sN, add(shoulder, p.reach[0]), 16, 15);
+    p.armF = reachAngles(sF, add(shoulder, p.reach[1]), 16, 15);
+  }
   const armF = limb(sF, p.armF, [16, 15], [10, 9, 8], shade(k.shirt, -0.22), shade(k.skin, -0.15), 5.2);
   let back = '';
   if (p.legF) {
@@ -141,14 +167,26 @@ export function drawKid(id: KidId, pose: RiderPose, outfit: Outfit, at: P, tilt 
   // boot cuff and shirt hem
   front += `<path d="${curve([T(-10, 0), T(0, 3), T(11, 0)])}" stroke="${shade(k.shirt, -0.3)}" stroke-width="2" fill="none" opacity=".6"/>`;
   front += `<path d="${curve([T(-5, -35), T(1, -30), T(7, -35)])}" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".85"/>`;
+  // a medal: the ribbon goes round the neck (under the chin), the disc hangs on the chest
+  const disc = T(6, -15);
+  if (medal) front += `<path d="M${f(T(-4, -36).x)} ${f(T(-4, -36).y)} L${f(disc.x - 2)} ${f(disc.y - 5)} M${f(T(9, -36).x)} ${f(T(9, -36).y)} L${f(disc.x + 2)} ${f(disc.y - 5)}" stroke="${INK}" stroke-width="5.4" stroke-linecap="round" fill="none"/><path d="M${f(T(-4, -36).x)} ${f(T(-4, -36).y)} L${f(disc.x - 2)} ${f(disc.y - 5)}" stroke="#ff7aa8" stroke-width="3" stroke-linecap="round"/><path d="M${f(T(9, -36).x)} ${f(T(9, -36).y)} L${f(disc.x + 2)} ${f(disc.y - 5)}" stroke="#4dabf7" stroke-width="3" stroke-linecap="round"/>`;
 
   // head
   front += head(k, headC, p, outfit, defs, uid, skinG);
 
   // near arm over everything
-  const sN = add(shoulder, pt(2, 0));
   const armN = limb(sN, p.armN, [16, 15], [11, 10, 9], `url(#${shirtG})`, `url(#${skinG})`, 5.6);
   front += inked(armN.sh, INK, 2);
+  // the medal's disc in front, so its number always shows
+  if (medal) {
+    front += `<circle cx="${f(disc.x)}" cy="${f(disc.y)}" r="7.6" fill="${medal.color}" stroke="${INK}" stroke-width="2"/><circle cx="${f(disc.x)}" cy="${f(disc.y)}" r="5.2" fill="none" stroke="#fff" stroke-width="1" opacity=".7"/>`;
+    front += `<text x="0" y="0" transform="translate(${f(disc.x)} ${f(disc.y + 3.4)})${medal.mirror ? ' scale(-1 1)' : ''}" font-size="9.5" text-anchor="middle" font-family="sans-serif" font-weight="700" fill="${INK}">${medal.n}</text>`;
+  }
+  // claps: little lines where the hands meet
+  if (pose === 'clap1') {
+    const h = lerp(armN.end, armF.end);
+    front += `<path d="M${f(h.x + 9)} ${f(h.y - 9)} l5 -5 M${f(h.x + 11)} ${f(h.y)} l7 0 M${f(h.x + 9)} ${f(h.y + 9)} l5 5" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`;
+  }
 
   return { back: `<defs>${defs.join('')}</defs>${back}`, front, hands: [armN.end, armF.end], head: headC, headR: HEAD_R, feet: [legN.end], chest: T(4, -22), eyeR: HEAD_R * 0.19 };
 }
@@ -196,7 +234,7 @@ function head(k: Kid, c: P, p: RP, o: Outfit, defs: string[], uid: string, skinG
     s += `<path d="M${f(m.x - mw * 0.45)} ${f(m.y + open * 0.55)} q${f(mw * 0.45)} ${f(mw * 0.3)} ${f(mw * 0.9)} 0" stroke="#ff8a96" stroke-width="3" fill="none" stroke-linecap="round"/>`;
   }
   // hair on top, then the helmet
-  s += hairFront(k, H, defs, uid);
+  s += hairFront(k, H, o.hair, defs, uid);
   s += helmet(k, H, o.helmet, defs, uid);
   return s;
 }
@@ -206,10 +244,55 @@ function hairBack(k: Kid, H: (x: number, y: number) => P, o: Outfit, defs: strin
   const g = `${uid}hb`;
   defs.push(linG(g, [[0, shade(k.hair, 0.22)], [1, shade(k.hair, -0.2)]], 0, 0, 0.4, 1));
   let s = `<path d="${blob([H(-r * 1.08, -r * 0.2), H(-r * 0.6, -r * 0.98), H(r * 0.3, -r * 1.06), H(r * 0.2, r * 0.2), H(-r * 0.6, r * 0.62), H(-r * 1.04, r * 0.36)], 1)}" fill="url(#${g})" stroke="${INK}" stroke-width="2"/>`;
-  if (o.braids !== 'none') {
+  if (o.hair === 'ponytail') {
+    // a high ponytail flowing back from under the helmet, with a scrunchie
+    const tie = H(-r * 1.08, -r * 0.2);
+    const tail = [tie, add(tie, pt(-12, 2)), add(tie, pt(-22, 12)), add(tie, pt(-24, 26)), add(tie, pt(-18, 36))];
+    s += `<path d="${lockPath(tail, (t) => 18 * Math.sin(Math.PI * (0.18 + t * 0.82)) + 2)}" fill="url(#${g})" stroke="${INK}" stroke-width="2"/>`;
+    s += `<path d="${curve([add(tie, pt(-6, 0)), add(tie, pt(-16, 8)), add(tie, pt(-19, 22))])}" stroke="${shade(k.hair, 0.35)}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+    s += `<path d="${ellipse(add(tie, pt(-2, 0)), 4.6, 6.4)}" fill="#ff7aa8" stroke="${INK}" stroke-width="1.6"/>`;
+    return s;
+  }
+  if (o.hair === 'curls') {
+    // a mop of round curls all round the back, below the helmet
+    const at = [[-1.12, -0.36, 8], [-1.2, 0.04, 9], [-1.06, 0.42, 9], [-0.74, 0.7, 8.4], [-0.4, 0.86, 7], [-0.86, -0.7, 7], [-0.5, 0.36, 9], [-0.8, 0.1, 10]];
+    let puff = '';
+    for (const [x, y, rr] of at) puff += `<path d="${circle(H(r * x, r * y), rr)}" fill="${k.hair}"/>`;
+    s += `<g stroke="${INK}" stroke-width="4">${puff.replace(/fill="[^"]*"/g, `fill="${INK}"`)}</g>${puff}`;
+    for (const [x, y, rr] of at.slice(0, 5)) s += `<path d="${curve([H(r * x - rr * 0.4, r * y - rr * 0.1), H(r * x, r * y - rr * 0.5), H(r * x + rr * 0.4, r * y - rr * 0.2)])}" stroke="${shade(k.hair, 0.4)}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+    return s;
+  }
+  if (o.hair === 'spikes') {
+    // cool spikes sticking out behind, with blue tips
+    const spikes: [number, number, number][] = [[-0.9, -0.56, 312], [-1.02, -0.18, 290], [-0.98, 0.22, 266], [-0.78, 0.56, 240], [-0.44, 0.78, 214]];
+    for (const [x, y, a] of spikes) {
+      const b0 = H(r * x, r * y);
+      const dir = (a * Math.PI) / 180;
+      const tip = add(b0, pt(Math.sin(dir) * 25, -Math.cos(dir) * 25));
+      const side = pt(Math.cos(dir) * 9, Math.sin(dir) * 9);
+      const l = add(b0, side);
+      const rr = add(b0, pt(-side.x, -side.y));
+      const mid = (q: P) => ({ x: q.x + (tip.x - q.x) * 0.55, y: q.y + (tip.y - q.y) * 0.55 });
+      s += `<path d="M${f(l.x)} ${f(l.y)} L${f(tip.x)} ${f(tip.y)} L${f(rr.x)} ${f(rr.y)}Z" fill="${k.hair}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`;
+      s += `<path d="M${f(mid(l).x)} ${f(mid(l).y)} L${f(tip.x)} ${f(tip.y)} L${f(mid(rr).x)} ${f(mid(rr).y)}Z" fill="#4dabf7" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/>`;
+    }
+    return s;
+  }
+  if (o.hair === 'surfer') {
+    // long, wavy surfer locks to the shoulders, with a sunny streak (and a fringe in front, in hairFront)
+    const locks: [number, number, number][] = [[-0.98, -0.4, 0], [-1.0, 0.0, 1], [-0.8, 0.4, 2]];
+    for (const [x, y, i] of locks) {
+      const a = H(r * x, r * y);
+      const ps = [a, add(a, pt(-12, 8)), add(a, pt(-16, 22)), add(a, pt(-10 + i * 3, 32 - i * 4)), add(a, pt(-2 + i * 2, 34 - i * 5))];
+      s += `<path d="${lockPath(ps, (t) => 16 * (1 - t) + 2)}" fill="${i === 1 ? shade(k.hair, 0.12) : `url(#${g})`}" stroke="${INK}" stroke-width="2"/>`;
+      if (i === 1) s += `<path d="${curve(ps.slice(0, 4))}" stroke="#ffd75a" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    }
+    return s;
+  }
+  if (o.hair !== 'none') {
     // two long braids, tied with ribbons
-    const cols = o.braids === 'rainbow' ? RAINBOW : o.braids === 'pink' ? ['#ff8fc0', '#e8609c'] : ['#ffd75a', '#e8a91c'];
-    const base = o.braids === 'rainbow' ? k.hair : cols[0];
+    const cols = o.hair === 'rainbow' ? RAINBOW : o.hair === 'pink' ? ['#ff8fc0', '#e8609c'] : ['#ffd75a', '#e8a91c'];
+    const base = o.hair === 'rainbow' ? k.hair : cols[0];
     [H(-r * 0.86, r * 0.3), H(-r * 0.5, r * 0.6)].forEach((b, bi) => {
       let q = b;
       for (let i = 0; i < 5; i++) {
@@ -220,7 +303,7 @@ function hairBack(k: Kid, H: (x: number, y: number) => P, o: Outfit, defs: strin
       const bow = cols[(bi + 1) % cols.length];
       s += `<path d="M${f(q.x)} ${f(q.y)} l-8 -5 l0 10Z M${f(q.x)} ${f(q.y)} l8 -5 l0 10Z" fill="${bow}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/><circle cx="${f(q.x)}" cy="${f(q.y)}" r="2.6" fill="${shade(bow, -0.2)}" stroke="${INK}" stroke-width="1.2"/>`;
       s += `<path d="${lockPath([add(q, pt(0, 2)), add(q, pt(-3, 10)), add(q, pt(-1, 16))], (t) => 8 * (1 - t))}" fill="${base}" stroke="${INK}" stroke-width="1.6"/>`;
-      if (o.braids === 'rainbow') {
+      if (o.hair === 'rainbow') {
         // ribbons woven through the braid
         s += `<path d="${curve([b, add(b, pt(-6, 14)), add(b, pt(-12, 30)), add(b, pt(-14, 40))])}" stroke="${cols[bi * 2]}" stroke-width="3" fill="none" stroke-dasharray="6 5"/>`;
       }
@@ -252,7 +335,7 @@ function hairBack(k: Kid, H: (x: number, y: number) => P, o: Outfit, defs: strin
 
 const lerp = (a: P, b: P): P => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 
-function hairFront(k: Kid, H: (x: number, y: number) => P, defs: string[], uid: string): string {
+function hairFront(k: Kid, H: (x: number, y: number) => P, hair: HairId, defs: string[], uid: string): string {
   const r = HEAD_R;
   const g = `${uid}hf`;
   defs.push(linG(g, [[0, shade(k.hair, 0.28)], [1, shade(k.hair, -0.1)]], 0, 0, 0.3, 1));
@@ -264,6 +347,11 @@ function hairFront(k: Kid, H: (x: number, y: number) => P, defs: string[], uid: 
   let s = `<path d="${blob(cap, 0.95)}" fill="url(#${g})" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`;
   s += `<path d="${curve([H(-r * 0.6, -r * 0.82), H(-r * 0.1, -r * 0.98), H(r * 0.4, -r * 0.9)])}" stroke="#fff" stroke-width="2.6" fill="none" opacity=".4" stroke-linecap="round"/>`;
   s += `<path d="${curve([H(-r * 0.2, -r * 0.6), H(-r * 0.6, -r * 0.4), H(-r * 0.8, r * 0.1)])}" stroke="${shade(k.hair, -0.35)}" stroke-width="1.6" fill="none" opacity=".6"/>`;
+  if (hair === 'surfer') {
+    // a side-swept fringe from under the helmet, clear of the eyes
+    s += `<path d="${blob([H(-r * 0.05, -r * 0.52), H(r * 0.5, -r * 0.5), H(r * 1.0, -r * 0.38), H(r * 0.96, -r * 0.18), H(r * 0.74, -r * 0.3), H(r * 0.46, -r * 0.24), H(r * 0.2, -r * 0.38)], 0.8)}" fill="${shade(k.hair, 0.15)}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`;
+    s += `<path d="${curve([H(r * 0.24, -r * 0.42), H(r * 0.58, -r * 0.42), H(r * 0.88, -r * 0.3)])}" stroke="#ffd75a" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+  }
   return s;
 }
 

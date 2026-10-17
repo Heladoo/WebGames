@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// The real game, driven in the browser: the screens, saving, unlocking, the shop, the controls, pausing and the
+// The real game, driven in the browser: the screens, saving, medals opening tracks, old saves, the shop, the controls, pausing and the
 // grown-ups panel. Races are driven by window.__drive (an autopilot and a speed-up) so they take a few seconds.
 
 const KEY = 'palace-race-save-v1';
@@ -24,11 +24,11 @@ const tap = async (page: Page, sel: string) => {
   await page.locator(sel).first().waitFor();
   await page.locator(sel).first().click({ force: true });
 };
-const base = { coins: 0, unlocked: ['forest'], owned: [], races: 5, wins: 0, settings: { music: false, sound: false, volume: 0.5, help: true } };
+const base = { coins: 0, medals: 0, unlocked: ['forest'], owned: [], races: 5, wins: 0, settings: { music: false, sound: false, volume: 0.5, help: true } };
 
 test('title → map → animal → rider → race → ceremony, and the coins are saved', async ({ page }) => {
   test.setTimeout(120_000);
-  await start(page, base, { autopilot: 0.9, speed: 8 });
+  await start(page, base, { autopilot: 1, speed: 8 });
   await tap(page, '#btn-play');
   await tap(page, '.track-card[data-t="forest"]');
   await tap(page, '.choice[data-id="reindeer"]');
@@ -43,22 +43,46 @@ test('title → map → animal → rider → race → ceremony, and the coins ar
   expect(s.coins).toBeGreaterThanOrEqual(25);
   expect(s.animal).toBe('reindeer');
   expect(s.kid).toBe('tamar');
+  // a medal opens the meadow
+  expect(s.unlocked.includes('meadow')).toBe(s.medals >= 1);
   await page.locator('.reward:not(.hidden)').waitFor();
+  // the coins won rise into the total, which ends at the saved count
   await expect(page.locator('#sum')).toHaveText(String(s.coins), { timeout: 8000 });
+  await expect(page.locator('#medals')).toHaveText(String(s.medals), { timeout: 8000 });
+  if (s.medals) await expect(page.locator('#c-new')).toBeVisible();
   await tap(page, '#c-map');
   await page.locator('.screen.map').waitFor();
 });
 
-test('a locked track opens with enough coins, and only wobbles without them', async ({ page }) => {
-  await start(page, { ...base, coins: 100 });
+test('tracks open with medals, never with coins', async ({ page }) => {
+  await start(page, { ...base, coins: 999, medals: 0 });
   await tap(page, '#btn-play');
-  await tap(page, '.track-card[data-t="snow"]');
-  await page.locator('.track-card[data-t="snow"] .jar-pop').waitFor();
-  expect((await saved(page))?.unlocked ?? ['forest']).not.toContain('snow');
   await tap(page, '.track-card[data-t="meadow"]');
-  await expect(page.locator('.track-card[data-t="meadow"]')).toHaveClass(/open/, { timeout: 5000 });
-  await expect.poll(async () => (await saved(page)).coins).toBe(20);
-  expect((await saved(page)).unlocked).toContain('meadow');
+  await expect(page.locator('.track-card[data-t="meadow"]')).toHaveClass(/locked/);
+  await expect(page.locator('.track-card[data-t="meadow"] .pips svg')).toHaveCount(1);
+  await page.waitForTimeout(600);
+  expect(await page.locator('.screen.map').count()).toBe(1);
+  expect((await saved(page))?.coins ?? 999).toBe(999);
+});
+
+test('medals already won open their tracks', async ({ page }) => {
+  await start(page, { ...base, medals: 3 });
+  await tap(page, '#btn-play');
+  for (const t of ['forest', 'meadow', 'snow']) await expect(page.locator(`.track-card[data-t="${t}"]`)).toHaveClass(/open/);
+  await expect(page.locator('.track-card[data-t="canyon"]')).toHaveClass(/locked/);
+  // 3 of the 5 medals the canyon needs are filled in
+  await expect(page.locator('.track-card[data-t="canyon"] .pips svg')).toHaveCount(5);
+  await tap(page, '.track-card[data-t="snow"]');
+  await page.locator('.screen.choose.animal').waitFor();
+});
+
+test('an early save keeps its tracks, wins (as medals) and braids (as hair)', async ({ page }) => {
+  await start(page, { coins: 30, unlocked: ['forest', 'canyon'], wins: 2, owned: ['braids:pink'], outfit: { helmet: 'basic', braids: 'pink', saddle: 'basic' } });
+  const d = await page.evaluate(() => (window as unknown as { app: { data: { medals: number; unlocked: string[]; owned: string[]; outfit: { hair: string } } } }).app.data);
+  expect(d.medals).toBe(2);
+  expect(d.unlocked).toEqual(['forest', 'meadow', 'canyon']);
+  expect(d.owned).toContain('hair:pink');
+  expect(d.outfit.hair).toBe('pink');
 });
 
 test('the shop sells an item, wears it, and keeps coins safe when there are not enough', async ({ page }) => {

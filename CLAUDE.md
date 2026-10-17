@@ -60,6 +60,16 @@ Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstas
 - **Never connect an oscillator (or any audio-rate source) to a `gain` AudioParam.** It adds the oscillator's ±amplitude to a gain that should sit near zero and produces a loud buzz that sounds like an error. An early frog croak did this. Shape sounds with scheduled envelope ramps and filters instead.
 - A pickup melody that only climbs gets stuck on the top note; walk the scale up and down and shift key each cycle.
 - Make sounds follow the world (biome, night, weather, nearby hazard) rather than looping one bed.
+- **Music that sounds like music** (palace-race `music.ts` has all of these, after an owner said a plain music box over a pad sounded bad):
+  - Put everything in a room: a `ConvolverNode` with a generated impulse (stereo noise, about 3 s, decaying and darkening).
+  - Use a real chord pattern (I–vi–IV–V and friends) on a warm pad of detuned saws through a lowpass, with a soft bass root.
+  - Give the melody phrases (motif, echo, answer, rest) whose strong beats land on chord notes.
+  - Pluck with Karplus–Strong rendered once into `AudioBuffer`s. A feedback `DelayNode` loop cannot be shorter than 128 samples, too long for high notes.
+  - FM bells: drive the carrier's frequency, which is allowed; only gain params are off-limits.
+  - Humanize timing (±12 ms), loudness and pan.
+  - Use pink or brown noise rather than white for nature beds.
+  - Finish with a low shelf, a high shelf and a gentle `tanh` saturation.
+- Schedule music ahead in audio time (a timer tops up a ~1 s queue) so the same engine renders in an `OfflineAudioContext`. Add a debug page that renders every mood, reports peak and RMS, and exports WAVs. Check band energies too: a bass that carries most of the energy sounds muddy.
 
 ## Pixel-art canvas approach (reusable, canvas games)
 

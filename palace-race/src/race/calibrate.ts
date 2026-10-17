@@ -10,6 +10,7 @@ export type Player = 'perfect' | 'average' | 'idle' | 'idleHelp';
 export interface Report {
   races: number;
   winRate: number;
+  medalRate: number; // places 1-3, which open the next tracks
   avgPlace: number;
   worstPlace: number;
   minCoins: number;
@@ -23,6 +24,7 @@ export interface Report {
 
 export function simulate(player: Player, track: TrackId, n: number, seed0 = 1): Report {
   let wins = 0;
+  let medals = 0;
   let placeSum = 0;
   let worst = 0;
   let minCoins = Infinity;
@@ -49,6 +51,7 @@ export function simulate(player: Player, track: TrackId, n: number, seed0 = 1): 
     }
     const place = race.order.indexOf(0) + 1;
     if (place === 1) wins++;
+    if (place <= 3) medals++;
     placeSum += place;
     worst = Math.max(worst, place);
     minCoins = Math.min(minCoins, raceCoins(place, race.me.candies));
@@ -57,7 +60,7 @@ export function simulate(player: Player, track: TrackId, n: number, seed0 = 1): 
     const first = Math.min(...race.runners.filter((r) => r.finish >= 0).map((r) => r.finish));
     maxGap = Math.max(maxGap, race.me.finish - first);
   }
-  return { races: n, winRate: wins / n, avgPlace: placeSum / n, worstPlace: worst, minCoins, maxTime, minTime, maxGap, minSpeed, obstacles: obstacles / n, blockedLanes: blocked };
+  return { races: n, winRate: wins / n, medalRate: medals / n, avgPlace: placeSum / n, worstPlace: worst, minCoins, maxTime, minTime, maxGap, minSpeed, obstacles: obstacles / n, blockedLanes: blocked };
 }
 
 export function simulateAll(n: number): Record<string, Report> {

@@ -15,6 +15,8 @@ export class App {
   root: HTMLElement;
   /** Where the shop goes back to. */
   back: Screen = 'map';
+  /** A track the last race opened, celebrated on the map. */
+  fresh: TrackId | null = null;
   private screens: Partial<Record<Screen, (app: App) => void>> = {};
 
   constructor(root: HTMLElement, data: SaveData) {
@@ -60,6 +62,7 @@ export class App {
     return `<header class="topbar">
       ${opts.home === false ? '<span></span>' : `<button class="round-btn" data-tb="home" aria-label="לבית">${ICONS.home}</button>`}
       <div class="tb-right">
+        <div class="pill medals" data-tb="medals" aria-label="${this.data.medals} מדליות">${ICONS.medal}<span>${this.data.medals}</span></div>
         <div class="pill coins" data-tb="coins" aria-label="${this.data.coins} מטבעות">${ICONS.coin}<span>${this.data.coins}</span></div>
         ${opts.shop === false ? '' : `<button class="round-btn" data-tb="shop" aria-label="חנות">${ICONS.shop}</button>`}
         <button class="round-btn small hold" data-tb="gear" aria-label="להורים: לחיצה ארוכה">${ICONS.gear}</button>
@@ -105,7 +108,7 @@ export class App {
       ${sw('g-sound', ICONS.soundOn, 'צלילים', st.sound)}
       <label class="setting">${ICONS.soundOn}<span>עוצמה</span><input type="range" id="g-vol" min="0" max="100" step="5" value="${Math.round(st.volume * 100)}" aria-label="עוצמה"></label>
       ${sw('g-help', ICONS.hand, 'עזרה: החיה מתחמקת לפעמים לבד', st.help)}
-      <p class="note">${this.data.races} מרוצים, ${this.data.wins} ניצחונות, ${this.data.coins} מטבעות, ${this.data.unlocked.length} מתוך ${TRACKS.length} מסלולים פתוחים.</p>
+      <p class="note">${this.data.races} מרוצים, ${this.data.wins} ניצחונות, ${this.data.medals} מדליות, ${this.data.coins} מטבעות, ${this.data.unlocked.length} מתוך ${TRACKS.length} מסלולים פתוחים.</p>
       <div class="row-btns"><button class="round-btn hold" id="g-reset" aria-label="להתחיל מחדש: לחיצה ארוכה">${ICONS.again}</button><span class="note">להתחיל מחדש (לחיצה ארוכה)</span></div>
       <p class="note">ההתקדמות נשמרת רק בדפדפן הזה. אין חשבונות, אין פרסומות ואין עוגיות. נאספת רק ספירה אנונימית של משחקים וזמן משחק.</p>
     </div>`;

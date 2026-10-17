@@ -67,6 +67,7 @@ html, body {
 .hidden { display: none !important; }
 .round-btn.pressed { transform: translateY(3px) scale(0.95); }
 .round-btn.glow { box-shadow: 0 0 0 6px #fff3a0, 0 0 26px 10px rgba(255, 220, 90, 0.9); animation: glow 0.8s ease-in-out infinite alternate; }
+@keyframes newtrack { from { transform: translateY(-30px) scale(0.8); opacity: 0; } }
 @keyframes glow { to { box-shadow: 0 0 0 10px #fff3a0, 0 0 34px 16px rgba(255, 220, 90, 0.95); } }
 .speed .fill { transition: width 0.25s; }
 .speed .fill.dash { animation: dash 0.4s linear infinite; filter: brightness(1.15); }
@@ -239,3 +240,32 @@ button:focus-visible { outline: 3px solid #ffb43a; outline-offset: 3px; }
 }
 .track-card:has(.jar-pop), .item:has(.jar-pop) { z-index: 4; }
 .shop .items { min-height: 0; align-self: stretch; }
+/* medals: pips on a locked track (how many open it) and the medal count in the top bar */
+.pips { position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%); display: inline-flex; gap: 1px; padding: 2px 6px; border-radius: 20px; background: #4a2a4a; direction: ltr; white-space: nowrap; }
+.pips .icon { width: var(--pip, 24px); height: var(--pip, 24px); }
+.pips.wobble { animation: pips 0.45s ease; }
+@keyframes pips { 30% { transform: translateX(-50%) scale(1.18); } }
+.pill.medals .icon { width: 34px; height: 34px; }
+/* the ceremony: the two halves of a clap take turns; the coins won rise into the total */
+.ceremony canvas.podium.clap { transition: none; }
+.reward .sum { position: relative; }
+.reward .sum .plus { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -4px); padding: 2px 10px; border-radius: 16px; background: #5ccf6a; color: #fff; font: 700 24px/1.2 Fredoka, sans-serif; font-style: normal; box-shadow: 0 3px 8px rgba(60, 30, 90, 0.3); white-space: nowrap; }
+.reward .sum.merging .plus { animation: merge 1.4s ease-in forwards; }
+.reward .sum.merged .plus { opacity: 0; }
+.reward .sum.merged b { animation: opened 0.5s ease; }
+@keyframes merge { 0% { transform: translate(-50%, -4px); } 30% { transform: translate(-50%, -16px) scale(1.15); } 100% { transform: translate(-50%, 30px) scale(0.5); opacity: 0; } }
+.new-track { position: absolute; left: max(14px, env(safe-area-inset-left)); top: max(14px, env(safe-area-inset-top)); padding: 0; border: 5px solid #fff; border-radius: 22px; cursor: pointer; animation: newtrack 0.5s ease, glow 1.6s ease-in-out 0.5s infinite; }
+.new-track.hidden { display: none; }
+.new-track .thumb { border-radius: 17px; overflow: hidden; }
+.new-track .badge { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 56px; height: 56px; }
+.new-track .new-star { position: absolute; right: -16px; top: -16px; width: 50px; height: 50px; border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 3px 8px rgba(60, 30, 90, 0.3); }
+.new-track .new-star .icon { width: 80%; height: 80%; }
+@keyframes newtrack { from { transform: translateY(-30px) scale(0.8); opacity: 0; } }
+@keyframes glow { 50% { box-shadow: 0 0 0 8px rgba(255, 230, 120, 0.7), 0 6px 16px rgba(60, 30, 90, 0.3); } }
+@media (prefers-reduced-motion: reduce) { .reward .sum.merging .plus, .reward .sum.merged b, .new-track { animation: none; } }
+/* tooltips: the button's label in a small bubble */
+.tip { position: fixed; z-index: 80; max-width: min(280px, 80vw); padding: 6px 12px; border-radius: 12px; background: #4a2a4a; color: #fff; font: 600 17px/1.25 Fredoka, sans-serif; text-align: center; pointer-events: none; opacity: 0; transform: translateY(4px); transition: opacity 0.15s, transform 0.15s; box-shadow: 0 4px 12px rgba(40, 20, 60, 0.3); }
+.tip.show { opacity: 1; transform: none; }
+.tip::after { content: ''; position: absolute; left: calc(var(--arrow, 50%) - 7px); top: 100%; border: 7px solid transparent; border-top-color: #4a2a4a; }
+.tip.below::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: #4a2a4a; }
+@media (prefers-reduced-motion: reduce) { .tip { transition: none; transform: none; } }

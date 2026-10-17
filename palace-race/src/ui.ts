@@ -1,4 +1,4 @@
-// Shared bits for the screens: painted pictures of animals, children, items and tracks (cached), the hold button
+// Shared bits for the screens: painted pictures of animals, children, items, tracks and the map (cached), the hold button
 // for grown-up controls, coins that fly to where they are spent, and the coin jar that shows how close a price is.
 
 import { drawAnimal, type AnimalId, type PoseId } from './art/animals';
@@ -32,7 +32,7 @@ function copy(src: HTMLCanvasElement, cssW: number): HTMLCanvasElement {
 }
 
 export const ANIMAL_BOX = { x: -235, y: -400, w: 490, h: 420 };
-export const KID_BOX = { x: -72, y: -178, w: 144, h: 196 };
+export const KID_BOX = { x: -80, y: -178, w: 160, h: 196 };
 
 export async function animalPic(animal: AnimalId, saddleId: Outfit['saddle'], pose: PoseId, cssW: number) {
   const k = (cssW / ANIMAL_BOX.w) * dpr();
@@ -46,9 +46,9 @@ export async function animalPic(animal: AnimalId, saddleId: Outfit['saddle'], po
 }
 
 export async function kidPic(kid: KidId, outfit: Outfit, pose: RiderPose, cssW: number, head = false) {
-  const box = head ? { x: -62, y: -186, w: 124, h: 124 } : KID_BOX;
+  const box = head ? { x: -76, y: -190, w: 150, h: 136 } : KID_BOX;
   const k = (cssW / box.w) * dpr();
-  const key = `k:${kid}:${outfit.helmet}:${outfit.braids}:${pose}:${head}:${k.toFixed(2)}`;
+  const key = `k:${kid}:${outfit.helmet}:${outfit.hair}:${pose}:${head}:${k.toFixed(2)}`;
   const pic = await once(key, () => {
     const art = drawKid(kid, pose, outfit, { x: 0, y: -HIP_H });
     return paint(`<ellipse cx="0" cy="3" rx="40" ry="7" fill="#3a2410" opacity=".18"/>` + art.back + art.front, box, k);
@@ -70,10 +70,19 @@ export async function trackPic(track: TrackId, cssW: number) {
   return copy(pic, cssW);
 }
 
-/** Just a track's sky (with the palace), for menu backgrounds. */
-export async function skyPic(track: TrackId, cssW: number) {
+/** The map's background: the garden sky with the palace standing on rolling meadows. */
+export async function mapPic(cssW: number) {
   const k = (cssW / STAGE_W) * Math.min(1.5, dpr());
-  const pic = await once(`s:${track}:${k.toFixed(2)}`, () => paint(trackLayer(track, 'sky'), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, k));
+  const meadow =
+    `<path d="M0 640 C300 600 520 690 800 676 C1080 662 1300 600 1600 640 V900 H0Z" fill="#8fcf6a"/>` +
+    `<path d="M0 720 C260 680 560 740 820 730 C1100 720 1340 690 1600 720 V900 H0Z" fill="#6cbf5a"/>` +
+    `<path d="M0 810 C320 780 620 830 900 820 C1180 810 1400 790 1600 806 V900 H0Z" fill="#5aae52"/>` +
+    Array.from({ length: 40 }, (_, i) => {
+      const x = (i * 397) % 1600;
+      const y = 700 + ((i * 131) % 190);
+      return `<circle cx="${x}" cy="${y}" r="5" fill="${['#ff8fc8', '#fff', '#ffd43b', '#c9a0ff'][i % 4]}"/><circle cx="${x}" cy="${y}" r="2" fill="#ffb02e"/>`;
+    }).join('');
+  const pic = await once(`m:${k.toFixed(2)}`, () => paint(trackLayer('garden', 'sky') + meadow, { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, k));
   return copy(pic, cssW);
 }
 

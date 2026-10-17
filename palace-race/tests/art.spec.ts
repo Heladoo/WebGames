@@ -82,7 +82,27 @@ test('scenery tiles repeat without a seam, paint quickly and have detail', async
 
 test('every art sheet renders without errors', async ({ page }) => {
   test.setTimeout(120_000);
-  for (const q of ['animals&scale=0.2', 'riders&scale=0.3', 'wardrobe&scale=0.3', 'obstacles&scale=0.3', 'podium&scale=0.4', 'icons', 'mock']) await open(page, `/?debug=${q}`);
+  for (const q of ['animals&scale=0.2', 'riders&scale=0.3', 'hair&scale=0.4', 'wardrobe&scale=0.3', 'obstacles&scale=0.3', 'podium&scale=0.4', 'podium&scale=0.4&frame=1', 'palace', 'icons', 'mock']) await open(page, `/?debug=${q}`);
+});
+
+test('the music renders in every mood, without clipping or silence', async ({ page }) => {
+  test.setTimeout(120_000);
+  await open(page, '/?debug=music&s=6');
+  const m = await page.evaluate(() => (window as unknown as { __music: Record<string, { peak: number; rms: number }> }).__music);
+  expect(Object.keys(m).length).toBe(6);
+  for (const [k, v] of Object.entries(m)) {
+    expect(v.peak, `${k} never clips`).toBeLessThan(0.9);
+    expect(v.rms, `${k} is audible`).toBeGreaterThan(0.01);
+  }
+});
+
+test('every button shows its label as a tooltip on hover', async ({ page }) => {
+  await open(page, '/?screen=map');
+  const shop = page.locator('[data-tb="shop"]');
+  await shop.hover();
+  await expect(page.locator('.tip.show')).toHaveText('חנות');
+  await page.locator('.track-card[data-t="meadow"]').hover();
+  await expect(page.locator('.tip.show')).toContainText('מדליות');
 });
 
 test('every button has a picture and a label, so children who cannot read can use it', async ({ page }) => {
