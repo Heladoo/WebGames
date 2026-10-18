@@ -2,6 +2,7 @@
 // in a warm room:
 // - a pad: slow chords (I–vi–IV–V and friends) from softly detuned voices through a lowpass, fading in and out;
 // - a soft bass note under each chord;
+// - in the races, a quicker tempo (116–128 BPM) with a bouncing bass, a running arpeggio and a soft galloping beat;
 // - a melody in short phrases (a motif, its echo, an answer and a resting note) that follows the chords, played on
 //   a music box or a kalimba (Karplus–Strong plucks rendered once into buffers) or on soft FM electric-piano bells,
 //   with small timing and loudness differences so it sounds played by a person;
@@ -25,6 +26,7 @@ interface Mood {
   answer: Lead; // the instrument of the answering phrase
   air: Air;
   bright: number; // the pad's lowpass cutoff (Hz)
+  drive?: boolean; // race music: a bouncing bass, a running arpeggio and a soft galloping beat
 }
 
 const MAJ_P = [0, 2, 4, 7, 9];
@@ -39,12 +41,13 @@ const vi = [-3, 0, 4];
 
 const MOODS: Record<TrackId | 'menu', Mood> = {
   menu: { key: 67, bpm: 72, chords: [I, vi, IV, V], scale: MAJ_P, lead: 'musicbox', answer: 'epiano', air: null, bright: 900 },
-  forest: { key: 65, bpm: 84, chords: [I, IV, vi, V], scale: MAJ_P, lead: 'kalimba', answer: 'musicbox', air: 'wind', bright: 1000 },
-  meadow: { key: 67, bpm: 92, chords: [I, V, vi, IV], scale: MAJ_P, lead: 'kalimba', answer: 'epiano', air: 'breeze', bright: 1200 },
-  snow: { key: 62, bpm: 76, chords: [I, vi, ii, V], scale: MAJ_P, lead: 'musicbox', answer: 'epiano', air: 'snow', bright: 850 },
+  // the races are quicker and bouncier (owner's request), still soft: a galloping beat under the same instruments
+  forest: { key: 65, bpm: 120, chords: [I, IV, vi, V], scale: MAJ_P, lead: 'kalimba', answer: 'musicbox', air: 'wind', bright: 1100, drive: true },
+  meadow: { key: 67, bpm: 128, chords: [I, V, vi, IV], scale: MAJ_P, lead: 'kalimba', answer: 'epiano', air: 'breeze', bright: 1300, drive: true },
+  snow: { key: 62, bpm: 116, chords: [I, vi, ii, V], scale: MAJ_P, lead: 'musicbox', answer: 'epiano', air: 'snow', bright: 1000, drive: true },
   // a warm minor colour at sunset: i–VI–III–VII
-  canyon: { key: 64, bpm: 80, chords: [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]], scale: MIN_P, lead: 'kalimba', answer: 'epiano', air: 'warm', bright: 900 },
-  garden: { key: 63, bpm: 78, chords: [I, iii, IV, V], scale: MAJ_P, lead: 'epiano', answer: 'musicbox', air: 'fountain', bright: 1000 },
+  canyon: { key: 64, bpm: 120, chords: [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]], scale: MIN_P, lead: 'kalimba', answer: 'epiano', air: 'warm', bright: 1000, drive: true },
+  garden: { key: 63, bpm: 124, chords: [I, iii, IV, V], scale: MAJ_P, lead: 'epiano', answer: 'musicbox', air: 'fountain', bright: 1100, drive: true },
 };
 
 const hz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
@@ -295,7 +298,8 @@ class Engine {
     const chord = m.chords[Math.floor(bar / 2) % m.chords.length];
     if (!this.enabled) return;
     if (inBar === 0 && bar % 2 === 0) this.padChord(t, chord, per * 16);
-    if (inBar === 0) this.bass(t, chord, per * 8);
+    if (m.drive) this.drive(t, chord, inBar, per);
+    else if (inBar === 0) this.bass(t, chord, per * 8);
     // phrases of four bars: a motif, the motif again (moved to the new chord), an answer on another instrument, rest
     const phraseBar = bar % 4;
     if (inBar === 0 && phraseBar === 0) this.motif = this.newMotif();
@@ -361,7 +365,7 @@ class Engine {
     this.log?.push([t, midi, lead]);
     const c = this.ctx;
     // played by a person: a little early or late, a little louder or softer, a little left or right
-    const at = t + (this.r() - 0.5) * 0.024;
+    const at = Math.max(this.now, t + (this.r() - 0.5) * 0.024);
     const v = vel * (0.78 + this.r() * 0.22);
     const g = c.createGain();
     const pan = c.createStereoPanner ? c.createStereoPanner() : null;
@@ -444,20 +448,78 @@ class Engine {
   }
 
   /** A soft round bass note: the chord's root, low. */
-  private bass(t: number, chord: number[], len: number) {
+  private bass(t: number, chord: number[], len: number, up = 0, level = 1) {
     const c = this.ctx;
-    const root = this.mood.key - 24 + ((chord[0] % 12) + 12) % 12;
+    const root = this.mood.key - 24 + ((chord[0] % 12) + 12) % 12 + up;
     const o = c.createOscillator();
     o.type = 'sine';
     o.frequency.value = hz(root);
     const g = c.createGain();
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.04, t + 0.08);
-    g.gain.exponentialRampToValueAtTime(0.018, t + len * 0.6);
+    g.gain.linearRampToValueAtTime(0.04 * level, t + (up || level < 1 ? 0.02 : 0.08));
+    g.gain.exponentialRampToValueAtTime(0.018 * level, t + len * 0.6);
     g.gain.exponentialRampToValueAtTime(0.0005, t + len + 0.4);
     o.connect(g).connect(this.input);
     o.start(t);
     o.stop(t + len + 0.5);
+  }
+
+  /**
+   * Race music's engine room, on every eighth note: the bass bounces root–fifth on the beats, a quiet kalimba
+   * arpeggio runs through the chord, and a soft beat gallops (a round low thump on 1 and 3, a pink-noise shaker on
+   * every eighth with a gallop accent). Gentle levels, so it pushes along without getting loud.
+   */
+  private drive(t: number, chord: number[], inBar: number, per: number) {
+    const c = this.ctx;
+    const root = ((chord[0] % 12) + 12) % 12;
+    if (inBar % 2 === 0) this.bass(t, chord, per * 2, inBar % 4 === 2 ? 7 : 0, 0.6);
+    // the arpeggio: up and down the chord, under the melody (dipping an octave lower in the second half of the bar)
+    const order = [0, 1, 2, 1];
+    const n = this.mood.key + chord[order[inBar % 4]] - (inBar % 8 >= 4 ? 12 : 0);
+    const key = `kalimba:${n}`;
+    let buf = this.plucks.get(key);
+    if (!buf) this.plucks.set(key, (buf = pluck(c, 'kalimba', n)));
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const g = c.createGain();
+    const at = Math.max(this.now, t + (this.r() - 0.5) * 0.01);
+    g.gain.setValueAtTime((inBar % 2 ? 0.035 : 0.05) * (0.85 + this.r() * 0.15), at);
+    g.gain.setTargetAtTime(0, at + per * 1.6, 0.12);
+    const pan = c.createStereoPanner ? c.createStereoPanner() : null;
+    if (pan) {
+      pan.pan.value = inBar % 2 ? 0.3 : -0.3;
+      src.connect(g).connect(pan).connect(this.input);
+    } else src.connect(g).connect(this.input);
+    src.start(at);
+    src.stop(at + per * 2.5);
+    // the beat: a round thump (a falling sine) on 1 and 3
+    if (inBar % 4 === 0) {
+      const o = c.createOscillator();
+      o.frequency.setValueAtTime(hz(this.mood.key - 36 + root) * 2, t);
+      o.frequency.exponentialRampToValueAtTime(hz(this.mood.key - 36 + root), t + 0.12);
+      const k = c.createGain();
+      k.gain.setValueAtTime(0, t);
+      k.gain.linearRampToValueAtTime(0.09, t + 0.008);
+      k.gain.exponentialRampToValueAtTime(0.0005, t + 0.35);
+      o.connect(k).connect(this.input);
+      o.start(t);
+      o.stop(t + 0.4);
+    }
+    // a shaker on every eighth: soft pink-noise taps, a little louder on the gallop's "da-da-DUM"
+    const sh = c.createBufferSource();
+    sh.buffer = this.pink;
+    const hp = c.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 5000;
+    const sg = c.createGain();
+    const accent = [0.5, 0.35, 0.4, 0.75, 0.5, 0.35, 0.4, 0.75][inBar];
+    const st = Math.max(this.now, t + (this.r() - 0.5) * 0.008);
+    sg.gain.setValueAtTime(0, st);
+    sg.gain.linearRampToValueAtTime(0.11 * accent, st + 0.004);
+    sg.gain.exponentialRampToValueAtTime(0.0005, st + 0.07);
+    sh.connect(hp).connect(sg).connect(this.input);
+    sh.start(st, this.r() * 4);
+    sh.stop(st + 0.1);
   }
 
   // -------------------------------------------------------------- the nature bed
