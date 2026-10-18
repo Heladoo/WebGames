@@ -1,6 +1,8 @@
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var tip = $('tip');
+  var pendingTile = null;
+  var currentKey = '';
   var nice = function (max) {
     if (max <= 4) return 4;
     var p = Math.pow(10, Math.floor(Math.log10(max)));
@@ -50,7 +52,8 @@
     tiles.appendChild(tile('Visitors (est.)', s.players.toLocaleString(), today.players + ' today'));
     var opened = Object.keys(s.opens).reduce(function (a, k) { return a + s.opens[k]; }, 0);
     tiles.appendChild(tile('Games opened', opened.toLocaleString(), 'taps on a game box'));
-    tiles.appendChild(tile('Ideas waiting', String(s.pendingIdeas), 'to read on ideas.html'));
+    pendingTile = tile('Ideas waiting', String(s.pendingIdeas), 'to read below');
+    tiles.appendChild(pendingTile);
     chart($('c-plays'), s.days, 'plays', '#3f8f8a', 'visits', function (v) { return Math.round(v); });
     var t = $('table');
     t.innerHTML = '<tr><th>Day</th><th>Visits</th><th>Visitors</th></tr>';
@@ -68,7 +71,78 @@
     });
     $('out').classList.remove('hidden');
   }
+
+  // ---- game ideas from players: shown only here, to the owner
+  var PICS = {
+    dog: 'dog', cat: 'cat', dino: 'dinosaur', robot: 'robot', fish: 'fish', bird: 'bird',
+    sea: 'sea', forest: 'forest', space: 'space', city: 'city', farm: 'farm', snow: 'snow',
+    build: 'building', cook: 'cooking', drive: 'driving', fly: 'flying', grow: 'growing', music: 'music',
+  };
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text; // player text: never innerHTML
+    return e;
+  }
+  function ideaCard(idea, actions) {
+    var c = el('div', 'idea');
+    if (idea.pic) c.appendChild(el('div', 'meta', 'Icon: ' + (PICS[idea.pic] || idea.pic)));
+    if (idea.text) c.appendChild(el('div', 'text', idea.text));
+    var m = el('div', 'meta');
+    m.dir = 'ltr';
+    m.appendChild(document.createTextNode(idea.name ? 'From: ' : 'No name'));
+    if (idea.name) m.appendChild(el('bdi', '', idea.name)); // its own text direction, so Hebrew doesn't scramble the line
+    var rest = [];
+    if (idea.t) rest.push(new Date(idea.t).toLocaleString());
+    if (idea.hearts != null) rest.push('♥ ' + idea.hearts);
+    if (rest.length) m.appendChild(document.createTextNode(' · ' + rest.join(' · ')));
+    c.appendChild(m);
+    var row = el('div', 'row');
+    actions.forEach(function (a) {
+      var b = el('button', a[2] || '', a[0]);
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        if (a[1] === 'remove' && !confirm('Take this idea off the board? Its hearts are lost.')) return;
+        b.disabled = true;
+        ideaAction(a[1], idea.id);
+      });
+      row.appendChild(b);
+    });
+    c.appendChild(row);
+    return c;
+  }
+  function renderIdeas(data) {
+    var p = $('pending'), a = $('approved');
+    p.textContent = ''; a.textContent = '';
+    $('pending-title').textContent = 'Game ideas waiting for you (' + data.pending.length + ')';
+    $('approved-title').textContent = 'On the board (' + data.approved.length + ')';
+    if (pendingTile) pendingTile.querySelector('.value').textContent = String(data.pending.length);
+    if (!data.pending.length) p.appendChild(el('p', 'msg', 'Nothing new.'));
+    data.pending.forEach(function (i) { p.appendChild(ideaCard(i, [['Approve', 'approve'], ['Reject', 'reject', 'no']])); });
+    if (!data.approved.length) a.appendChild(el('p', 'msg', 'No approved ideas yet.'));
+    data.approved.forEach(function (i) { a.appendChild(ideaCard(i, [['Remove from board', 'remove', 'ghost']])); });
+  }
+  function loadIdeas() {
+    fetch('api/ideas?key=' + encodeURIComponent(currentKey), { cache: 'no-store' })
+      .then(function (r) { return r.json().then(function (b) { if (!r.ok) throw new Error(b && b.error); return b; }); })
+      .then(renderIdeas)
+      .catch(function (e) {
+        $('pending').textContent = '';
+        $('pending').appendChild(el('p', 'msg', (e && e.message) || 'Could not load the ideas.'));
+      });
+  }
+  function ideaAction(type, idea) {
+    fetch('api/ideas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: type, key: currentKey, idea: idea }),
+    }).then(function (r) {
+      if (!r.ok) $('status').textContent = 'That did not work (' + r.status + ').';
+      loadIdeas();
+    }).catch(function () { $('status').textContent = 'Could not reach the server.'; });
+  }
   function load(key) {
+    currentKey = key;
     $('status').textContent = 'Loading…';
     $('help').classList.add('hidden');
     fetch('api/stats?key=' + encodeURIComponent(key), { cache: 'no-store' }).then(function (r) {
@@ -78,6 +152,7 @@
         try { localStorage.setItem('dorothy-games-stats-key', key); } catch (e) {}
         $('status').textContent = 'Updated ' + new Date().toLocaleTimeString();
         render(x.body);
+        loadIdeas();
         return;
       }
       if (x.r.status === 404) throw { msg: 'The stats function was not found. Make sure the api folder is part of the deployment (Root Directory = portal).', help: true };

@@ -1,6 +1,6 @@
 // The homepage in a real browser: shelf layout, the ideas board and the idea form.
 import { expect, test, type Page } from '@playwright/test';
-import { GAMES } from '../src/games';
+import { GAMES, SITE } from '../src/games';
 
 const SIZES = [
   { name: 'small phone', width: 360, height: 740, perRow: 2, boardOpen: false },
@@ -77,17 +77,45 @@ test('the page works and is described without JavaScript', async ({ request }) =
     expect(html).toContain(g.about); // the tooltip text is in the page
   }
   expect(html).toContain('לגילאי 4 עד 99');
+  for (const f of SITE.facts) expect(html).toContain(f);
   expect(html).toContain('משחקים רגועים, מילדים לילדים');
   const ld = JSON.parse(html.split('<script type="application/ld+json">')[1].split('</script>')[0]);
   const list = ld['@graph'].find((x: { '@type': string }) => x['@type'] === 'ItemList');
   expect(list.itemListElement.map((i: { item: { name: string } }) => i.item.name)).toEqual(GAMES.map((g) => g.name));
 });
 
-test('there is no text block under the shelf', async ({ page }) => {
+test('under the shelf there is one quiet line and nothing else', async ({ page }) => {
   await fakeApi(page);
   await page.goto('/');
-  await expect(page.locator('footer')).toHaveCount(0);
-  await expect(page.getByText('בלי פרסומות')).toHaveCount(0);
+  await expect(page.locator('footer p')).toHaveCount(1);
+  await expect(page.locator('footer .facts')).toHaveText('לגילאי 4–99 · חינם · בלי פרסומות · בלי הרשמה · בלי עוגיות · בטוח ורגוע');
+  // no game descriptions or counting note are printed on the page
+  await expect(page.locator('footer')).not.toContainText('סופרים');
+  for (const g of GAMES) expect(await page.locator('footer').innerText()).not.toContain(g.about);
+});
+
+test('the logo is the page heading, and games open in a new tab', async ({ page }) => {
+  await fakeApi(page);
+  await page.goto('/');
+  const logo = page.locator('h1 img');
+  await expect(logo).toHaveAttribute('alt', 'משחקי דורותי');
+  expect(await logo.evaluate((img) => (img as HTMLImageElement).naturalWidth > 0)).toBe(true);
+  await expect(page.locator('.tagline')).toHaveText('משחקים רגועים, מילדים לילדים');
+  for (const g of GAMES) {
+    const a = page.locator(`a.box[data-game="${g.id}"]`);
+    await expect(a).toHaveAttribute('target', '_blank');
+    await expect(a).toHaveAttribute('rel', /noopener/);
+  }
+  // the logo's background is transparent, so the picture has no visible box on the page
+  const alpha = await page.evaluate(() => {
+    const img = document.querySelector<HTMLImageElement>('h1 img')!;
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    return [ctx.getImageData(3, 3, 1, 1).data[3], ctx.getImageData(img.naturalWidth - 4, img.naturalHeight - 4, 1, 1).data[3], ctx.getImageData(img.naturalWidth >> 1, img.naturalHeight >> 1, 1, 1).data[3]];
+  });
+  expect(alpha).toEqual([0, 0, 255]);
 });
 
 test('each game box has an (i) button whose tooltip shows on hover, focus and tap', async ({ page }) => {
@@ -203,15 +231,10 @@ test('sending an idea: one icon, a description and a sender name', async ({ page
 
   const long = 'חתול שמחליק על הקרח '.repeat(20).trim();
   await page.fill('#idea-text', long);
-  await page.fill('#idea-name', 'דן 123');
-  await send.click();
-  await expect(page.locator('#idea-error')).toHaveText('בשם אפשר לכתוב רק אותיות.');
-  expect(posts).toHaveLength(0);
-
-  await page.fill('#idea-name', 'נועה כהן');
+  await page.fill('#idea-name', 'נועה כהן, בת 7');
   await send.click();
   await expect(page.locator('#idea-done')).toBeVisible();
-  expect(posts).toEqual([{ type: 'idea', id: expect.stringMatching(/^[a-z0-9]{8,32}$/), pic: 'snow', text: long, name: 'נועה כהן' }]);
+  expect(posts).toEqual([{ type: 'idea', id: expect.stringMatching(/^[a-z0-9]{8,32}$/), pic: 'snow', text: long, name: 'נועה כהן, בת 7' }]);
 
   // closing and opening again starts a fresh form
   await page.locator('#idea-done [data-close]').click();

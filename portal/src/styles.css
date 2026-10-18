@@ -1,9 +1,9 @@
 :root {
-  --wall: #f4ebdd;
+  --wall: #fef7e5; /* the exact cream of the logo picture (scripts/logo-assets.py) */
   --ink: #3a2e2a;
   --muted: #5a4636;
   --quiet: #6b5644;
-  --paper: #fffdf8;
+  --paper: #ffffff;
   --wood: #b9824f;
   --wood-dark: #8e5c33;
   --teal: #2f6f6a;
@@ -51,13 +51,11 @@ a:hover { color: var(--teal-dark); }
 
 /* ---------- header ---------- */
 
-.top { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
-.brand { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; min-width: 0; }
-.brand:hover { color: inherit; }
-.logo { width: 52px; height: 52px; flex-shrink: 0; }
-.brand-text { display: flex; flex-direction: column; min-width: 0; }
-h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 31px; line-height: 1.05; }
-.tagline { font-size: 15px; color: var(--muted); }
+.top { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+h1 { margin: 0; line-height: 0; flex-shrink: 0; }
+.logo { display: block; width: 150px; height: auto; }
+.tagline { margin: 0; font-family: var(--display); font-size: 17px; line-height: 1.25; color: var(--muted); }
 
 .install {
   margin-inline-start: auto;
@@ -77,9 +75,9 @@ h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 31px; 
 
 @media (min-width: 600px) {
   .page { padding-top: 28px; padding-inline: 36px; }
-  .logo { width: 64px; height: 64px; }
-  h1 { font-size: 42px; }
-  .tagline { font-size: 18px; }
+  .brand { gap: 18px; }
+  .logo { width: 220px; }
+  .tagline { font-size: 24px; }
   .install { padding: 0 22px; }
 }
 
@@ -274,6 +272,11 @@ a.box:hover, button.box:hover { color: var(--ink); transform: translateY(-4px); 
 }
 .board-add { background: var(--idea-sun); font-weight: 700; }
 #more + .board-add { margin-top: 10px; }
+
+/* ---------- one quiet line for parents and search engines ---------- */
+
+.about { margin-top: 40px; }
+.facts { margin: 0; font-size: 14px; font-weight: 500; color: var(--quiet); }
 
 /* ---------- dialogs ---------- */
 

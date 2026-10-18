@@ -43,13 +43,19 @@
       code { background: #fff; border: 1px solid var(--grid); border-radius: 4px; padding: 0 4px; font-size: 13px; }
       a { color: #2e6f6b; }
       .hidden { display: none; }
+      .idea { background: var(--card); border-radius: 18px; box-shadow: 0 2px 0 var(--grid); padding: 12px 14px; margin-bottom: 10px; }
+      .idea .text { font-size: 18px; margin: 4px 0; direction: rtl; text-align: right; unicode-bidi: plaintext; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .idea .meta { font-size: 13px; color: var(--muted); }
+      .idea .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+      .idea button.no { background: #a8361f; box-shadow: 0 3px 0 #7a2716; }
+      .idea button.ghost { background: #fff; color: var(--ink); border: 2px solid var(--ink); box-shadow: none; }
     </style>
   </head>
   <body>
     <main>
       <section class="panel">
         <h1>Dorothy Games · Stats</h1>
-        <p class="msg">Anonymous counts only: visits, estimated unique visitors, and which games were opened from the homepage. <a href="ideas.html">Review game ideas →</a></p>
+        <p class="msg">Anonymous counts only: visits, estimated unique visitors, and which games were opened from the homepage. Game ideas sent by players wait for you below.</p>
         <form id="login">
           <input id="key" type="password" autocomplete="current-password" placeholder="Stats key (STATS_KEY)" required />
           <button>Show stats</button>
@@ -66,9 +72,15 @@
           <li><b>Redeploy</b> (Deployments → ⋯ → Redeploy). Variables only apply to new deployments.</li>
           <li>Come back to this page and enter your <code>STATS_KEY</code>.</li>
         </ol>
-        <p class="msg">No accounts, cookies or personal data are involved in these counts. The same database also holds the game ideas players send (see ideas.html).</p>
+        <p class="msg">No accounts, cookies or personal data are involved in these counts. The same database also holds the game ideas players send; they are shown only here, to you.</p>
       </section>
       <div id="out" class="hidden">
+        <section class="panel" id="ideas-panel">
+          <h2 id="pending-title">Game ideas waiting for you</h2>
+          <p class="msg">Nothing shows on the homepage until you approve it. An approved idea appears within about a minute.</p>
+          <div id="pending"></div>
+          <details><summary id="approved-title">On the board</summary><div id="approved"></div></details>
+        </section>
         <section class="panel tiles" id="tiles"></section>
         <section class="panel">
           <h2>Visits per day (last 30 days)</h2><div class="chart" id="c-plays"></div>

@@ -219,9 +219,9 @@ Import `Heladoo/WebGames` as another project and set **Root Directory** to `pala
 
 **משחקי דורותי · משחקים רגועים, מילדים לילדים.** The Hebrew homepage that links to every game. It is built to look like a toy shelf: each game is a box with its own picture, and players pick by picture.
 
-- **The shelf:** one box per game, plus "I have an idea!" and "coming soon" boxes. New games have a "new" badge. Games open in the same tab. There are 2 boxes per shelf on phones and 3 on tablets and computers. Each game box has a small (i) button: hover, focus or tap shows a one-line description of the game.
-- **Game ideas from players:** the idea box opens a form with one icon to pick, a "game description" box (with a prompt to say as much as possible, up to 500 characters) and an optional sender name (one box, letters only). **Nothing is shown until the owner approves it** on `/ideas.html`. Approved ideas appear on the corkboard ("Your ideas"), where players can give them hearts (one per browser, and they can take it back). The board sits beside the shelf on wide screens and is folded under it on phones.
-- **For search engines:** no text block on the page. The description, the ages (4–99), the game list and the link-preview image are in the page's meta tags and structured data, and each game's description is in its (i) tooltip.
+- **The shelf:** one box per game, plus "I have an idea!" and "coming soon" boxes. New games have a "new" badge. **Games open in a new tab**, so the homepage never depends on a game's own page. There are 2 boxes per shelf on phones and 3 on tablets and computers. Each game box has a small (i) button: hover, focus or tap shows a one-line description of the game. The header is the Dorothy Games logo with the line "משחקים רגועים, מילדים לילדים".
+- **Game ideas from players:** the idea box opens a form with one icon to pick, a "game description" box (with a prompt to say as much as possible, up to 500 characters) and an optional sender name (free text). **Nothing is shown until the owner approves it**, and ideas waiting for approval are shown only on the owner's `/stats.html` page (behind `STATS_KEY`), with Approve, Reject and Remove buttons. Approved ideas appear on the corkboard ("Your ideas"), where players can give them hearts (one per browser, and they can take it back). The board sits beside the shelf on wide screens and is folded under it on phones.
+- **For parents and search engines:** one quiet line of text under the shelf (ages 4–99, free, no ads, no sign-up, no cookies, safe and calm), plus the description, the game list and the link-preview image in the page's meta tags and structured data. Each game's description is also in its (i) tooltip.
 - **Installable:** an "Add to home screen" button appears where the browser supports it. On iPhone and iPad it shows how to add the page from the Share menu.
 
 ### Run locally
@@ -234,9 +234,9 @@ npm run build    # static site in portal/dist
 npm test         # Playwright + Chromium
 ```
 
-**Adding a game** (from this repo or anywhere else): add an entry to `portal/src/games.ts` (Hebrew name, one sentence, address, picture description), and save a 4:3 picture as `portal/public/games/<id>.jpg`. For the games in this repo, `node scripts/tile-art.mjs` renders the pictures from each game's own art (see the comment at the top of that file). Set `isNew` on the newest game and `COMING_SOON` to the number of "coming soon" boxes.
+**Adding a game:** add an entry to `portal/src/games.ts` (Hebrew name, one sentence for the tooltip, address, picture description), and save a 4:3 picture as `portal/public/games/<id>.jpg`. `node scripts/tile-art.mjs` renders the pictures: from the game's own logo when it has one (Word Trail and Race to the Palace), from its art otherwise (see the comment at the top of that file). Set `isNew` on the newest games and `COMING_SOON` to the number of "coming soon" boxes.
 
-**The logo** is a placeholder (`public/logo.svg`). To use your own, replace that file and run `node scripts/render-art.mjs` with the dev server on port 5199 to redraw the icons and the link-preview image.
+**The logo** is the owner's (`portal/art/dorothy-logo.jpg`). `python3 scripts/logo-assets.py` (needs Pillow) makes the transparent web logo, the app icons and the favicon from it, and `node scripts/render-art.mjs` (dev server on port 5199) redraws the link-preview image.
 
 ### Deploy on Vercel
 
@@ -245,7 +245,6 @@ Import `Heladoo/WebGames` as another project and set **Root Directory** to `port
 ### Statistics and ideas (shares the other games' database)
 
 In the **portal** Vercel project add `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `STATS_KEY` (same values as the games), then redeploy. Keys use the prefix `pt:`.
-- **`/stats.html`** shows visits, estimated visitors, which game boxes were tapped, and how many ideas are waiting.
-- **`/ideas.html`** (same `STATS_KEY`) lists new ideas with **Approve** and **Reject** buttons, and approved ideas with **Remove from board**. An approved idea shows on the homepage within about a minute.
+- **`/stats.html`** shows the game ideas waiting for your approval (with Approve, Reject and Remove buttons; an approved idea shows on the homepage within about a minute), then visits, estimated visitors, and which game boxes were tapped.
 
 Without these variables the homepage still works: the board is empty and the idea form says the idea box isn't open yet. Each network address can send 5 ideas a day, and at most 300 can wait for review. A visit uses 4 Redis commands, and opening the board shares a cached list.

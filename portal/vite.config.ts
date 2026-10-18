@@ -19,7 +19,7 @@ const giftIcon = `<svg viewBox="0 0 24 24" width="56" height="56" aria-hidden="t
 /** The shelf, written into the page at build time so it works (and is indexed) without JavaScript. */
 export function tilesMarkup() {
   const games = GAMES.map(
-    (g) => `<li class="cell"><a class="box" href="${esc(g.url)}" data-game="${esc(g.id)}">
+    (g) => `<li class="cell"><a class="box" href="${esc(g.url)}" target="_blank" rel="noopener" data-game="${esc(g.id)}">
       <img src="/games/${esc(g.id)}.jpg" alt="${esc(g.alt)}" width="640" height="480" loading="eager" decoding="async" />
       <span class="box-name">${esc(g.name)}</span>${g.isNew ? '<span class="badge">חדש</span>' : ''}</a>
       <button type="button" class="info" aria-label="על ${esc(g.name)}" aria-describedby="tip-${esc(g.id)}"><span class="info-dot">${infoIcon}</span></button>
@@ -80,6 +80,7 @@ function portal(): Plugin {
       handler: (html) =>
         html
           .replace('<!--GAMES-->', tilesMarkup())
+          .replace('<!--FACTS-->', SITE.facts.map(esc).join(' · '))
           .replace('<!--JSONLD-->', jsonLd(url))
           .replaceAll('%DESCRIPTION%', esc(SITE.description))
           .replaceAll('%SITE_URL%', url),
@@ -88,7 +89,7 @@ function portal(): Plugin {
       this.emitFile({
         type: 'asset',
         fileName: 'robots.txt',
-        source: `User-agent: *\nAllow: /\nDisallow: /stats.html\nDisallow: /ideas.html\nDisallow: /api/\n\nSitemap: ${url}/sitemap.xml\n`,
+        source: `User-agent: *\nAllow: /\nDisallow: /stats.html\nDisallow: /api/\n\nSitemap: ${url}/sitemap.xml\n`,
       });
       this.emitFile({
         type: 'asset',

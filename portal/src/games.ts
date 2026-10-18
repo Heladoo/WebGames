@@ -10,7 +10,7 @@ export interface Game {
   name: string;
   /** one sentence for parents and search engines (Hebrew) */
   about: string;
-  /** full address of the game; games always open in the same tab */
+  /** full address of the game; games open in a new tab, so the portal doesn't depend on any game's own page */
   url: string;
   /** shows the "new" badge */
   isNew?: boolean;
@@ -25,7 +25,7 @@ export interface Game {
 export const GAMES: Game[] = [
   {
     id: 'otter-river',
-    name: 'נהר הלוטרה',
+    name: 'חיי לוטרה',
     about: 'שטים על הנהר, אוספים צדפים ומלבישים את הלוטרה.',
     url: 'https://otter-river.vercel.app/',
     alt: 'לוטרה עם כובע קש שטה על גלגל ים ורוד בנהר',
@@ -52,15 +52,14 @@ export const GAMES: Game[] = [
     inLanguage: 'en',
   },
   {
-    // PLACEHOLDERS: the name, sentence and picture below are guesses until the owner sends the real ones
-    // (the address comes from the owner; the game is not in this repo).
     id: 'palace-race',
-    name: 'מירוץ הארמון',
-    about: 'משחק מירוץ חדש.',
+    name: 'המרוץ לארמון',
+    about: 'מרוץ רגוע: בוחרים חיה מלכותית ורוכב, דוהרים לארמון, אוספים ממתקים וזוכים בגביע.',
     url: 'https://web-games-palace-race.vercel.app/',
     isNew: true,
-    alt: 'ארמון עם דגל משובץ של מירוץ',
+    alt: 'הלוגו של המרוץ לארמון: ארמון קסום, חד-קרן ואיל',
     genre: ['Casual', 'Racing'],
+    inLanguage: 'he',
   },
 ];
 
@@ -73,4 +72,6 @@ export const SITE = {
   tagline: 'משחקים רגועים, מילדים לילדים',
   description:
     'משחקי דורותי: משחקי דפדפן רגועים, בטוחים ומשמחים לילדים ולכל המשפחה, לגילאי 4 עד 99. בלי פרסומות, בלי הרשמה ובלי עוגיות. משחקים בחינם בטלפון, בטאבלט ובמחשב.',
+  /** the quiet line under the shelf */
+  facts: ['לגילאי 4–99', 'חינם', 'בלי פרסומות', 'בלי הרשמה', 'בלי עוגיות', 'בטוח ורגוע'],
 };

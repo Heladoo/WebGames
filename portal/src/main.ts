@@ -95,8 +95,8 @@ function setupInstall() {
   });
 }
 
-if (debug === 'og' || debug === 'icon') {
-  void import('./debug').then((m) => m.render(debug));
+if (debug === 'og') {
+  void import('./debug').then((m) => m.render());
 } else {
   setupShelf();
   setupTips();

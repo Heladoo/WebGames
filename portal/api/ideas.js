@@ -2,7 +2,7 @@
 //
 // Players pick one picture, describe the game in a few sentences and may sign
 // with a first name. Nothing is shown to anyone until the owner approves it on
-// /ideas.html (with the same STATS_KEY as the stats page). Approved ideas can
+// the owner's stats page, /stats.html (it asks for STATS_KEY). Approved ideas can
 // get hearts from other players, one per browser.
 //
 // Storage: the same Upstash Redis as the stats (see api/stats.js), keys
@@ -37,9 +37,6 @@ export const LIMITS = { text: 500, name: 30, perDay: 5, queue: 300, shown: 60 };
 
 const ANON_RE = /^[a-z0-9]{8,32}$/;
 const IDEA_RE = /^[a-z0-9]{10}$/;
-// letters only (any script), single spaces, apostrophes and hyphens between them:
-// no digits, @ or links, so a name can't carry a phone number or an address
-const NAME_RE = /^[\p{L}\p{M}]+(?:[ '\-־][\p{L}\p{M}]+)*$/u;
 // control characters and bidi overrides (which can make text read backwards)
 const STRIP_RE = /[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/g;
 
@@ -79,7 +76,7 @@ export function validateIdea(msg) {
   if (text.length > LIMITS.text) return null;
   if (msg.name != null && typeof msg.name !== 'string') return null;
   const name = clean(msg.name);
-  if (name && (name.length > LIMITS.name || !NAME_RE.test(name))) return null;
+  if (name.length > LIMITS.name) return null;
   if (pic === null && text.length < 2) return null;
   return { pic, text, name };
 }

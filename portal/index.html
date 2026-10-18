@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>משחקי דורותי: משחקים רגועים לילדים ולכל המשפחה</title>
     <meta name="description" content="%DESCRIPTION%" />
-    <meta name="theme-color" content="#f4ebdd" />
+    <meta name="theme-color" content="#fef7e5" />
     <meta name="color-scheme" content="light" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
@@ -25,8 +25,7 @@
     <meta name="twitter:image" content="%SITE_URL%/og-image.png" />
 
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -39,13 +38,10 @@
   <body>
     <div class="page">
       <header class="top">
-        <a class="brand" href="/">
-          <img class="logo" src="/logo.svg" alt="" width="64" height="64" />
-          <span class="brand-text">
-            <h1>משחקי דורותי</h1>
-            <span class="tagline">משחקים רגועים, מילדים לילדים</span>
-          </span>
-        </a>
+        <div class="brand">
+          <h1><img class="logo" src="/logo.webp" alt="משחקי דורותי" width="900" height="767" /></h1>
+          <p class="tagline">משחקים רגועים, מילדים לילדים</p>
+        </div>
         <button type="button" id="install" class="install" hidden>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
           <span class="install-label">להוסיף למסך הבית</span>
@@ -74,6 +70,10 @@
           </div>
         </details>
       </main>
+
+      <footer class="about">
+        <p class="facts"><!--FACTS--></p>
+      </footer>
     </div>
 
     <dialog id="idea-dialog" aria-labelledby="idea-title">
@@ -97,7 +97,7 @@
             <label for="idea-name">שם השולח (לא חובה)</label>
             <input id="idea-name" class="name" type="text" maxlength="30" autocomplete="off" placeholder="למשל: נועה" />
           </div>
-          <p class="small">אפשר לכתוב רק שם פרטי. כל רעיון נקרא לפני שהוא עולה ללוח.</p>
+          <p class="small">כל רעיון נקרא לפני שהוא עולה ללוח.</p>
           <p class="error" id="idea-error" role="alert"></p>
           <div class="actions">
             <button type="submit" class="primary" id="idea-send">לשלוח</button>

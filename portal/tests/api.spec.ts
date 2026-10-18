@@ -68,8 +68,8 @@ test('validation keeps only safe, bounded ideas', () => {
   expect(validateIdea(idea({ pic: ['dog'] }))).toBeNull();
   expect(validateIdea(idea({ text: 'א'.repeat(LIMITS.text + 1) }))).toBeNull();
   expect(validateIdea(idea({ text: 'א'.repeat(LIMITS.text) }))?.text.length).toBe(LIMITS.text);
-  expect(validateIdea(idea({ name: 'דנה 0501234567' }))).toBeNull();
-  expect(validateIdea(idea({ name: 'a@b.com' }))).toBeNull();
+  // the name is free text: the owner reads every idea before it can be shown
+  expect(validateIdea(idea({ name: 'דנה 7 ❤ (בת 7)' }))?.name).toBe('דנה 7 ❤ (בת 7)');
   expect(validateIdea(idea({ name: 'א'.repeat(LIMITS.name + 1) }))).toBeNull();
   expect(validateIdea(idea({ name: 5 }))).toBeNull();
   expect(validateIdea(idea({ pic: null, text: ' ' }))).toBeNull();

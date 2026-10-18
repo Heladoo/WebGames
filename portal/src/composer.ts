@@ -1,7 +1,7 @@
 // The "I have an idea!" form: pick one icon, describe the game, optionally sign.
 
 import { PICTURES, pictureSVG } from './pictures';
-import { LIMITS, NAME_RE } from './rules';
+import { LIMITS } from './rules';
 import { anonId } from './stats';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -10,7 +10,6 @@ const MESSAGES: Record<string, string> = {
   'too-many': 'שלחתם הרבה רעיונות היום. אפשר לשלוח עוד מחר!',
   full: 'יש המון רעיונות שמחכים לקריאה. נסו שוב בעוד כמה ימים.',
   off: 'תיבת הרעיונות עוד לא פתוחה. נסו שוב בקרוב.',
-  name: 'בשם אפשר לכתוב רק אותיות.',
   empty: 'בחרו אייקון או כתבו כמה מילים.',
   failed: 'משהו לא הסתדר. נסו שוב.',
 };
@@ -77,11 +76,6 @@ export function setupComposer() {
     const msgText = tidy(text.value);
     const sender = tidy(name.value);
     if (picked === null && msgText.length < 2) return void (error.textContent = MESSAGES.empty);
-    if (sender && !NAME_RE.test(sender)) {
-      error.textContent = MESSAGES.name;
-      name.focus();
-      return;
-    }
     send.disabled = true;
     send.textContent = 'שולחים…';
     let problem = 'failed';
