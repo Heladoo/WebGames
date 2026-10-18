@@ -195,3 +195,38 @@ Same as the other games. Counters use the prefix `bb:` (Otter River `or:`, Word 
 ### Deploy on Vercel
 
 Import `Heladoo/WebGames` as another project and set **Root Directory** to `bead-box`. The framework is detected as Vite from `bead-box/vercel.json`.
+
+## 🧸 Dorothy Games homepage (`portal/`)
+
+**משחקי דורותי · משחקים רגועים, מילדים לילדים.** The Hebrew homepage that links to every game. It is built to look like a toy shelf: each game is a box with its own picture, and players pick by picture.
+
+- **The shelf:** one box per game, plus "I have an idea!" and "coming soon" boxes. The newest game has a "new" badge. Games open in the same tab. There are 2 boxes per shelf on phones and 3 on tablets and computers.
+- **Game ideas from players:** the idea box opens a form. A child picks pictures (who, where, what you do), and anyone can add a few words and one or more first names (optional). **Nothing is shown until the owner approves it** on `/ideas.html`. Approved ideas appear on the corkboard ("Your ideas"), where players can give them hearts (one per browser, and they can take it back). The board sits beside the shelf on wide screens and is folded under it on phones.
+- **For parents and search engines:** a quiet line of text under the shelf (ages 4–99, free, no ads, no sign-up, no cookies, safe and calm), short descriptions of each game, structured data listing the games, and a link-preview image.
+- **Installable:** an "Add to home screen" button appears where the browser supports it. On iPhone and iPad it shows how to add the page from the Share menu.
+
+### Run locally
+
+```bash
+cd portal
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # static site in portal/dist
+npm test         # Playwright + Chromium
+```
+
+**Adding a game** (from this repo or anywhere else): add an entry to `portal/src/games.ts` (Hebrew name, one sentence, address, picture description), and save a 4:3 picture as `portal/public/games/<id>.jpg`. For the games in this repo, `node scripts/tile-art.mjs` renders the pictures from each game's own art (see the comment at the top of that file). Set `isNew` on the newest game and `COMING_SOON` to the number of "coming soon" boxes.
+
+**The logo** is a placeholder (`public/logo.svg`). To use your own, replace that file and run `node scripts/render-art.mjs` with the dev server on port 5199 to redraw the icons and the link-preview image.
+
+### Deploy on Vercel
+
+Import `Heladoo/WebGames` as another project and set **Root Directory** to `portal`. Then, in `portal/src/games.ts`, check that each game's `url` is its real production address.
+
+### Statistics and ideas (shares the other games' database)
+
+In the **portal** Vercel project add `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `STATS_KEY` (same values as the games), then redeploy. Keys use the prefix `pt:`.
+- **`/stats.html`** shows visits, estimated visitors, which game boxes were tapped, and how many ideas are waiting.
+- **`/ideas.html`** (same `STATS_KEY`) lists new ideas with **Approve** and **Reject** buttons, and approved ideas with **Remove from board**. An approved idea shows on the homepage within about a minute.
+
+Without these variables the homepage still works: the board is empty and the idea form says the idea box isn't open yet. Each network address can send 5 ideas a day, and at most 300 can wait for review. A visit uses 4 Redis commands, and opening the board shares a cached list.

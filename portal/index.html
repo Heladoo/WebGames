@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>משחקי דורותי: משחקים רגועים לילדים ולכל המשפחה</title>
+    <meta name="description" content="%DESCRIPTION%" />
+    <meta name="theme-color" content="#f4ebdd" />
+    <meta name="color-scheme" content="light" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="canonical" href="%SITE_URL%/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="he_IL" />
+    <meta property="og:site_name" content="משחקי דורותי" />
+    <meta property="og:title" content="משחקי דורותי: משחקים רגועים, מילדים לילדים" />
+    <meta property="og:description" content="משחקי דפדפן רגועים לילדים ולכל המשפחה. בחינם, בלי פרסומות ובלי הרשמה." />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="מדף עץ ועליו קופסאות של משחקים: לוטרה בנהר, כלבלב בשביל וצמיד חרוזים" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="%SITE_URL%/og-image.png" />
+
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="משחקי דורותי" />
+
+    <script type="application/ld+json">
+<!--JSONLD-->
+    </script>
+  </head>
+  <body>
+    <div class="page">
+      <header class="top">
+        <a class="brand" href="/">
+          <img class="logo" src="/logo.svg" alt="" width="64" height="64" />
+          <span class="brand-text">
+            <h1>משחקי דורותי</h1>
+            <span class="tagline">משחקים רגועים, מילדים לילדים</span>
+          </span>
+        </a>
+        <button type="button" id="install" class="install" hidden>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+          <span class="install-label">להוסיף למסך הבית</span>
+        </button>
+      </header>
+
+      <main class="main">
+        <section class="shelf" aria-labelledby="games-title">
+          <h2 id="games-title" class="sr-only">המשחקים</h2>
+          <ul class="tiles" id="tiles">
+<!--GAMES-->
+          </ul>
+        </section>
+
+        <details class="board" id="board">
+          <summary>
+            <span class="board-title">הרעיונות שלכם</span>
+            <span class="count" id="board-count"></span>
+            <svg class="chevron" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+          </summary>
+          <div class="board-body">
+            <p class="board-sub">משחקים ששחקנים ביקשו</p>
+            <ul class="notes" id="ideas" aria-live="polite"></ul>
+            <button type="button" class="pill" id="more" hidden>להראות עוד</button>
+            <button type="button" class="pill board-add" data-open-idea>יש לי רעיון!</button>
+          </div>
+        </details>
+      </main>
+
+      <footer class="about">
+        <p class="facts"><!--FACTS--></p>
+        <p>%DESCRIPTION%</p>
+        <ul class="about-games">
+<!--ABOUT-->
+        </ul>
+        <p>אנחנו סופרים כמה ביקורים יש באתר בלי לזהות אף אחד, ובלי עוגיות. רעיונות שנשלחים נקראים לפני שהם עולים ללוח, ושמות לא חובה.</p>
+      </footer>
+    </div>
+
+    <dialog id="idea-dialog" aria-labelledby="idea-title">
+      <form id="idea-form" novalidate>
+        <div class="dialog-head">
+          <h2 id="idea-title">יש לי רעיון למשחק!</h2>
+          <button type="button" class="icon-btn" data-close aria-label="סגירה">
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        <div id="idea-step" class="idea-step">
+          <div id="pickers" class="pickers"></div>
+          <div class="field">
+            <label for="idea-text">רוצים לכתוב עוד?</label>
+            <textarea id="idea-text" rows="2" maxlength="140" placeholder="למשל: דינוזאור שאופה עוגות"></textarea>
+          </div>
+          <div class="field">
+            <span class="label" id="names-label">מי חשב על הרעיון? (לא חובה)</span>
+            <div id="name-list" class="name-list"></div>
+            <button type="button" class="link-btn" id="add-name">+ עוד שם</button>
+          </div>
+          <p class="small">כותבים רק שם פרטי. כל רעיון נקרא לפני שהוא עולה ללוח.</p>
+          <p class="error" id="idea-error" role="alert"></p>
+          <div class="actions">
+            <button type="submit" class="primary" id="idea-send">לשלוח</button>
+          </div>
+        </div>
+        <div id="idea-done" class="idea-done" hidden>
+          <svg viewBox="0 0 64 64" width="88" height="88" aria-hidden="true" focusable="false"><circle cx="32" cy="32" r="28" fill="#E3F3D8" stroke="#3A2E2A" stroke-width="2.2" /><path d="M20 33l8 8 16-17" fill="none" stroke="#2F6F6A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <p class="done-title">תודה!</p>
+          <p>נקרא את הרעיון, ואם הוא מתאים הוא יעלה ללוח.</p>
+          <button type="button" class="primary" data-close>סגירה</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="ios-dialog" aria-labelledby="ios-title">
+      <div class="dialog-head">
+        <h2 id="ios-title">להוסיף למסך הבית</h2>
+        <button type="button" class="icon-btn" data-close aria-label="סגירה">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </div>
+      <ol class="ios-steps">
+        <li>לוחצים על כפתור השיתוף
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-label="שיתוף" role="img" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4M6 11v9h12v-9" /></svg>
+          בתחתית המסך.</li>
+        <li>בוחרים "הוספה למסך הבית".</li>
+      </ol>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

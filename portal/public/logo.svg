@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Placeholder mark (a little toy shelf) until the owner's logo arrives: replace this file and the icons. -->
+  <circle cx="32" cy="32" r="30" fill="#FFFDF8" stroke="#3A2E2A" stroke-width="2.2"/>
+  <g stroke="#3A2E2A" stroke-width="2.2" stroke-linejoin="round">
+    <rect x="11.5" y="24" width="13" height="18" rx="3" fill="#2F6F6A"/>
+    <rect x="25.5" y="16" width="13" height="26" rx="3" fill="#FFE08A"/>
+    <rect x="39.5" y="27" width="13" height="15" rx="3" fill="#E8684A"/>
+    <rect x="8" y="42" width="48" height="6.5" rx="2.5" fill="#B9824F"/>
+  </g>
+  <circle cx="32" cy="25" r="3.2" fill="#E0A93B"/>
+  <circle cx="18" cy="31" r="2.4" fill="#8FD0C8"/>
+  <circle cx="46" cy="33" r="2.2" fill="#F6B19F"/>
+</svg>
