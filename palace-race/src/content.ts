@@ -26,8 +26,12 @@ export const ITEMS: Item[] = [
   { kind: 'helmet', id: 'basic', price: 0 },
   { kind: 'helmet', id: 'flowers', price: 40 },
   { kind: 'helmet', id: 'stars', price: 50 },
+  { kind: 'helmet', id: 'racer', price: 50 },
   { kind: 'helmet', id: 'rainbow', price: 60 },
-  { kind: 'helmet', id: 'crown', price: 80 },
+  { kind: 'helmet', id: 'knight', price: 70 },
+  { kind: 'helmet', id: 'dino', price: 70 },
+  { kind: 'helmet', id: 'unicorn', price: 80 },
+  { kind: 'helmet', id: 'crown', price: 90 },
   { kind: 'hair', id: 'none', price: 0 },
   { kind: 'hair', id: 'spikes', price: 40 },
   { kind: 'hair', id: 'curls', price: 40 },
@@ -44,7 +48,7 @@ export const ITEMS: Item[] = [
 ];
 /** Names for grown-ups (labels and tooltips); children choose by the pictures. */
 export const ITEM_NAME: Record<ItemKind, Record<string, string>> = {
-  helmet: { basic: 'קסדה רגילה', flowers: 'קסדת פרחים', stars: 'קסדת כוכבים', rainbow: 'קסדת קשת', crown: 'קסדת כתר' },
+  helmet: { basic: 'קסדה רגילה', flowers: 'קסדת פרחים', stars: 'קסדת כוכבים', rainbow: 'קסדת קשת', crown: 'קסדת כתר', unicorn: 'קסדת חד-קרן', knight: 'קסדת אביר', racer: 'קסדת מירוץ', dino: 'קסדת דינוזאור' },
   hair: { none: 'השיער שלי', spikes: 'קוצים', curls: 'תלתלים', surfer: 'שיער גולש', ponytail: 'קוקו', pink: 'צמות ורודות', gold: 'צמות זהב', rainbow: 'צמות קשת' },
   saddle: { basic: 'אוכף רגיל', flowers: 'אוכף פרחים', stars: 'אוכף כוכבים', rainbow: 'אוכף קשת', royal: 'אוכף מלכותי' },
 };

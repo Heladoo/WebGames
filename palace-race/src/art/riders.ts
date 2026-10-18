@@ -10,11 +10,11 @@ export type KidId = 'maya' | 'tamar' | 'yoav' | 'ari';
 export const KIDS: KidId[] = ['maya', 'tamar', 'yoav', 'ari'];
 export const KID_NAME: Record<KidId, string> = { maya: 'מאיה', tamar: 'תמר', yoav: 'יואב', ari: 'ארי' };
 
-export type HelmetId = 'basic' | 'rainbow' | 'stars' | 'crown' | 'flowers';
+export type HelmetId = 'basic' | 'rainbow' | 'stars' | 'crown' | 'flowers' | 'unicorn' | 'knight' | 'racer' | 'dino';
 // hair: 'none' is the child's own hair; braids come in pink, gold and rainbow; the other styles suit anyone
 export type HairId = 'none' | 'ponytail' | 'curls' | 'spikes' | 'surfer' | 'pink' | 'gold' | 'rainbow';
 export type SaddleId = 'basic' | 'royal' | 'flowers' | 'stars' | 'rainbow';
-export const HELMETS: HelmetId[] = ['basic', 'rainbow', 'stars', 'crown', 'flowers'];
+export const HELMETS: HelmetId[] = ['basic', 'flowers', 'stars', 'racer', 'rainbow', 'knight', 'dino', 'unicorn', 'crown'];
 export const HAIRS: HairId[] = ['none', 'spikes', 'curls', 'surfer', 'ponytail', 'pink', 'gold', 'rainbow'];
 /** The braids (the rest of the hairstyles suit boys as well as girls). */
 export const BRAID_STYLES: HairId[] = ['pink', 'gold', 'rainbow'];
@@ -360,12 +360,56 @@ function helmet(k: Kid, H: (x: number, y: number) => P, id: HelmetId, defs: stri
   const r = HEAD_R;
   const dome = [H(-r * 1.12, -r * 0.08), H(-r * 1.0, -r * 0.8), H(-r * 0.4, -r * 1.3), H(r * 0.4, -r * 1.3), H(r * 0.98, -r * 0.82), H(r * 1.1, -r * 0.36), H(-r * 0.2, -r * 0.4)];
   const peak = [H(r * 0.7, -r * 0.5), H(r * 1.1, -r * 0.48), H(r * 1.44, -r * 0.3), H(r * 1.4, -r * 0.18), H(r * 0.9, -r * 0.24)];
-  const base = id === 'basic' ? k.helmet : id === 'stars' ? '#3d5fd0' : id === 'crown' ? '#ffcf3a' : id === 'flowers' ? '#ff9ec8' : '#ffffff';
+  const BASES: Record<HelmetId, string> = { basic: k.helmet, stars: '#3d5fd0', crown: '#ffcf3a', flowers: '#ff9ec8', rainbow: '#ffffff', unicorn: '#fff6fb', knight: '#c4ccd8', racer: '#e8344e', dino: '#58c26a' };
+  const base = BASES[id];
   const g = `${uid}hm`;
   defs.push(radG(g, [[0, shade(base, 0.5)], [0.55, base], [1, shade(base, -0.25)]], 0.4, 0.25, 0.8));
   const clip = `${uid}hc`;
   defs.push(`<clipPath id="${clip}"><path d="${blob(dome, 0.9)}"/></clipPath>`);
-  let s = inked([{ d: blob(peak, 0.8), fill: shade(base, -0.2) }, { d: blob(dome, 0.9), fill: `url(#${g})` }], INK, 2);
+  // things that stand on top of the helmet are drawn first, so the dome covers their feet
+  let behind = '';
+  let horn = ''; // the unicorn's horn stands in front of the dome, on its crown
+  const up = (x: number, y: number) => H(r * x, r * y);
+  if (id === 'unicorn') {
+    // pink ears, and a golden spiral horn: a curved, tapering cone with a collar, twisting bands, a shine and a sparkle
+    for (const [x, rot] of [[-0.3, -12], [0.04, 6]] as const) {
+      const b = up(x, -1.2);
+      behind += `<path d="M${f(b.x - 7)} ${f(b.y + 5)} Q${f(b.x - 6 + rot * 0.2)} ${f(b.y - 12)} ${f(b.x + rot * 0.4)} ${f(b.y - 20)} Q${f(b.x + 6)} ${f(b.y - 10)} ${f(b.x + 7)} ${f(b.y + 5)}Z" fill="#fff6fb" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M${f(b.x - 3.4)} ${f(b.y + 3)} Q${f(b.x - 3 + rot * 0.15)} ${f(b.y - 8)} ${f(b.x + rot * 0.3)} ${f(b.y - 14)} Q${f(b.x + 3)} ${f(b.y - 7)} ${f(b.x + 3.4)} ${f(b.y + 3)}Z" fill="#ffa8cc"/>`;
+    }
+    const b0 = up(0.3, -1.2);
+    const axis = up(0.3, -2.2);
+    const lean = 12; // leans a little forward, like a unicorn's horn
+    const ang = (Math.atan2(axis.x - b0.x, b0.y - axis.y) * 180) / Math.PI + lean;
+    const L = 46;
+    const W = 8.5;
+    const hid = `${uid}hn`;
+    defs.push(linG(hid, [[0, '#fff3b0'], [0.45, '#ffd84a'], [1, '#e8a21c']], 0, 0, 1, 0));
+    defs.push(`<clipPath id="${hid}c"><path d="M${-W} 2 C${-W * 0.9} ${-L * 0.35} ${-W * 0.35} ${-L * 0.8} 0.6 ${-L} C${W * 0.5} ${-L * 0.72} ${W * 0.95} ${-L * 0.3} ${W} 2Z"/></clipPath>`);
+    let bands = '';
+    for (let i = 0; i < 5; i++) {
+      const y = -4 - i * 8.4;
+      const w = W * (1 - (i * 8.4) / L) * 1.1;
+      bands += `<path d="M${-w - 2} ${y + 4} Q0 ${y - 2} ${w + 2} ${y - 7} L${w + 2} ${y - 3} Q0 ${y + 3} ${-w - 2} ${y + 8}Z" fill="#d68a14" opacity=".75"/>`;
+    }
+    horn = `<g transform="translate(${f(b0.x)} ${f(b0.y + 5)}) rotate(${f(ang)})">` +
+      `<path d="M${-W} 2 C${-W * 0.9} ${-L * 0.35} ${-W * 0.35} ${-L * 0.8} 0.6 ${-L} C${W * 0.5} ${-L * 0.72} ${W * 0.95} ${-L * 0.3} ${W} 2Z" fill="url(#${hid})"/>` +
+      `<g clip-path="url(#${hid}c)">${bands}<path d="M${-W * 0.45} 0 C${-W * 0.4} ${-L * 0.35} ${-W * 0.1} ${-L * 0.7} 0 ${-L * 0.92}" stroke="#fffbe0" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".85"/></g>` +
+      `<path d="M${-W} 2 C${-W * 0.9} ${-L * 0.35} ${-W * 0.35} ${-L * 0.8} 0.6 ${-L} C${W * 0.5} ${-L * 0.72} ${W * 0.95} ${-L * 0.3} ${W} 2Z" fill="none" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>` +
+      `<ellipse cx="0" cy="2" rx="${W + 1.5}" ry="3.4" fill="#ffcf3a" stroke="${INK}" stroke-width="1.8"/>` +
+      `<path d="M3 ${-L - 6} l1.2 3.4 3.4 1.2 -3.4 1.2 -1.2 3.4 -1.2 -3.4 -3.4 -1.2 3.4 -1.2Z" fill="#fff" stroke="#e8a21c" stroke-width="1"/></g>`;
+  } else if (id === 'knight') {
+    // a red plume sweeping back from the crest
+    const a = up(0.0, -1.28);
+    behind += `<path d="M${f(a.x - 4)} ${f(a.y + 4)} C${f(a.x - 6)} ${f(a.y - 22)} ${f(a.x - 30)} ${f(a.y - 30)} ${f(a.x - 44)} ${f(a.y - 16)} C${f(a.x - 32)} ${f(a.y - 20)} ${f(a.x - 22)} ${f(a.y - 12)} ${f(a.x - 18)} ${f(a.y - 2)} C${f(a.x - 26)} ${f(a.y - 4)} ${f(a.x - 34)} ${f(a.y + 4)} ${f(a.x - 36)} ${f(a.y + 12)} C${f(a.x - 22)} ${f(a.y + 8)} ${f(a.x - 10)} ${f(a.y + 12)} ${f(a.x + 4)} ${f(a.y + 6)}Z" fill="#e8344e" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M${f(a.x - 6)} ${f(a.y - 2)} C${f(a.x - 14)} ${f(a.y - 18)} ${f(a.x - 28)} ${f(a.y - 22)} ${f(a.x - 38)} ${f(a.y - 14)}" stroke="#ff8fa0" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+  } else if (id === 'dino') {
+    // a ridge of orange spikes along the back of the head
+    for (const [x, y, sz] of [[-0.9, -0.96, 9], [-0.6, -1.2, 11], [-0.22, -1.32, 12], [0.18, -1.34, 11], [0.52, -1.2, 9]] as const) {
+      const b = up(x, y);
+      const out = H(r * x * 1.1, r * (y - 0.4));
+      behind += `<path d="M${f(b.x - sz * 0.6)} ${f(b.y + 3)} L${f(out.x)} ${f(out.y - 4)} L${f(b.x + sz * 0.6)} ${f(b.y + 3)}Z" fill="#ffa23a" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`;
+    }
+  }
+  let s = behind + inked([{ d: blob(peak, 0.8), fill: shade(base, -0.2) }, { d: blob(dome, 0.9), fill: `url(#${g})` }], INK, 2);
   let deco = '';
   if (id === 'rainbow') {
     RAINBOW.forEach((col, i) => {
@@ -385,11 +429,31 @@ function helmet(k: Kid, H: (x: number, y: number) => P, id: HelmetId, defs: stri
     [-0.6, 0, 0.55].forEach((x) => (deco += `<circle cx="${f(H(r * x, -r * 0.62).x)}" cy="${f(H(r * x, -r * 0.62).y)}" r="3.6" fill="#e8344e" stroke="${INK}" stroke-width="1.2"/><circle cx="${f(H(r * x - 1, -r * 0.66).x)}" cy="${f(H(r * x - 1, -r * 0.66).y)}" r="1.2" fill="#fff"/>`));
   } else if (id === 'flowers') {
     [[-0.55, -0.95, '#fff'], [0.15, -1.08, '#ffe066'], [0.66, -0.72, '#fff'], [-0.85, -0.5, '#c9a0ff']].forEach(([x, y, col]) => (deco += flower(H(r * (x as number), r * (y as number)), 5.6, col as string)));
+  } else if (id === 'unicorn') {
+    // a rainbow mane down the back of the dome
+    RAINBOW.forEach((col, i) => {
+      const x = -r * 1.1 + i * r * 0.17;
+      deco += `<path d="${curve([H(x + r * 0.2, -r * 1.4), H(x - r * 0.12, -r * 0.8), H(x - r * 0.05, -r * 0.1)])}" stroke="${col}" stroke-width="3.6" fill="none" stroke-linecap="round"/>`;
+    });
+    deco += `<path d="${ellipse(H(r * 0.5, -r * 0.55), 3.4, 2.4)}" fill="#ffa8cc" opacity=".8"/>`;
+  } else if (id === 'knight') {
+    // a gold rim, a ridge down the middle and rivets
+    deco += `<path d="${curve([H(-r * 1.1, -r * 0.25), H(0, -r * 0.5), H(r * 1.1, -r * 0.34)])}" stroke="#e8a91c" stroke-width="5"/>`;
+    deco += `<path d="${curve([H(-r * 0.3, -r * 1.35), H(-r * 0.1, -r * 0.9), H(-r * 0.05, -r * 0.5)])}" stroke="#8a94a8" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+    for (const x of [-0.8, -0.4, 0.2, 0.7]) deco += `<circle cx="${f(H(r * x, -r * 0.46).x)}" cy="${f(H(r * x, -r * 0.46).y)}" r="2.2" fill="#fff" stroke="${INK}" stroke-width="1"/>`;
+  } else if (id === 'racer') {
+    // two white racing stripes and orange flames licking back from the front
+    for (const o of [-0.2, 0.18]) deco += `<path d="${curve([H(r * (o + 0.6), -r * 1.4), H(r * (o + 0.1), -r * 0.9), H(r * (o - 0.5), -r * 0.4)])}" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+    deco += `<path d="M${f(H(r * 0.9, -r * 0.4).x)} ${f(H(r * 0.9, -r * 0.4).y)} Q${f(H(r * 0.4, -r * 0.62).x)} ${f(H(r * 0.4, -r * 0.62).y)} ${f(H(-r * 0.2, -r * 0.46).x)} ${f(H(-r * 0.2, -r * 0.46).y)} Q${f(H(r * 0.3, -r * 0.4).x)} ${f(H(r * 0.3, -r * 0.4).y)} ${f(H(-r * 0.8, -r * 0.34).x)} ${f(H(-r * 0.8, -r * 0.34).y)} L${f(H(r * 0.9, -r * 0.3).x)} ${f(H(r * 0.9, -r * 0.3).y)}Z" fill="#ffa23a"/><path d="M${f(H(r * 0.9, -r * 0.4).x)} ${f(H(r * 0.9, -r * 0.4).y)} Q${f(H(r * 0.5, -r * 0.5).x)} ${f(H(r * 0.5, -r * 0.5).y)} ${f(H(r * 0.1, -r * 0.4).x)} ${f(H(r * 0.1, -r * 0.4).y)} L${f(H(r * 0.9, -r * 0.3).x)} ${f(H(r * 0.9, -r * 0.3).y)}Z" fill="#ffe066"/>`;
+  } else if (id === 'dino') {
+    // darker green spots
+    for (const [x, y, rr] of [[-0.6, -0.9, 4.4], [0.0, -1.05, 5], [0.55, -0.8, 3.8], [-0.2, -0.62, 3.2], [-0.9, -0.5, 3]] as const) deco += `<path d="${ellipse(H(r * x, r * y), rr * 1.2, rr)}" fill="#2f9a4a" opacity=".85"/>`;
   } else {
     deco += `<path d="${curve([H(-r * 0.2, -r * 1.3), H(-r * 0.1, -r * 0.8), H(0, -r * 0.42)])}" stroke="${shade(base, -0.3)}" stroke-width="3" fill="none" opacity=".6"/>`;
   }
   s += `<g clip-path="url(#${clip})">${deco}<path d="${curve([H(-r * 0.7, -r * 0.9), H(-r * 0.1, -r * 1.2), H(r * 0.5, -r * 1.06)])}" stroke="#fff" stroke-width="4" fill="none" opacity=".55" stroke-linecap="round"/></g>`;
   s += `<path d="${blob(dome, 0.9)}" fill="none" stroke="${INK}" stroke-width="2"/>`;
+  s += horn;
   // chin strap: down behind the ear and along the jaw, clear of the face
   s += `<path d="${curve([H(-r * 0.42, -r * 0.3), H(-r * 0.4, r * 0.42), H(-r * 0.06, r * 0.9)])}" stroke="${shade(base, -0.35)}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
   return s;

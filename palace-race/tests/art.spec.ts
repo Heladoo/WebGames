@@ -82,7 +82,7 @@ test('scenery tiles repeat without a seam, paint quickly and have detail', async
 
 test('every art sheet renders without errors', async ({ page }) => {
   test.setTimeout(120_000);
-  for (const q of ['animals&scale=0.2', 'riders&scale=0.3', 'hair&scale=0.4', 'wardrobe&scale=0.3', 'obstacles&scale=0.3', 'podium&scale=0.4', 'podium&scale=0.4&frame=1', 'palace', 'icons', 'mock']) await open(page, `/?debug=${q}`);
+  for (const q of ['animals&scale=0.2', 'riders&scale=0.3', 'hair&scale=0.4', 'helmets&scale=0.3', 'meadow', 'wardrobe&scale=0.3', 'obstacles&scale=0.3', 'podium&scale=0.4', 'podium&scale=0.4&frame=1', 'palace', 'icons', 'mock']) await open(page, `/?debug=${q}`);
 });
 
 test('the music renders in every mood, without clipping or silence', async ({ page }) => {
@@ -141,18 +141,30 @@ for (const size of [{ width: 844, height: 390 }, { width: 1024, height: 768 }, {
   });
 }
 
-for (const size of [{ width: 844, height: 390 }, { width: 1024, height: 768 }, { width: 390, height: 844 }]) {
-  test(`the title logo and Play button fit on screen at ${size.width}x${size.height}`, async ({ page }) => {
+for (const size of [{ width: 844, height: 390 }, { width: 1024, height: 768 }, { width: 1440, height: 800 }, { width: 390, height: 844 }, { width: 667, height: 375 }]) {
+  test(`the home screen's logo, tracks and buttons fit and do not overlap at ${size.width}x${size.height}`, async ({ page }) => {
     await page.setViewportSize(size);
     await open(page, '/');
-    const [logo, play] = await page.locator('.title-box .logo, #btn-play').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect));
-    for (const b of [logo, play]) {
-      expect(b.top).toBeGreaterThanOrEqual(0);
-      expect(b.left).toBeGreaterThanOrEqual(0);
-      expect(b.bottom).toBeLessThanOrEqual(size.height + 0.5);
-      expect(b.right).toBeLessThanOrEqual(size.width + 0.5);
+    const box = (sel: string) => page.locator(sel).evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect));
+    const [logo] = await box('.map-logo');
+    const buttons = await box('.topbar button, .topbar .pill');
+    const cards = await box('.track-card');
+    expect(logo.left).toBeGreaterThanOrEqual(0);
+    expect(logo.top).toBeGreaterThanOrEqual(0);
+    expect(logo.right).toBeLessThanOrEqual(size.width + 0.5);
+    expect(logo.width).toBeGreaterThan(100);
+    const overlap = (a: DOMRect, b: DOMRect) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+    for (const b of buttons) expect(overlap(logo, b), 'the logo never covers a top-bar button').toBe(false);
+    expect(cards.length).toBe(5);
+    for (const c of cards) {
+      expect(overlap(logo, c), 'the logo never covers a track card').toBe(false);
+      expect(c.bottom).toBeLessThanOrEqual(size.height + 0.5);
+      expect(c.left).toBeGreaterThanOrEqual(-0.5);
+      expect(c.right).toBeLessThanOrEqual(size.width + 0.5);
     }
-    expect(logo.bottom).toBeLessThanOrEqual(play.top);
-    expect(logo.width).toBeGreaterThan(200);
+    // on wide screens the logo stands at the right, over the palace's side; on tall ones it is centred at the top
+    const cx = (logo.left + logo.right) / 2;
+    if (size.width > size.height) expect(cx).toBeGreaterThan(size.width * 0.68);
+    else expect(Math.abs(cx - size.width / 2)).toBeLessThan(size.width * 0.1);
   });
 }

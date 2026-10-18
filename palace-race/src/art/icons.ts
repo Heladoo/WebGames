@@ -38,6 +38,8 @@ export const ICONS = {
   camera: svg(`<rect x="8" y="20" width="48" height="34" rx="8" fill="#7fb6ff" stroke="${INK}" stroke-width="4"/><path d="M22 20 L26 12 H38 L42 20" fill="#7fb6ff" stroke="${INK}" stroke-width="4"/><circle cx="32" cy="37" r="11" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="32" cy="37" r="5" fill="${INK}"/><circle cx="48" cy="28" r="3" fill="#ffe066"/>`),
   share: svg(`<path d="M32 40 V10 M20 22 L32 10 L44 22" fill="none" stroke="${INK}" stroke-width="5"/><path d="M14 32 V52 H50 V32" fill="none" stroke="${INK}" stroke-width="5"/><path d="M32 40 V10 M20 22 L32 10 L44 22" fill="none" stroke="#5ccf6a" stroke-width="2"/>`),
   gear: svg(`<path d="M32 6 l5 7 8 -3 1 9 9 1 -3 8 7 5 -7 5 3 8 -9 1 -1 9 -8 -3 -5 7 -5 -7 -8 3 -1 -9 -9 -1 3 -8 -7 -5 7 -5 -3 -8 9 -1 1 -9 8 3Z" fill="#c8c0d8" stroke="${INK}" stroke-width="3.4"/><circle cx="32" cy="32" r="9" fill="#fff" stroke="${INK}" stroke-width="3.4"/>`),
+  // a U-turn arrow: "back"
+  back: svg(`<path d="M22 16 H40 a14 14 0 0 1 0 28 H20" fill="none" stroke="${INK}" stroke-width="11"/><path d="M22 16 H40 a14 14 0 0 1 0 28 H20" fill="none" stroke="#7fb6ff" stroke-width="5.4"/><path d="M26 2 L8 16 L26 30Z" fill="#7fb6ff" stroke="${INK}" stroke-width="3.6"/><path d="M12 15 L22 8" stroke="#fff" stroke-width="3" opacity=".6"/>`),
   up: svg(arrow(0, '#ffcf5a')),
   down: svg(arrow(180, '#7fb6ff')),
   laneFar: svg(arrow(-45, '#c9a0ff')),

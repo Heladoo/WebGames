@@ -2,7 +2,7 @@
 // so Playwright can check the art without anyone looking at it by hand.
 //   ?debug=animals   every animal in every pose (window.__animals has the anchors)
 //   ?debug=music     every music mood rendered offline (levels, Play buttons, window.__wav)
-//   ?debug=riders, hair, wardrobe, faces, palace, obstacles, track, podium, icons, mock, og   art sheets and stills
+//   ?debug=riders, hair, helmets, wardrobe, faces, palace, obstacles, track, podium, icons, mock, og   art sheets and stills
 //   ?debug=rig, seams   numbers for the tests (window.__rig, window.__seams)
 
 import { ANIMALS, POSES, drawAnimal } from './art/animals';
@@ -15,11 +15,12 @@ import { runRace } from './race/race';
 import { sfx } from './sfx';
 import { podiumSVG } from './art/podium';
 import { MOOD_IDS, renderMusic } from './music';
+import { meadow } from './art/meadow';
 import { palace } from './art/palace';
 import { ICONS } from './art/icons';
 import { CANDIES, TRACK_OBSTACLES, candy, obstacle } from './art/props';
 import { LANE_SCALE, LANE_Y, LAYERS, PARALLAX, STAGE_H, STAGE_W, trackLayer, type TrackId } from './art/tracks';
-import { drawKid, HAIRS, KIDS, PLAIN, RIDER_POSES, HIP_H, type Outfit } from './art/riders';
+import { drawKid, HAIRS, HELMETS, KIDS, PLAIN, RIDER_POSES, HIP_H, type Outfit } from './art/riders';
 
 function page(html: string) {
   document.getElementById('app')!.innerHTML = `<div id="sheet" style="position:absolute;inset:0;overflow:auto;background:#fdf6e8;padding:12px;direction:ltr">${html}</div>`;
@@ -283,6 +284,13 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     w.__ready = true;
     return true;
   }
+  if (kind === 'meadow') {
+    // the home screen's background on its own (?debug=meadow)
+    const pic = await paint(trackLayer('garden', 'sky') + meadow(), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, Number(params.get('scale')) || 1);
+    page('').appendChild(pic);
+    w.__ready = true;
+    return true;
+  }
   if (kind === 'palace') {
     // the palace close up, on a night sky like the logo's and on a day sky
     const sheet = page('');
@@ -409,6 +417,25 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     w.__ready = true;
     return true;
   }
+  if (kind === 'helmets') {
+    // every helmet on every child, standing, and riding two animals (?debug=helmets&scale=)
+    const scale = Number(params.get('scale')) || 1;
+    const sheet = page('');
+    const box = { x: -80, y: -200, w: 160, h: 220 };
+    for (const kid of KIDS) {
+      const row = document.createElement('div');
+      row.style.whiteSpace = 'nowrap';
+      sheet.appendChild(row);
+      for (const helmet of HELMETS) {
+        const k = drawKid(kid, 'stand', { ...PLAIN, helmet }, { x: 0, y: -HIP_H });
+        row.appendChild(await paint(`<rect x="-80" y="0" width="160" height="20" fill="#d8c08a"/>` + k.back + k.front, box, scale));
+      }
+      row.appendChild(await paint(ground(RUNNER_BOX.w) + drawRunner('unicorn', kid, 'run1', { ...PLAIN, helmet: 'unicorn' }).svg, RUNNER_BOX, scale * 0.42));
+      row.appendChild(await paint(ground(RUNNER_BOX.w) + drawRunner('dragon', kid, 'jump', { ...PLAIN, helmet: 'knight' }).svg, RUNNER_BOX, scale * 0.42));
+    }
+    w.__ready = true;
+    return true;
+  }
   if (kind === 'hair') {
     // every hairstyle on every child, standing and riding: ?debug=hair&helmet=stars
     const scale = Number(params.get('scale')) || 1;
@@ -444,6 +471,10 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
       { helmet: 'stars', hair: 'curls', saddle: 'royal' },
       { helmet: 'rainbow', hair: 'surfer', saddle: 'stars' },
       { helmet: 'crown', hair: 'ponytail', saddle: 'flowers' },
+      { helmet: 'unicorn', hair: 'none', saddle: 'royal' },
+      { helmet: 'knight', hair: 'spikes', saddle: 'stars' },
+      { helmet: 'racer', hair: 'surfer', saddle: 'basic' },
+      { helmet: 'dino', hair: 'curls', saddle: 'rainbow' },
     ];
     for (const o of outfits) {
       const row = document.createElement('div');
