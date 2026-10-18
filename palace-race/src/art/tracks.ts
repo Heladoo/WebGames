@@ -85,12 +85,15 @@ const LOOK: Record<TrackId, Look> = {
 /** Where the palace stands in the sky picture (stage units), so the race can grow it there near the finish. */
 export const skyPalace = (id: TrackId) => LOOK[id].palace;
 
+/** A track's sky without the palace (the home screen has the logo, which has its own castle). */
+export const skyWithoutPalace = (id: TrackId) => `<defs>${FX}${SOFTEN}</defs>${sky(id, false)}`;
+
 /** The colour of the track's ground, for filling the screen below the stage on tall phones. */
 export const trackFloor = (id: TrackId) => LOOK[id].dirt[2];
 
 // ---------------------------------------------------------------- sky
 
-function sky(id: TrackId): string {
+function sky(id: TrackId, withPalace = true): string {
   const L = LOOK[id];
   const r = rng(11 + id.length);
   let s = `<defs>${linG('sky', [[0, L.sky[0]], [0.55, L.sky[1]], [0.8, L.sky[2]]])}${radG('sun', [[0, '#ffffff', 1], [0.25, L.sun, 0.9], [1, L.sun, 0]], 0.5, 0.5, 0.5)}</defs>`;
@@ -104,6 +107,7 @@ function sky(id: TrackId): string {
     const w = 160 + r() * 220;
     s += `<g transform="translate(${f(x)} ${f(y)}) scale(${(1.4 + r() * 0.8).toFixed(2)})">${cloud(0, 0, w / 1.6, 46, 31 + i, L.clouds, mix(L.clouds[0], '#ff9ac0', 0.4), 0.95)}</g>`;
   }
+  if (!withPalace) return s;
   // the palace far away, on its hill
   const P = L.palace;
   if (id !== 'garden') {

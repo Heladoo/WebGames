@@ -46,11 +46,6 @@ html, body {
 @keyframes tap { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-6px, -10px); } }
 @media (prefers-reduced-motion: reduce) { .hint, .tutor { animation: none; } }
 
-/* ---------- title screen ---------- */
-.title { position: absolute; inset: 0; overflow: hidden; background: #f4d9a4; }
-.title canvas.stage { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 100%; }
-.title-box { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; padding: 16px; }
-.title-box .logo { width: min(86vw, 640px, calc((100vh - 32px - 2vh - clamp(96px, 18vmin, 140px)) * 1.216)); height: auto; filter: drop-shadow(0 8px 16px rgba(60, 30, 90, 0.3)); }
 .round-btn.big { width: clamp(96px, 18vmin, 140px); height: clamp(96px, 18vmin, 140px); animation: breathe 1.6s ease-in-out infinite alternate; }
 @keyframes breathe { from { transform: scale(1); } to { transform: scale(1.07); } }
 @media (prefers-reduced-motion: reduce) { .round-btn.big { animation: none; } }
@@ -158,7 +153,7 @@ html, body {
 .shop .tabs { display: flex; flex-direction: column; gap: 12px; }
 .shop .tab.on { box-shadow: 0 0 0 5px #ffcf3a, 0 4px 0 #c9b6e0; }
 .shop .preview { justify-self: center; }
-.shop .items { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-content: center; max-height: 100%; overflow: auto; padding: 14px 6px; }
+.shop .items { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-content: safe center; max-height: 100%; overflow: auto; padding: 14px 6px; }
 .item { position: relative; border: 0; padding: 6px; border-radius: 22px; background: rgba(255, 255, 255, 0.6); box-shadow: 0 4px 12px rgba(60, 30, 90, 0.18); cursor: pointer; }
 .item.on { background: #fffbe6; box-shadow: 0 0 0 5px #5ccf6a, 0 6px 16px rgba(60, 30, 90, 0.25); }
 .item .coin-tag { left: 50%; bottom: -10px; transform: translateX(-50%); }
@@ -203,8 +198,6 @@ html, body {
 .setting input:focus-visible + .switch { outline: 3px solid #ffb43a; }
 .setting input[type='range'] { flex: 1; }
 .confirm { display: flex; gap: 16px; justify-content: center; }
-.title-bg { position: absolute; inset: 0; overflow: hidden; display: block; }
-.title-bg .pic { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: auto !important; height: 100% !important; min-width: 100%; object-fit: cover; }
 button:focus-visible { outline: 3px solid #ffb43a; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .wobble, .track-card.opened, .jar-pop, .reward { animation: none; } }
 .map-bg { position: absolute; inset: 0; display: block; opacity: 0.75; }
@@ -269,3 +262,10 @@ button:focus-visible { outline: 3px solid #ffb43a; outline-offset: 3px; }
 .tip::after { content: ''; position: absolute; left: calc(var(--arrow, 50%) - 7px); top: 100%; border: 7px solid transparent; border-top-color: #4a2a4a; }
 .tip.below::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: #4a2a4a; }
 @media (prefers-reduced-motion: reduce) { .tip { transition: none; transform: none; } }
+/* the home screen: the logo above the road of tracks */
+.map-logo { align-self: center; flex: 0 0 auto; height: clamp(84px, 30vh, 330px); width: auto; max-width: 70vw; object-fit: contain; z-index: 1; filter: drop-shadow(0 6px 12px rgba(60, 30, 90, 0.3)); user-select: none; -webkit-user-drag: none; }
+@media (max-aspect-ratio: 1/1) { .map-logo { height: min(24vh, 46vw); } }
+/* the back button sits over the corner of the shop, so the list leaves room under it */
+.shop .items { padding-bottom: 14px; }
+@media (max-height: 500px) { .shop .items { padding-bottom: 90px; } }
+@media (max-aspect-ratio: 1/1) { .shop .items { padding-bottom: 14px; } }

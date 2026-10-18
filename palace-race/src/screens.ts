@@ -35,22 +35,6 @@ function notYet(el: HTMLElement, have: number, price: number) {
   window.setTimeout(() => j.remove(), 2200);
 }
 
-// ---------------------------------------------------------------- title
-
-export function titleScreen(app: App) {
-  app.setTrack('menu');
-  app.root.innerHTML = `<div class="title"><div class="title-bg slot"></div><div class="title-box"><img class="logo" src="/logo.webp" alt="המרוץ לארמון" width="900" height="740" draggable="false"><button class="round-btn big" id="btn-play" aria-label="לשחק">${ICONS.play}</button></div></div>`;
-  app.root.querySelector('#btn-play')!.addEventListener('click', () => {
-    sfx.select();
-    app.go('map');
-  });
-  const bg = app.root.querySelector<HTMLElement>('.title-bg')!;
-  const w = Math.max(innerWidth, (innerHeight * STAGE_W) / STAGE_H);
-  fill(bg, trackPic('forest', w));
-  const logo = app.root.querySelector<HTMLImageElement>('img.logo')!;
-  void Promise.all([logo.decode().catch(() => {}), document.fonts.ready]).then(() => ((window as unknown as { __ready: boolean }).__ready = true));
-}
-
 // ---------------------------------------------------------------- map
 
 /** Medal pips: how many medals a track needs, the ones already won filled in. */
@@ -60,7 +44,8 @@ const medalPips = (have: number, need: number) =>
 export function mapScreen(app: App) {
   app.setTrack('menu');
   const d = app.data;
-  app.root.innerHTML = `<section class="screen map"><div class="map-bg slot"></div>${app.topbar()}
+  app.root.innerHTML = `<section class="screen map"><div class="map-bg slot"></div>${app.topbar({ home: false })}
+    <img class="map-logo" src="/logo.webp" alt="המרוץ לארמון" width="900" height="740" draggable="false">
     <div class="journey">${TRACKS.map((t, i) => {
       const open = d.unlocked.includes(t);
       return `<button class="track-card ${open ? 'open' : 'locked'}" data-t="${t}" aria-label="${TRACK_NAME[t]}${open ? '' : `: נפתח אחרי ${TRACK_MEDALS[t]} מדליות`}">
@@ -71,7 +56,7 @@ export function mapScreen(app: App) {
     }).join('<i class="path"></i>')}<i class="path"></i><div class="goal-palace" aria-hidden="true">${ICONS.palace}</div></div>
   </section>`;
   const el = app.root.firstElementChild as HTMLElement;
-  app.wireTopbar(el, 'map');
+  app.wireTopbar(el);
   const portrait = innerWidth < innerHeight;
   const cardW = portrait ? Math.min(220, (innerWidth - 70) / 2) : Math.min(260, (innerWidth - 48 - 6 * 28 - 96) / 5, (innerHeight - 160) * 0.9);
   fill(el.querySelector('.map-bg')!, mapPic(Math.max(innerWidth, (innerHeight * STAGE_W) / STAGE_H)));
@@ -102,7 +87,8 @@ export function mapScreen(app: App) {
     sfx.open();
     app.fresh = null;
   }
-  (window as unknown as { __ready: boolean }).__ready = true;
+  const logo = el.querySelector<HTMLImageElement>('img.map-logo')!;
+  void Promise.all([logo.decode().catch(() => {}), document.fonts.ready]).then(() => ((window as unknown as { __ready: boolean }).__ready = true));
 }
 
 // ---------------------------------------------------------------- choosing the animal and the rider
@@ -115,7 +101,7 @@ function chooser(app: App, kind: 'animal' | 'kid') {
     <button class="round-btn big go" id="btn-next" aria-label="${kind === 'animal' ? 'בוחרים רוכב' : 'למרוץ'}">${ICONS.play}</button>
   </section>`;
   const el = app.root.firstElementChild as HTMLElement;
-  app.wireTopbar(el, kind);
+  app.wireTopbar(el);
   const portrait = innerWidth < innerHeight;
   const w = kind === 'animal' ? Math.min(270, (innerWidth - 90) / (portrait ? 2.2 : 5.7), innerHeight * (portrait ? 0.3 : 0.5)) : Math.min(190, (innerWidth - 70) / (portrait ? 2.4 : 4.6), innerHeight * (portrait ? 0.24 : 0.36));
   const draw = (b: HTMLElement, happy: boolean) => {
@@ -161,16 +147,16 @@ let shopTab: ItemKind = 'helmet';
 
 export function shopScreen(app: App) {
   const d = app.data;
-  app.root.innerHTML = `<section class="screen shop">${app.topbar({ shop: false })}
+  app.root.innerHTML = `<section class="screen shop">${app.topbar({ shop: false, home: false })}
     <div class="shop-body">
       <div class="tabs" role="tablist">${(['helmet', 'hair', 'saddle'] as ItemKind[]).map((k) => `<button class="round-btn tab" role="tab" data-k="${k}" aria-label="${k === 'helmet' ? 'קסדות' : k === 'hair' ? 'תסרוקות' : 'אוכפים'}">${ICONS[k]}</button>`).join('')}</div>
       <div class="preview slot"></div>
       <div class="items"></div>
     </div>
-    <button class="round-btn big done" id="btn-done" aria-label="סיימתי">${ICONS.check}</button>
+    <button class="round-btn big done" id="btn-back" aria-label="חזרה למסך הבית">${ICONS.back}</button>
   </section>`;
   const el = app.root.firstElementChild as HTMLElement;
-  app.wireTopbar(el, 'shop');
+  app.wireTopbar(el);
   const portrait = innerWidth < innerHeight;
   const preview = el.querySelector<HTMLElement>('.preview')!;
   const list = el.querySelector<HTMLElement>('.items')!;
@@ -184,7 +170,8 @@ export function shopScreen(app: App) {
       t.setAttribute('aria-selected', String(t.dataset.k === shopTab));
     });
     const ids: string[] = shopTab === 'helmet' ? HELMETS : shopTab === 'hair' ? HAIRS : SADDLES;
-    const items = ITEMS.filter((i) => i.kind === shopTab).sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    // the cheapest on the left (the free one first), the dearest on the right
+    const items = ITEMS.filter((i) => i.kind === shopTab).sort((a, b) => a.price - b.price || ids.indexOf(a.id) - ids.indexOf(b.id));
     const worn = d.outfit[shopTab];
     list.innerHTML = items
       .map((it) => {
@@ -192,7 +179,7 @@ export function shopScreen(app: App) {
         return `<button class="item ${owned ? 'owned' : ''} ${worn === it.id ? 'on' : ''}" data-id="${it.id}" aria-label="${ITEM_NAME[it.kind][it.id]}${owned ? '' : `: ${it.price} מטבעות`}" aria-pressed="${worn === it.id}"><div class="slot"></div>${worn === it.id ? `<span class="badge chosen">${ICONS.check}</span>` : owned ? '' : coinTag(it.price)}</button>`;
       })
       .join('');
-    const iw = portrait ? Math.min(120, innerWidth / 3.6) : Math.min(130, innerHeight / 4.2);
+    const iw = portrait ? Math.min(120, (innerWidth - 56) / 3.4) : Math.min(130, (innerHeight - 100) / 3.8);
     list.querySelectorAll<HTMLElement>('.item').forEach((b) => {
       const id = b.dataset.id!;
       const o = { ...d.outfit, [shopTab]: id };
@@ -228,9 +215,9 @@ export function shopScreen(app: App) {
       showPreview();
     }),
   );
-  el.querySelector('#btn-done')!.addEventListener('click', () => {
-    sfx.select();
-    app.go(app.back === 'shop' ? 'map' : app.back);
+  el.querySelector('#btn-back')!.addEventListener('click', () => {
+    sfx.tap();
+    app.go('map');
   });
   render();
   showPreview();
@@ -374,7 +361,6 @@ function ceremony(app: App, res: RaceResult, before: { coins: number; medals: nu
   el.querySelector('#c-shop')!.addEventListener('click', () => {
     sfx.tap();
     leave();
-    app.back = 'map';
     app.go('shop');
   });
   el.querySelector('#c-share')!.addEventListener('click', () => {

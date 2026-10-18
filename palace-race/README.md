@@ -6,7 +6,7 @@ It is built to be **stress free** and **playable without reading**: every button
 
 ## How to play
 
-1. **Choose:** tap Play, pick a track on the map, then an animal and a rider (all pictures).
+1. **Choose:** the game opens on the home screen (the map, with the logo above the road of tracks). Tap a track, then an animal and a rider (all pictures). Every other screen has a house button or a back button that returns here.
 2. **Race:** the animal runs by itself.
    - **Controls:** ⬆ jump, ⬇ duck, ↖ and ↘ move to the far or near lane. On a keyboard: the arrows (or W A S D, Space to jump), and Esc to pause. On a touch screen: the big round buttons, or swipe on the race.
    - **Hints:** a glowing bubble above each obstacle shows which button to press. In the first two races everything slows down before the first obstacles and a hand points at the button.
@@ -15,10 +15,10 @@ It is built to be **stress free** and **playable without reading**: every button
 3. **Ceremony:** at the palace, the winner holds a golden cup, 2nd and 3rd wear medals, and everyone claps. The coins won rise into the coin total, and a medal joins the medal count. When a new track opens, its card appears; tap it to go to the map.
 4. **Medals and coins:**
    - **New tracks open with medals** (a place from 1 to 3), never with coins. The flower meadow opens after the first medal, then the snowy mountains after 3, the sunset cliffs after 5 and the palace gardens after 7. Medals are kept and never spent. A locked track shows a row of medal circles, filled in for the medals already won.
-   - **The shop (🛒)** spends coins on helmets, hairstyles (spikes, curls, surfer locks, a ponytail and three kinds of braids) and saddles, which show on the child and the animal straight away.
+   - **The shop (🛒)** spends coins on helmets (flowers, stars, racing, rainbow, knight, dinosaur, unicorn with a horn, crown), hairstyles (spikes, curls, surfer locks, a ponytail and three kinds of braids) and saddles, which show on the child and the animal straight away. Each kind is listed cheapest first, from the left, and the blue back arrow returns to the home screen.
    - **Not enough coins yet:** a coin jar shows how close you are.
 5. **Labels:** hovering over any button (or a long touch outside the race) shows its name in a small bubble.
-6. **For grown-ups** (hold ⚙ for a moment): music, sounds, volume, help mode (the animal sometimes dodges by itself), and starting over. Progress is saved only in this browser. There are no accounts, no ads and no cookies; only anonymous play counts are collected.
+6. **For grown-ups** (hold ⚙ for a moment): music, sounds, volume, help mode (the animal sometimes dodges by itself; **off** unless a grown-up turns it on), and starting over. Progress is saved only in this browser. There are no accounts, no ads and no cookies; only anonymous play counts are collected.
 
 ## Run locally
 
@@ -40,6 +40,8 @@ npm test         # art, simulation and game-flow checks (Playwright + Chromium)
 - `?debug=riders`: the four children standing, and riding every animal.
 - `?debug=wardrobe`: helmets, hairstyles and saddles in the race poses.
 - `?debug=hair`: every hairstyle on every child (`&helmet=stars`).
+- `?debug=helmets`: every helmet on every child.
+- `?debug=meadow`: the home screen's sky and flower meadow.
 - `?debug=obstacles`: obstacles per track, and the candies.
 - `?debug=track&track=forest`: one track's painted layers.
 - `?debug=podium`: the end-of-race picture (`&frame=1` for the other half of the clap).

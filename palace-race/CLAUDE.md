@@ -5,7 +5,8 @@
 ## Status
 
 **The game is playable.** The owner approved the art; stage 2 built the game around it:
-- **Flow:** title → map → animal → rider → race → ceremony with coins and medals.
+- **Flow:** the home screen (the map, with the logo; there is no separate title screen) → animal → rider → race → ceremony with coins and medals. The shop returns to the home screen with a back arrow.
+- **Third round** (done): no title screen (the map is home, with the logo), a painted flower meadow, a shop sorted cheapest first with new helmets (unicorn, knight, racing, dinosaur), a back button instead of the check mark, and help mode off by default.
 - **Second round of owner feedback** (done): medals on the chest, real clapping, coins rising into the total, no "again" button, tooltips, candy shadows, medal progression, shared candies, the palace on its own hill, more hairstyles, new hair and saddle icons, and new music.
 - **Also:** a shop, a grown-ups panel, sound and music, and anonymous stats.
 
@@ -43,7 +44,7 @@
   - Check `?debug=faces`. A test keeps every eye at least 4 px in the far lane of a 1280 × 720 screen (`EYE_R` in animals.ts, `eyeR` on the anchors).
 - **Children** (`art/riders.ts`): `maya`, `tamar` (girls), `yoav`, `ari` (boys). Big round heads in a 3/4 turn: both eyes, the far one narrower.
   - **Poses:** `ride0-2`, `jump`, `duck`, `bump`, `wave`, `stand`, `clap0/1`, `trophy`.
-  - **Items:** helmets (`basic` in the child's colour, `rainbow`, `stars`, `crown`, `flowers`), hairstyles and saddles (in `runner.ts`).
+  - **Items:** helmets (`basic` in the child's colour, `flowers`, `stars`, `racer` with stripes and flames, `rainbow`, `knight` with a red plume, `dino` with orange spikes, `unicorn` with a golden horn, ears and a rainbow mane, `crown`), hairstyles and saddles (in `runner.ts`). Things that stand on top of a helmet are drawn *behind* the dome so it covers their feet. Check `?debug=helmets`.
   - **Hairstyles** (`hair`, replacing the hair at the back): `spikes` with blue tips, `curls`, `surfer` (long locks with a sunny streak and a side fringe that stays clear of the eyes), `ponytail`, and braids in `pink`, `gold` and `rainbow` (`BRAID_STYLES`; opponents that are boys never get braids). The owner asked for styles that suit boys too. Check `?debug=hair`.
   - **Clapping:** `clap0` (hands apart) and `clap1` (hands together, with little clap lines) place the hands with two-joint IK (`reach` in the pose, `reachAngles`).
   - **Medals:** `drawKid(…, medal)` hangs a medal on the chest: the ribbon goes behind the chin, the disc in front of the arm, and its number is turned back for mirrored children.
@@ -54,6 +55,7 @@
   - `far`, `mid`, `ground`, `front`: the scrolling layers (`PARALLAX`).
   - Lanes: hooves touch at `LANE_Y` = 655 / 745 / 835 (far, middle, near), and runners are drawn at `LANE_SCALE`.
   - **Seamless tiles:** every scrolling layer is a tile drawn three times one tile apart (`<use>` in `trackLayer`), so anything that crosses an edge comes back on the other side. Skylines are `periodic()` sums of sines.
+- **Meadow** (`art/meadow.ts`, `?debug=meadow`): four rolling hills with light on their crests, tufts of grass, twelve patches of flowers (daisy, tulip, poppy, bluebell, buttercup, cosmos) each with a shadow, stem and leaves, bigger the nearer and drawn back to front, blossoming bushes at the sides and butterflies. The first version scattered dots; the owner said it looked bad.
 - **Icons** (`art/icons.ts`): `hair` is a happy face with a ponytail and a bow, `saddle` a riding saddle from the side (blanket, seat, flap and stirrup); `medal`, `medalEmpty` and `unlock` are for the medal progression.
 - **Obstacles and candies** (`art/props.ts`): three per track (`TRACK_OBSTACLES`), each a `jump` or a `duck` obstacle.
   - **Overhead obstacles** (`duck`) hang with their bottom at `DUCK_GAP`. Their far post or trunk is in `back` (drawn behind the runner), the rest in `svg`.
@@ -69,10 +71,10 @@
   - Purple and blue (`PALACE_LOOK`) conical roofs with fish-scale shingles, gold rings and finials, and dormers.
   - Eleven spires and turrets, arched blue-glass windows in gold frames, stone courses and battlements.
   - A crown and balcony on the keep, a golden gate with lanterns, pennants, and a golden glow with sparkles.
-  - **It always stands on ground:** its own grassy hill with a stone foundation and a path from the gate is part of the drawing (`grass` in the look: snowy on the snow track, sandy in the canyon, `palaceGrass`). The map's background adds rolling meadows below it (`mapPic`), so it never floats.
-  - Used in every sky, on the map and in the ceremony; `haze` mixes it toward the sky for distance.
+  - **It always stands on ground:** its own grassy hill with a stone foundation and a path from the gate is part of the drawing (`grass` in the look: snowy on the snow track, sandy in the canyon, `palaceGrass`). The home screen has no big castle (the logo has its own): `mapPic` is the garden sky without the palace (`skyWithoutPalace`) plus `art/meadow.ts`.
+  - Used in every track's sky and in the ceremony; `haze` mixes it toward the sky for distance.
 - **The owner's pictures** (not drawn in code; only the processed results are committed, in `public/`). The processing was done once with a Python/PIL script outside the repo.
-  - `logo.webp` (900 px) and `logo-small.webp` (360 px) come from the logo on black. A cutout would eat into the logo's own dark outlines, so the black was lifted to a deep indigo night sky and the picture given soft, feathered edges that follow its shape. It is the title-screen heading and is drawn on the link preview.
+  - `logo.webp` (900 px) and `logo-small.webp` (360 px) come from the logo on black. A cutout would eat into the logo's own dark outlines, so the black was lifted to a deep indigo night sky and the picture given soft, feathered edges that follow its shape. It is shown above the tracks on the home screen (`img.map-logo`) and is drawn on the link preview.
   - `icon-512.png`, `icon-192.png` and `apple-touch-icon.png` come from the logo in its frame: the black corners outside the rounded frame were filled with the frame's light-blue rim, since iOS turns transparent corners black.
   - `favicon.png` is a round crop of the unicorn-and-palace picture, with transparent corners. `icon-maskable-512.png` is that picture whole, because its full purple background survives round masks.
 - **Painting:** `art/sprite.ts` `paint()` turns an SVG string into a canvas (`raster.ts`, copied from bead-box). Characters are drawn in local coordinates with the ground at y = 0, inside `RUNNER_BOX`. Debug sheets paint each piece into its own canvas, so gradient ids never collide.
@@ -103,7 +105,7 @@ All of them set `window.__ready`; screenshot after it.
 - every sheet renders without errors;
 - every eye is big enough to read at game size;
 - every button has an icon and a label;
-- the title logo and Play button fit on screen;
+- the home screen's logo, five track cards and top bar fit and do not overlap at four sizes;
 - the HUD stays on screen without overlaps at a landscape phone, a tablet and a portrait phone.
 
 When art changes, fix the art until these pass; don't loosen a rule.
@@ -120,8 +122,8 @@ When art changes, fix the art until these pass; don't loosen a rule.
 | `race/view.ts` | Canvas 2D drawing, described under "Drawing" below. |
 | `race/input.ts` | Keyboard (arrows/WASD/Space, Esc or P to pause), on-screen buttons on `pointerdown`, and swipes on the stage. |
 | `race/race.ts` | One race: a hoof-print loading bar, the 3-2-1 lights and horn, the frame loop, the HUD, sounds, the tutorial hand and the pause screen. `racersFor` gives the opponents: the other four animals, ridden by the other children in random outfits. The repeated child always gets a different helmet. |
-| `app.ts` | Screen routing, the top bar (home, medals, coins, shop, and the grown-ups gear that needs a 1.5 s hold), the grown-ups panel, settings, and `fresh` (a track the last race opened, celebrated on the map). |
-| `screens.ts` | Title, map, animal and rider choice, shop, race and ceremony. Buying shows coins flying (`flyCoins`); "not yet" is a wobble with a coin jar (`jar`) in the shop and with medal pips on the map. The ceremony paints both clap frames of `podiumSVG` with the real order, then confetti and claps. The reward bar starts from the old totals: a "+N" chip rises into the coin total while it counts up, a "+1" joins the medals, and a card for a newly opened track appears (it goes to the map). Its buttons are map, shop and share (`navigator.share` with a file, else a download); there is no "again" (owner's request: the map is one tap away). |
+| `app.ts` | Screen routing, the top bar (home except on the home screen and the shop, medals, coins, shop, and the grown-ups gear that needs a 1.5 s hold), the grown-ups panel, settings, and `fresh` (a track the last race opened, celebrated on the map). |
+| `screens.ts` | The home screen (map with the logo), animal and rider choice, shop, race and ceremony. The shop lists each kind cheapest first (`price`, then the order in `HELMETS`…), lowest at the left, and ends with a blue back arrow (`#btn-back`) that goes to the home screen. Buying shows coins flying (`flyCoins`); "not yet" is a wobble with a coin jar (`jar`) in the shop and with medal pips on the map. The ceremony paints both clap frames of `podiumSVG` with the real order, then confetti and claps. The reward bar starts from the old totals: a "+N" chip rises into the coin total while it counts up, a "+1" joins the medals, and a card for a newly opened track appears (it goes to the map). Its buttons are map, shop and share (`navigator.share` with a file, else a download); there is no "again" (owner's request: the map is one tap away). |
 | `ui.ts` | Cached painted pictures (`animalPic`, `kidPic`, `trackPic`, `mapPic`), `holdButton`, `flyCoins`, `jar` and `coinTag`. |
 | `tip.ts` | Tooltips for every button (one bubble for the page). |
 | `sfx.ts` | Synthesized effects through a limiter (no error sounds: a stumble is a soft boing). Whooshes use pink noise; hooves and claps use white. No oscillator drives a gain. |
@@ -155,7 +157,7 @@ All made in code (root rule: no audio files). Owner's brief: reverb, a warm pad 
   - An obstacle covers one lane, or two on harder tracks, never three.
   - There are candy lines between obstacles, and candies above some jump obstacles that can only be taken by jumping.
 - **Tutorial** (the first `TUTORIAL_RACES` races): before each of the first three obstacles everything slows to 30%, and the right button glows with a pointing hand. After 2.6 s the animal acts by itself.
-- **Help mode** (the grown-ups switch, on by default): when the child does nothing, the animal dodges by itself 60% of the time.
+- **Help mode** (the grown-ups switch, **off by default**, the owner's request): when the child does nothing, the animal dodges by itself 60% of the time. `settings.helpSet` records that a grown-up chose it, so early saves (which had it on by default) load with it off, and a real choice is kept.
 - **Opponents:**
   - Each one plans every obstacle once: act (with probability `skill`), dodge to a free lane, or miss. They also steer toward candies.
   - The rubber band is gentle: up to −12% when ahead of the child and +4% when behind.
@@ -184,14 +186,16 @@ All made in code (root rule: no audio files). Owner's brief: reverb, a warm pad 
 - `?debug=sim&n=60` shows the calibration table and sets `window.__sim` and `window.__det` (the determinism check).
 - In the real game:
   - `window.__drive = { autopilot, speed }` (set before load) drives races, and is what `flow.spec.ts` uses.
-  - `?screen=map|animal|kid|shop`, `?coins=N`, `?open=all` and `?races=N` set up a pretend game; these turn saving off.
-- **Playwright:** the breathing Play buttons never become "stable", so tests click them with `force`.
+  - `?screen=map|animal|kid|shop` (the default is the home screen), `?coins=N`, `?open=all` and `?races=N` set up a pretend game; these turn saving off.
+- **Playwright:** the breathing big buttons never become "stable", so tests click them with `force`.
 
 ## Tests (game)
 
 - **`sim.spec.ts`:** the promises above, on every track, for every kind of player, plus determinism and shared candies (`window.__shared`).
 - **`flow.spec.ts`:**
-  - the whole flow with saving;
+  - the whole flow with saving (it starts on the home screen);
+  - the shop sorted cheapest first, with the new helmets, and the back button;
+  - the home screen opening with the logo, and help mode off unless chosen;
   - medals opening tracks (and coins never doing so), and an early save migrating;
   - buying, wearing, and not enough coins;
   - keyboard and buttons, and pause;

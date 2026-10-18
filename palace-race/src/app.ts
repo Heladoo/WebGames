@@ -8,13 +8,11 @@ import { music } from './music';
 import { clearAll, defaults, save, type SaveData } from './state';
 import { holdButton } from './ui';
 
-export type Screen = 'title' | 'map' | 'animal' | 'kid' | 'shop' | 'race';
+export type Screen = 'map' | 'animal' | 'kid' | 'shop' | 'race';
 
 export class App {
   data: SaveData;
   root: HTMLElement;
-  /** Where the shop goes back to. */
-  back: Screen = 'map';
   /** A track the last race opened, celebrated on the map. */
   fresh: TrackId | null = null;
   private screens: Partial<Record<Screen, (app: App) => void>> = {};
@@ -70,14 +68,13 @@ export class App {
     </header>`;
   }
 
-  wireTopbar(el: HTMLElement, here: Screen) {
+  wireTopbar(el: HTMLElement) {
     el.querySelector('[data-tb="home"]')?.addEventListener('click', () => {
       sfx.tap();
-      this.go(here === 'map' ? 'title' : 'map');
+      this.go('map');
     });
     el.querySelector('[data-tb="shop"]')?.addEventListener('click', () => {
       sfx.tap();
-      this.back = here;
       this.go('shop');
     });
     const gear = el.querySelector<HTMLElement>('[data-tb="gear"]');
@@ -126,7 +123,10 @@ export class App {
     });
     bind('#g-music', (v) => (st.music = v));
     bind('#g-sound', (v) => (st.sound = v));
-    bind('#g-help', (v) => (st.help = v));
+    bind('#g-help', (v) => {
+      st.help = v;
+      st.helpSet = true;
+    });
     $<HTMLInputElement>('#g-vol').addEventListener('input', (e) => {
       st.volume = Number((e.target as HTMLInputElement).value) / 100;
       this.applySettings();
@@ -144,7 +144,7 @@ export class App {
         this.data = { ...defaults(), settings: keep };
         this.save();
         close();
-        this.go('title');
+        this.go('map');
       });
     });
   }

@@ -6,7 +6,8 @@ import { HAIRS, HELMETS, KIDS, SADDLES, type KidId, type Outfit } from './art/ri
 import { TRACKS, type TrackId } from './art/tracks';
 import { FREE_ITEMS, ITEMS, itemKey, openTracks } from './content';
 
-export interface Settings { music: boolean; sound: boolean; volume: number; help: boolean }
+/** `helpSet` is true once a grown-up has chosen help mode, so the default (off) never overrides their choice. */
+export interface Settings { music: boolean; sound: boolean; volume: number; help: boolean; helpSet?: boolean }
 
 export interface SaveData {
   coins: number;
@@ -37,7 +38,7 @@ export function defaults(): SaveData {
     track: 'forest',
     races: 0,
     wins: 0,
-    settings: { music: true, sound: true, volume: 0.8, help: true },
+    settings: { music: true, sound: true, volume: 0.8, help: false },
   };
 }
 
@@ -86,7 +87,9 @@ export function load(): SaveData {
         music: bool(st.music, true),
         sound: bool(st.sound, true),
         volume: typeof st.volume === 'number' && Number.isFinite(st.volume) ? Math.max(0, Math.min(1, st.volume)) : 0.8,
-        help: bool(st.help, true),
+        // help mode is off unless a grown-up turned it on (early saves had it on by default)
+        help: st.helpSet === true && bool(st.help, false),
+        helpSet: st.helpSet === true,
       },
     };
   } catch {

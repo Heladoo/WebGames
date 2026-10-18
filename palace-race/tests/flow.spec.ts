@@ -26,10 +26,9 @@ const tap = async (page: Page, sel: string) => {
 };
 const base = { coins: 0, medals: 0, unlocked: ['forest'], owned: [], races: 5, wins: 0, settings: { music: false, sound: false, volume: 0.5, help: true } };
 
-test('title → map → animal → rider → race → ceremony, and the coins are saved', async ({ page }) => {
+test('map → animal → rider → race → ceremony, and the coins are saved', async ({ page }) => {
   test.setTimeout(120_000);
   await start(page, base, { autopilot: 1, speed: 8 });
-  await tap(page, '#btn-play');
   await tap(page, '.track-card[data-t="forest"]');
   await tap(page, '.choice[data-id="reindeer"]');
   await expect(page.locator('.choice[data-id="reindeer"]')).toHaveClass(/on/);
@@ -56,7 +55,6 @@ test('title → map → animal → rider → race → ceremony, and the coins ar
 
 test('tracks open with medals, never with coins', async ({ page }) => {
   await start(page, { ...base, coins: 999, medals: 0 });
-  await tap(page, '#btn-play');
   await tap(page, '.track-card[data-t="meadow"]');
   await expect(page.locator('.track-card[data-t="meadow"]')).toHaveClass(/locked/);
   await expect(page.locator('.track-card[data-t="meadow"] .pips svg')).toHaveCount(1);
@@ -67,7 +65,6 @@ test('tracks open with medals, never with coins', async ({ page }) => {
 
 test('medals already won open their tracks', async ({ page }) => {
   await start(page, { ...base, medals: 3 });
-  await tap(page, '#btn-play');
   for (const t of ['forest', 'meadow', 'snow']) await expect(page.locator(`.track-card[data-t="${t}"]`)).toHaveClass(/open/);
   await expect(page.locator('.track-card[data-t="canyon"]')).toHaveClass(/locked/);
   // 3 of the 5 medals the canyon needs are filled in
@@ -85,9 +82,8 @@ test('an early save keeps its tracks, wins (as medals) and braids (as hair)', as
   expect(d.outfit.hair).toBe('pink');
 });
 
-test('the shop sells an item, wears it, and keeps coins safe when there are not enough', async ({ page }) => {
+test('the shop sells an item, wears it, keeps coins safe, and the back button returns to the home screen', async ({ page }) => {
   await start(page, { ...base, coins: 60 });
-  await tap(page, '#btn-play');
   await tap(page, '[data-tb="shop"]');
   await tap(page, '.item[data-id="stars"]');
   await expect.poll(async () => (await saved(page))?.coins).toBe(10);
@@ -99,8 +95,47 @@ test('the shop sells an item, wears it, and keeps coins safe when there are not 
   expect((await saved(page)).coins).toBe(10);
   await tap(page, '.tab[data-k="saddle"]');
   await expect(page.locator('.item[data-id="royal"]')).toBeVisible();
-  await tap(page, '#btn-done');
+  // one clear way back: the back button goes to the home screen (the map)
+  await expect(page.locator('#btn-back')).toHaveAttribute('aria-label', 'חזרה למסך הבית');
+  await tap(page, '#btn-back');
   await page.locator('.screen.map').waitFor();
+});
+
+test('the shop lists every kind cheapest first, left to right, with boy and unicorn helmets', async ({ page }) => {
+  await start(page, { ...base, coins: 999 });
+  await tap(page, '[data-tb="shop"]');
+  for (const kind of ['helmet', 'hair', 'saddle']) {
+    await tap(page, `.tab[data-k="${kind}"]`);
+    await page.waitForTimeout(300);
+    const items = await page.locator('.item').evaluateAll((els) => els.map((e) => ({ id: (e as HTMLElement).dataset.id!, x: e.getBoundingClientRect().left, y: e.getBoundingClientRect().top, price: Number(e.querySelector('.coin-tag b')?.textContent ?? 0) })));
+    expect(items.length).toBeGreaterThan(3);
+    // reading order (rows top to bottom, then left to right) has prices that never go down
+    const ordered = [...items].sort((a, b) => Math.round(a.y / 40) - Math.round(b.y / 40) || a.x - b.x);
+    for (let i = 1; i < ordered.length; i++) expect(ordered[i].price, `${kind}: ${ordered[i - 1].id} then ${ordered[i].id}`).toBeGreaterThanOrEqual(ordered[i - 1].price);
+    if (kind === 'helmet') for (const id of ['unicorn', 'knight', 'racer', 'dino']) expect(items.map((i) => i.id)).toContain(id);
+  }
+});
+
+test('the app opens on the home screen with the logo, and help mode is off unless a grown-up turned it on', async ({ page }) => {
+  await start(page, { ...base, settings: { ...base.settings, help: true } });
+  await page.locator('.screen.map img.map-logo').waitFor();
+  expect(await page.locator('#btn-play').count()).toBe(0);
+  const help = () => page.evaluate(() => (window as unknown as { app: { data: { settings: { help: boolean } } } }).app.data.settings.help);
+  // an early save that had help on by default now has it off
+  expect(await help()).toBe(false);
+  // a grown-up's own choice is kept
+  const g = page.locator('[data-tb="gear"]');
+  const b = (await g.boundingBox())!;
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(1700);
+  await page.mouse.up();
+  await page.locator('#g-help + .switch').click();
+  await expect.poll(async () => (await saved(page))?.settings?.helpSet).toBe(true);
+  expect((await saved(page)).settings.help).toBe(true);
+  await page.reload();
+  await page.locator('.screen.map').waitFor();
+  expect(await help()).toBe(true);
 });
 
 test('keyboard and on-screen buttons jump, duck and change lanes; pause stops the race', async ({ page }) => {
@@ -129,7 +164,6 @@ test('keyboard and on-screen buttons jump, duck and change lanes; pause stops th
 
 test('the grown-ups panel opens only with a long press', async ({ page }) => {
   await start(page, base);
-  await tap(page, '#btn-play');
   const gear = page.locator('[data-tb="gear"]');
   await gear.waitFor();
   await gear.click();

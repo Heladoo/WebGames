@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `otter-river/` | Calm pixel-art river game: an otter floats, collects shells, dresses up | `otter-river/CLAUDE.md` |
 | `word-trail/` | Endless English word adventure for young children, in paper-cut SVG art: pick choices, then tap or trace the letters | `word-trail/CLAUDE.md` |
 | `bead-box/` | Calm SVG bracelet-making game that teaches English words; places unlock as bracelets are finished | `bead-box/CLAUDE.md` |
-| `palace-race/` | **המרוץ לארמון**, a stress-free Hebrew racing game playable without reading: royal animals with child riders race to a palace, collect candies and coins, and shop for helmets, braids and saddles | `palace-race/CLAUDE.md` |
+| `palace-race/` | **המרוץ לארמון**, a stress-free Hebrew racing game playable without reading: royal animals with child riders race to a palace, collect candies and coins, and shop for helmets, hairstyles and saddles | `palace-race/CLAUDE.md` |
 
 ## Shared stack and workflow
 
