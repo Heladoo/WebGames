@@ -46,7 +46,7 @@ npm test         # art, simulation and game-flow checks (Playwright + Chromium)
 - `?debug=faces`: close-ups of every animal's and child's face.
 - `?debug=palace`: the palace close up.
 - `?debug=icons`: the button icons.
-- `?debug=music`: every music mood rendered offline, with Play buttons and their levels.
+- `?debug=music`: every music mood rendered offline (the calm menu music and the quicker race music of each track), with Play buttons and their levels.
 
 The logo, the app icon and the favicon are the owner's own pictures (`public/`).
 

@@ -131,8 +131,9 @@ When art changes, fix the art until these pass; don't loosen a rule.
 ## Music (`music.ts`)
 
 All made in code (root rule: no audio files). Owner's brief: reverb, a warm pad on a chord pattern, richer instruments, humanized playing, soft pink/brown noise for nature, and warmth on the mix.
-- **Moods** (`MOODS`): per track a key, a tempo (72–92 BPM), a chord progression (two bars per chord: I–vi–IV–V on the menu, I–IV–vi–V in the forest, I–V–vi–IV in the meadow, I–vi–ii–V in the snow, i–VI–III–VII in the canyon, I–iii–IV–V in the garden), a lead and an answering instrument, and a nature bed.
+- **Moods** (`MOODS`): the menu at 72 BPM and, per track, the race music at 116–128 BPM (owner's request: faster in the race), with a key, a chord progression (two bars per chord: I–vi–IV–V on the menu, I–IV–vi–V in the forest, I–V–vi–IV in the meadow, I–vi–ii–V in the snow, i–VI–III–VII in the canyon, I–iii–IV–V in the garden), a lead and an answering instrument, and a nature bed.
 - **Pad:** two detuned saws per chord note through a lowpass, slow attack, crossfading into the next chord. A soft sine bass plays each chord's root.
+- **Race drive** (`drive` in a mood): the bass bounces root–fifth on the beats, a quiet kalimba arpeggio runs through the chord on every eighth, and a soft beat gallops (a falling-sine thump on 1 and 3, a high-passed pink-noise shaker on every eighth with a gallop accent). Humanizing jitter is clamped to the current time, since an `AudioParam` refuses a negative time.
 - **Melody:** four-bar phrases: a motif, the motif again on the next chord, an answer on the second instrument, then a long chord note and a rest. Strong beats land on chord notes and the rest step through the pentatonic scale. The range is the key to a twelfth above, and the contour turns around so it never climbs forever.
 - **Instruments:**
   - **Kalimba:** Karplus–Strong, rendered once per note into a buffer (a feedback `DelayNode` cannot be shorter than 128 samples, too long for high notes).
