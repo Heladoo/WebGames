@@ -11,13 +11,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `otter-river/` | Calm pixel-art river game: an otter floats, collects shells, dresses up | `otter-river/CLAUDE.md` |
 | `word-trail/` | Endless English word adventure for young children, in paper-cut SVG art: pick choices, then tap or trace the letters | `word-trail/CLAUDE.md` |
 | `bead-box/` | Calm SVG bracelet-making game that teaches English words; places unlock as bracelets are finished | `bead-box/CLAUDE.md` |
+| `palace-race/` | **המרוץ לארמון**, a stress-free Hebrew racing game playable without reading: royal animals with child riders race to a palace, collect candies and coins, and shop for helmets, braids and saddles | `palace-race/CLAUDE.md` |
 | `portal/` | "Dorothy Games" (משחקי דורותי): the Hebrew homepage, a toy shelf of all games plus a moderated board of players' game ideas | `portal/CLAUDE.md` |
 
 ## Shared stack and workflow
 
-- Each game (and the `portal/` homepage) is Vite + TypeScript, drawn with Canvas 2D (Otter River) or SVG (Word Trail, Bead Box), with no game engine and no runtime libraries (self-hosted font packages are fine). `npm run build` (`tsc --noEmit && vite build`) is the check; there is no linter, and `tsc` runs `strict` with unused-variable errors.
+- Each game (and the `portal/` homepage) is Vite + TypeScript, drawn with Canvas 2D (Otter River) or SVG (Word Trail, Bead Box, Race to the Palace), with no game engine and no runtime libraries (self-hosted font packages are fine). `npm run build` (`tsc --noEmit && vite build`) is the check; there is no linter, and `tsc` runs `strict` with unused-variable errors.
 - Work from inside the game's folder (`cd otter-river`): `npm install`, `npm run dev`, `npm run build`, `npm run preview`.
-- **Verify in a real browser.** Playwright/Chromium is installed in the sandbox. Each game exposes `?debug=…` query parameters that force scenes, expose state, or render test sheets; use them for screenshots and scripted checks. Add the same kind of hooks to a new game rather than testing by hand. Automated tests differ per game: Word Trail, Bead Box and the portal have Playwright suites (`npm test`), Otter River has none; the game's own `CLAUDE.md` says which.
+- **Verify in a real browser.** Playwright/Chromium is installed in the sandbox. Each game exposes `?debug=…` query parameters that force scenes, expose state, or render test sheets; use them for screenshots and scripted checks. Add the same kind of hooks to a new game rather than testing by hand. Automated tests differ per game: Word Trail, Bead Box, Race to the Palace and the portal have Playwright suites (`npm test`), Otter River has none; the game's own `CLAUDE.md` says which.
 - Keep each game's README in sync with player-facing behavior and setup steps.
 - Commits end with the attribution lines given by the session; develop on the branch named by the task.
 - **Preview before any PR.** Push to the branch, then show the work (screenshots at phone and tablet sizes, or the Vercel branch preview). Open or merge a PR only when the owner asks. Postponed or rejected ideas go in `<game>/BACKLOG.md`.
@@ -25,14 +26,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Deploying to Vercel
 
 - One Vercel project per game with **Root Directory = the game folder** (framework Vite). `<game>/vercel.json` carries the headers.
-- **Strict CSP and security headers** are in `vercel.json` (scripts `'self'` only, `connect-src 'self'`, no framing, `nosniff`, restrictive Permissions-Policy). Any new external host or inline script needs a header change, and the CSP will block it silently in production while working in dev, so test against a server that applies the same headers. Prefer self-hosted fonts (`font-src 'self'`, as in Word Trail and Bead Box); Otter River still loads Google Fonts and its CSP allows those two hosts.
+- **Strict CSP and security headers** are in `vercel.json` (scripts `'self'` only, `connect-src 'self'`, no framing, `nosniff`, restrictive Permissions-Policy). Any new external host or inline script needs a header change, and the CSP will block it silently in production while working in dev, so test against a server that applies the same headers. Prefer self-hosted fonts (`font-src 'self'`, as in Word Trail, Bead Box and Race to the Palace); Otter River still loads Google Fonts and its CSP allows those two hosts.
 - **Vite inlines small assets as `data:` URIs** and the CSP refuses `data:` fonts; set `build.assetsInlineLimit: 0` when a game bundles fonts (bead-box does).
 - **Build-time SEO:** a small Vite plugin in `vite.config.ts` replaces `%SITE_URL%` in `index.html` (from `SITE_URL`, else Vercel's production URL) and emits `robots.txt` and `sitemap.xml`. Pages need title, description, canonical, Open Graph and Twitter tags, JSON-LD, a manifest and icons; render the social image and icons from the game's own art (a debug page per game, named in its `CLAUDE.md`, plus a Playwright screenshot) and commit them under `public/`.
 - Games are for kids as well as adults: no accounts, no ads, no cookies, no personal data. Say so in the UI (pause menu) wherever anything is counted.
 
 ## Anonymous play statistics (reusable)
 
-Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstash Redis REST, with a private dashboard at `public/stats.html`. Copy all four into a new game and change the Redis key prefix so games sharing one database don't collide. Prefixes in use: `or:` (Otter River), `wt:` (Word Trail), `bb:` (Bead Box) and `pt:` (the portal, which also keeps players' game ideas there).
+Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstash Redis REST, with a private dashboard at `public/stats.html`. Copy all four into a new game and change the Redis key prefix so games sharing one database don't collide. Prefixes in use: `or:` (Otter River), `wt:` (Word Trail), `bb:` (Bead Box), `pr:` (Race to the Palace) and `pt:` (the portal, which also keeps players' game ideas there).
 
 - Counts plays, estimated unique players (HyperLogLog of a random id kept in localStorage) and play time (heartbeat every 2 minutes plus `sendBeacon` on page hide).
 - **Env vars** (set in Vercel → Settings → Environment Variables for all environments, then **redeploy**; variables only apply to new deployments): `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (or the Marketplace names `KV_REST_API_URL/TOKEN`) and `STATS_KEY` (dashboard password).
@@ -60,6 +61,16 @@ Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstas
 - **Never connect an oscillator (or any audio-rate source) to a `gain` AudioParam.** It adds the oscillator's ±amplitude to a gain that should sit near zero and produces a loud buzz that sounds like an error. An early frog croak did this. Shape sounds with scheduled envelope ramps and filters instead.
 - A pickup melody that only climbs gets stuck on the top note; walk the scale up and down and shift key each cycle.
 - Make sounds follow the world (biome, night, weather, nearby hazard) rather than looping one bed.
+- **Music that sounds like music** (palace-race `music.ts` has all of these, after an owner said a plain music box over a pad sounded bad):
+  - Put everything in a room: a `ConvolverNode` with a generated impulse (stereo noise, about 3 s, decaying and darkening).
+  - Use a real chord pattern (I–vi–IV–V and friends) on a warm pad of detuned saws through a lowpass, with a soft bass root.
+  - Give the melody phrases (motif, echo, answer, rest) whose strong beats land on chord notes.
+  - Pluck with Karplus–Strong rendered once into `AudioBuffer`s. A feedback `DelayNode` loop cannot be shorter than 128 samples, too long for high notes.
+  - FM bells: drive the carrier's frequency, which is allowed; only gain params are off-limits.
+  - Humanize timing (±12 ms), loudness and pan.
+  - Use pink or brown noise rather than white for nature beds.
+  - Finish with a low shelf, a high shelf and a gentle `tanh` saturation.
+- Schedule music ahead in audio time (a timer tops up a ~1 s queue) so the same engine renders in an `OfflineAudioContext`. Add a debug page that renders every mood, reports peak and RMS, and exports WAVs. Check band energies too: a bass that carries most of the energy sounds muddy.
 
 ## Pixel-art canvas approach (reusable, canvas games)
 
