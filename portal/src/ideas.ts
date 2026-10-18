@@ -6,9 +6,9 @@ import { anonId } from './stats';
 
 export interface Idea {
   id: string;
-  pics: string[];
+  pic: string | null;
   text: string;
-  names: string[];
+  name: string;
   hearts: number;
 }
 
@@ -35,12 +35,6 @@ function saveHearted(s: Set<string>) {
   }
 }
 
-/** "נועה", "נועה ויואב", "נועה, דן ויואב" */
-export function joinNames(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? '';
-  return `${names.slice(0, -1).join(', ')} ו${names[names.length - 1]}`;
-}
-
 export async function fetchIdeas(): Promise<Idea[]> {
   const r = await fetch('/api/ideas', { headers: { Accept: 'application/json' } });
   if (!r.ok) throw new Error(String(r.status));
@@ -57,13 +51,13 @@ function noteEl(idea: Idea, index: number, mine: Set<string>): HTMLElement {
   li.style.setProperty('--pin', PIN_COLORS[index % PIN_COLORS.length]);
   li.style.setProperty('--tilt', `${[-1.4, 1.1, -0.7, 1.5, -1][index % 5]}deg`);
 
-  if (idea.pics.length) {
-    const pics = document.createElement('div');
-    pics.className = 'note-pics';
-    pics.setAttribute('role', 'img');
-    pics.setAttribute('aria-label', idea.pics.map(pictureLabel).join(', '));
-    pics.innerHTML = idea.pics.map((p) => pictureSVG(p, 40)).join('');
-    li.appendChild(pics);
+  if (idea.pic) {
+    const pic = document.createElement('div');
+    pic.className = 'note-pics';
+    pic.setAttribute('role', 'img');
+    pic.setAttribute('aria-label', pictureLabel(idea.pic));
+    pic.innerHTML = pictureSVG(idea.pic, 44);
+    li.appendChild(pic);
   }
   if (idea.text) {
     const p = document.createElement('p');
@@ -75,7 +69,7 @@ function noteEl(idea: Idea, index: number, mine: Set<string>): HTMLElement {
   foot.className = 'note-foot';
   const by = document.createElement('span');
   by.className = 'note-by';
-  if (idea.names.length) by.textContent = `מאת ${joinNames(idea.names)}`;
+  if (idea.name) by.textContent = `מאת ${idea.name}`;
   foot.appendChild(by);
 
   const btn = document.createElement('button');

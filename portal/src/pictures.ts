@@ -1,57 +1,32 @@
-// Pictures a child can pick to describe a game idea, drawn in code (64×64).
+// Icons a player can pick to describe a game idea, drawn in code (64×64).
 // The ids are a whitelist shared with api/ideas.js (PICTURE_IDS there); the
 // tests check that the two lists match.
 
-export interface PictureGroup {
-  id: 'who' | 'where' | 'what';
-  label: string;
-  items: { id: string; label: string }[];
-}
-
-export const PICTURE_GROUPS: PictureGroup[] = [
-  {
-    id: 'who',
-    label: 'מי?',
-    items: [
-      { id: 'dog', label: 'כלב' },
-      { id: 'cat', label: 'חתול' },
-      { id: 'dino', label: 'דינוזאור' },
-      { id: 'robot', label: 'רובוט' },
-      { id: 'fish', label: 'דג' },
-      { id: 'bird', label: 'ציפור' },
-    ],
-  },
-  {
-    id: 'where',
-    label: 'איפה?',
-    items: [
-      { id: 'sea', label: 'ים' },
-      { id: 'forest', label: 'יער' },
-      { id: 'space', label: 'חלל' },
-      { id: 'city', label: 'עיר' },
-      { id: 'farm', label: 'חווה' },
-      { id: 'snow', label: 'שלג' },
-    ],
-  },
-  {
-    id: 'what',
-    label: 'מה עושים?',
-    items: [
-      { id: 'build', label: 'בונים' },
-      { id: 'cook', label: 'מבשלים' },
-      { id: 'drive', label: 'נוסעים' },
-      { id: 'fly', label: 'עפים' },
-      { id: 'grow', label: 'מגדלים' },
-      { id: 'music', label: 'מנגנים' },
-    ],
-  },
+export const PICTURES: { id: string; label: string }[] = [
+  { id: 'dog', label: 'כלב' },
+  { id: 'cat', label: 'חתול' },
+  { id: 'dino', label: 'דינוזאור' },
+  { id: 'robot', label: 'רובוט' },
+  { id: 'fish', label: 'דג' },
+  { id: 'bird', label: 'ציפור' },
+  { id: 'sea', label: 'ים' },
+  { id: 'forest', label: 'יער' },
+  { id: 'space', label: 'חלל' },
+  { id: 'city', label: 'עיר' },
+  { id: 'farm', label: 'חווה' },
+  { id: 'snow', label: 'שלג' },
+  { id: 'build', label: 'בונים' },
+  { id: 'cook', label: 'מבשלים' },
+  { id: 'drive', label: 'נוסעים' },
+  { id: 'fly', label: 'עפים' },
+  { id: 'grow', label: 'מגדלים' },
+  { id: 'music', label: 'מנגנים' },
 ];
 
-export const PICTURE_IDS = PICTURE_GROUPS.flatMap((g) => g.items.map((i) => i.id));
+export const PICTURE_IDS = PICTURES.map((i) => i.id);
 
 export function pictureLabel(id: string): string {
-  for (const g of PICTURE_GROUPS) for (const i of g.items) if (i.id === id) return i.label;
-  return '';
+  return PICTURES.find((i) => i.id === id)?.label ?? '';
 }
 
 const INK = '#3A2E2A';

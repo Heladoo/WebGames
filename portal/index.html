@@ -74,15 +74,6 @@
           </div>
         </details>
       </main>
-
-      <footer class="about">
-        <p class="facts"><!--FACTS--></p>
-        <p>%DESCRIPTION%</p>
-        <ul class="about-games">
-<!--ABOUT-->
-        </ul>
-        <p>אנחנו סופרים כמה ביקורים יש באתר בלי לזהות אף אחד, ובלי עוגיות. רעיונות שנשלחים נקראים לפני שהם עולים ללוח, ושמות לא חובה.</p>
-      </footer>
     </div>
 
     <dialog id="idea-dialog" aria-labelledby="idea-title">
@@ -94,17 +85,19 @@
           </button>
         </div>
         <div id="idea-step" class="idea-step">
-          <div id="pickers" class="pickers"></div>
+          <fieldset class="picker">
+            <legend>בחרו אייקון שמתאר את המשחק</legend>
+            <div id="pic-row" class="pic-row"></div>
+          </fieldset>
           <div class="field">
-            <label for="idea-text">רוצים לכתוב עוד?</label>
-            <textarea id="idea-text" rows="2" maxlength="140" placeholder="למשל: דינוזאור שאופה עוגות"></textarea>
+            <label for="idea-text">תיאור המשחק</label>
+            <textarea id="idea-text" rows="5" maxlength="500" placeholder="ספרו כמה שיותר: מה עושים במשחק? מי הדמויות? איך מנצחים? איך הוא נראה?"></textarea>
           </div>
           <div class="field">
-            <span class="label" id="names-label">מי חשב על הרעיון? (לא חובה)</span>
-            <div id="name-list" class="name-list"></div>
-            <button type="button" class="link-btn" id="add-name">+ עוד שם</button>
+            <label for="idea-name">שם השולח (לא חובה)</label>
+            <input id="idea-name" class="name" type="text" maxlength="30" autocomplete="off" placeholder="למשל: נועה" />
           </div>
-          <p class="small">כותבים רק שם פרטי. כל רעיון נקרא לפני שהוא עולה ללוח.</p>
+          <p class="small">אפשר לכתוב רק שם פרטי. כל רעיון נקרא לפני שהוא עולה ללוח.</p>
           <p class="error" id="idea-error" role="alert"></p>
           <div class="actions">
             <button type="submit" class="primary" id="idea-send">לשלוח</button>

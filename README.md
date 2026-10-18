@@ -200,9 +200,9 @@ Import `Heladoo/WebGames` as another project and set **Root Directory** to `bead
 
 **משחקי דורותי · משחקים רגועים, מילדים לילדים.** The Hebrew homepage that links to every game. It is built to look like a toy shelf: each game is a box with its own picture, and players pick by picture.
 
-- **The shelf:** one box per game, plus "I have an idea!" and "coming soon" boxes. The newest game has a "new" badge. Games open in the same tab. There are 2 boxes per shelf on phones and 3 on tablets and computers.
-- **Game ideas from players:** the idea box opens a form. A child picks pictures (who, where, what you do), and anyone can add a few words and one or more first names (optional). **Nothing is shown until the owner approves it** on `/ideas.html`. Approved ideas appear on the corkboard ("Your ideas"), where players can give them hearts (one per browser, and they can take it back). The board sits beside the shelf on wide screens and is folded under it on phones.
-- **For parents and search engines:** a quiet line of text under the shelf (ages 4–99, free, no ads, no sign-up, no cookies, safe and calm), short descriptions of each game, structured data listing the games, and a link-preview image.
+- **The shelf:** one box per game, plus "I have an idea!" and "coming soon" boxes. New games have a "new" badge. Games open in the same tab. There are 2 boxes per shelf on phones and 3 on tablets and computers. Each game box has a small (i) button: hover, focus or tap shows a one-line description of the game.
+- **Game ideas from players:** the idea box opens a form with one icon to pick, a "game description" box (with a prompt to say as much as possible, up to 500 characters) and an optional sender name (one box, letters only). **Nothing is shown until the owner approves it** on `/ideas.html`. Approved ideas appear on the corkboard ("Your ideas"), where players can give them hearts (one per browser, and they can take it back). The board sits beside the shelf on wide screens and is folded under it on phones.
+- **For search engines:** no text block on the page. The description, the ages (4–99), the game list and the link-preview image are in the page's meta tags and structured data, and each game's description is in its (i) tooltip.
 - **Installable:** an "Add to home screen" button appears where the browser supports it. On iPhone and iPad it shows how to add the page from the Share menu.
 
 ### Run locally

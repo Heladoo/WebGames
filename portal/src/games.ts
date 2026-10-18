@@ -18,7 +18,8 @@ export interface Game {
   alt: string;
   /** for JSON-LD */
   genre: string[];
-  inLanguage: string;
+  /** language of the game itself, for JSON-LD; leave out when unknown */
+  inLanguage?: string;
 }
 
 export const GAMES: Game[] = [
@@ -50,6 +51,17 @@ export const GAMES: Game[] = [
     genre: ['Educational', 'Creative'],
     inLanguage: 'en',
   },
+  {
+    // PLACEHOLDERS: the name, sentence and picture below are guesses until the owner sends the real ones
+    // (the address comes from the owner; the game is not in this repo).
+    id: 'palace-race',
+    name: 'מירוץ הארמון',
+    about: 'משחק מירוץ חדש.',
+    url: 'https://web-games-palace-race.vercel.app/',
+    isNew: true,
+    alt: 'ארמון עם דגל משובץ של מירוץ',
+    genre: ['Casual', 'Racing'],
+  },
 ];
 
 /** "Coming soon" boxes at the end of the shelf; 0 hides them. */
@@ -60,6 +72,5 @@ export const SITE = {
   nameEn: 'Dorothy Games',
   tagline: 'משחקים רגועים, מילדים לילדים',
   description:
-    'משחקי דורותי: משחקי דפדפן רגועים לילדים ולכל המשפחה, לגילאי 4 עד 99. בלי פרסומות, בלי הרשמה ובלי עוגיות. משחקים בחינם בטלפון, בטאבלט ובמחשב.',
-  facts: ['לגילאי 4–99', 'חינם', 'בלי פרסומות', 'בלי הרשמה', 'בלי עוגיות', 'בטוח ורגוע'],
+    'משחקי דורותי: משחקי דפדפן רגועים, בטוחים ומשמחים לילדים ולכל המשפחה, לגילאי 4 עד 99. בלי פרסומות, בלי הרשמה ובלי עוגיות. משחקים בחינם בטלפון, בטאבלט ובמחשב.',
 };

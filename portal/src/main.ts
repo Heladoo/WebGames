@@ -29,6 +29,27 @@ function setupShelf() {
   }
 }
 
+/** The (i) button on each game box: hover or focus shows a one-line description, a tap toggles it (touch screens). */
+function setupTips() {
+  const cells = [...document.querySelectorAll<HTMLElement>('#tiles > .cell')];
+  const close = () => cells.forEach((c) => c.classList.remove('tip-open'));
+  for (const cell of cells) {
+    cell.querySelector('.info')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = !cell.classList.contains('tip-open');
+      close();
+      cell.classList.toggle('tip-open', open);
+    });
+  }
+  document.addEventListener('click', close);
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    close();
+    // a focused (i) keeps its tooltip open too: let go of it
+    if (document.activeElement?.classList.contains('info')) (document.activeElement as HTMLElement).blur();
+  });
+}
+
 function setupBoard() {
   const board = $<HTMLDetailsElement>('board');
   // open beside the shelf on wide screens, folded under it on phones
@@ -78,6 +99,7 @@ if (debug === 'og' || debug === 'icon') {
   void import('./debug').then((m) => m.render(debug));
 } else {
   setupShelf();
+  setupTips();
   setupBoard();
   setupInstall();
   const composer = setupComposer();

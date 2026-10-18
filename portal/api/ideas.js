@@ -1,7 +1,7 @@
 // Game ideas sent by players (Vercel serverless function).
 //
-// Players pick up to three pictures, may write a short text and may add first
-// names. Nothing is shown to anyone until the owner approves it on
+// Players pick one picture, describe the game in a few sentences and may sign
+// with a first name. Nothing is shown to anyone until the owner approves it on
 // /ideas.html (with the same STATS_KEY as the stats page). Approved ideas can
 // get hearts from other players, one per browser.
 //
@@ -12,7 +12,7 @@
 //
 //   GET                              → approved ideas with hearts (public, cached briefly)
 //   GET  ?key=STATS_KEY              → pending + approved ideas (owner)
-//   POST {type:"idea", id, pics, text, names}
+//   POST {type:"idea", id, pic, text, name}
 //   POST {type:"heart", id, idea, on}
 //   POST {type:"approve"|"reject"|"remove", key, idea}   (owner)
 
@@ -33,7 +33,7 @@ export const PICTURE_IDS = [
 ];
 
 // Must match LIMITS in src/rules.ts (a test checks it).
-export const LIMITS = { pics: 3, text: 140, names: 4, name: 20, perDay: 5, queue: 300, shown: 60 };
+export const LIMITS = { text: 500, name: 30, perDay: 5, queue: 300, shown: 60 };
 
 const ANON_RE = /^[a-z0-9]{8,32}$/;
 const IDEA_RE = /^[a-z0-9]{10}$/;
@@ -72,25 +72,16 @@ export function clean(s) {
 /** The idea as it may be stored, or null when anything about it is off. */
 export function validateIdea(msg) {
   if (!msg || typeof msg !== 'object') return null;
-  const pics = msg.pics ?? [];
-  if (!Array.isArray(pics) || pics.length > LIMITS.pics) return null;
-  if (!pics.every((p) => typeof p === 'string' && PICTURE_IDS.includes(p))) return null;
-  if (new Set(pics).size !== pics.length) return null;
+  const pic = msg.pic ?? null;
+  if (pic !== null && !(typeof pic === 'string' && PICTURE_IDS.includes(pic))) return null;
   if (msg.text != null && typeof msg.text !== 'string') return null;
   const text = clean(msg.text);
   if (text.length > LIMITS.text) return null;
-  const rawNames = msg.names ?? [];
-  if (!Array.isArray(rawNames) || rawNames.length > LIMITS.names) return null;
-  const names = [];
-  for (const n of rawNames) {
-    if (typeof n !== 'string') return null;
-    const c = clean(n);
-    if (!c) continue;
-    if (c.length > LIMITS.name || !NAME_RE.test(c)) return null;
-    names.push(c);
-  }
-  if (pics.length === 0 && text.length < 2) return null;
-  return { pics: [...pics], text, names };
+  if (msg.name != null && typeof msg.name !== 'string') return null;
+  const name = clean(msg.name);
+  if (name && (name.length > LIMITS.name || !NAME_RE.test(name))) return null;
+  if (pic === null && text.length < 2) return null;
+  return { pic, text, name };
 }
 
 const newId = () => Array.from(randomBytes(10), (b) => (b % 36).toString(36)).join('');

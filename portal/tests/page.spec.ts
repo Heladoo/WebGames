@@ -11,11 +11,11 @@ const SIZES = [
 ];
 
 const IDEAS = [
-  { id: 'a1b2c3d4e5', pics: ['dino', 'forest', 'cook'], text: 'דינוזאור שאופה עוגות', names: ['נועה', 'יואב'], hearts: 12 },
-  { id: 'b1b2c3d4e5', pics: ['robot', 'space'], text: '<img src=x onerror="window.__xss=1">', names: [], hearts: 2 },
-  { id: 'c1b2c3d4e5', pics: ['grow'], text: '', names: ['מיה', 'דן', 'אורי'], hearts: 0 },
-  { id: 'd1b2c3d4e5', pics: [], text: 'רעיון רביעי', names: [], hearts: 0 },
-  { id: 'e1b2c3d4e5', pics: ['cat'], text: 'רעיון חמישי', names: [], hearts: 0 },
+  { id: 'a1b2c3d4e5', pic: 'dino', text: 'דינוזאור שאופה עוגות ליום הולדת, ואפשר להזמין חברים', name: 'נועה', hearts: 12 },
+  { id: 'b1b2c3d4e5', pic: 'robot', text: '<img src=x onerror="window.__xss=1">', name: '', hearts: 2 },
+  { id: 'c1b2c3d4e5', pic: 'grow', text: '', name: 'מיה', hearts: 0 },
+  { id: 'd1b2c3d4e5', pic: null, text: 'רעיון רביעי', name: '', hearts: 0 },
+  { id: 'e1b2c3d4e5', pic: 'cat', text: 'רעיון חמישי', name: '', hearts: 0 },
 ];
 
 /** Fake /api/ideas; returns the bodies the page POSTed. */
@@ -72,13 +72,59 @@ test('game boxes are links with pictures, and the newest has a badge', async ({ 
 
 test('the page works and is described without JavaScript', async ({ request }) => {
   const html = await (await request.get('/')).text();
-  for (const g of GAMES) expect(html).toContain(`href="${g.url}"`);
-  expect(html).toContain('לגילאי 4–99');
-  expect(html).toContain('בטוח ורגוע');
+  for (const g of GAMES) {
+    expect(html).toContain(`href="${g.url}"`);
+    expect(html).toContain(g.about); // the tooltip text is in the page
+  }
+  expect(html).toContain('לגילאי 4 עד 99');
   expect(html).toContain('משחקים רגועים, מילדים לילדים');
   const ld = JSON.parse(html.split('<script type="application/ld+json">')[1].split('</script>')[0]);
   const list = ld['@graph'].find((x: { '@type': string }) => x['@type'] === 'ItemList');
   expect(list.itemListElement.map((i: { item: { name: string } }) => i.item.name)).toEqual(GAMES.map((g) => g.name));
+});
+
+test('there is no text block under the shelf', async ({ page }) => {
+  await fakeApi(page);
+  await page.goto('/');
+  await expect(page.locator('footer')).toHaveCount(0);
+  await expect(page.getByText('בלי פרסומות')).toHaveCount(0);
+});
+
+test('each game box has an (i) button whose tooltip shows on hover, focus and tap', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await fakeApi(page);
+  await page.goto('/');
+  const g = GAMES[0];
+  const tip = page.locator(`#tip-${g.id}`);
+  const info = page.locator(`.cell:has(a[data-game="${g.id}"]) .info`);
+  await expect(info).toHaveAttribute('aria-label', `על ${g.name}`);
+  await expect(tip).toBeHidden();
+  await info.hover();
+  await expect(tip).toBeVisible();
+  await expect(tip).toHaveText(g.about);
+  await page.mouse.move(5, 5);
+  await expect(tip).toBeHidden();
+  await info.focus();
+  await expect(tip).toBeVisible();
+  await page.locator('h1').click();
+  await info.blur();
+  await expect(tip).toBeHidden();
+  // a tap opens it, another tap on the page or Escape closes it, and opening one closes the others
+  await info.click();
+  await page.mouse.move(5, 5);
+  await expect(tip).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(tip).toBeHidden();
+  await info.click();
+  await page.locator(`.cell:has(a[data-game="${GAMES[1].id}"]) .info`).click();
+  await expect(tip).toBeHidden();
+  await expect(page.locator(`#tip-${GAMES[1].id}`)).toBeVisible();
+  // tapping the (i) doesn't open the game, and it is a big enough target
+  expect(page.url()).toBe('http://localhost:5199/');
+  const r = (await info.boundingBox())!;
+  expect(Math.min(r.width, r.height)).toBeGreaterThanOrEqual(44);
+  // the idea and coming-soon boxes have none
+  await expect(page.locator('.info')).toHaveCount(GAMES.length);
 });
 
 test('ideas show as notes; player text stays text', async ({ page }) => {
@@ -89,8 +135,10 @@ test('ideas show as notes; player text stays text', async ({ page }) => {
   await expect(notes).toHaveCount(IDEAS.length);
   await expect(page.locator('#ideas .note:visible')).toHaveCount(4);
   await expect(page.locator('#board-count')).toHaveText(String(IDEAS.length));
-  await expect(notes.nth(0).locator('.note-by')).toHaveText('מאת נועה ויואב');
-  await expect(notes.nth(2).locator('.note-by')).toHaveText('מאת מיה, דן ואורי');
+  await expect(notes.nth(0).locator('.note-by')).toHaveText('מאת נועה');
+  await expect(notes.nth(0).locator('.note-text')).toHaveText(IDEAS[0].text);
+  await expect(notes.nth(1).locator('.note-by')).toHaveText('');
+  await expect(notes.nth(2).locator('.note-by')).toHaveText('מאת מיה');
   await expect(notes.nth(1).locator('.note-text')).toHaveText(IDEAS[1].text);
   expect(await notes.nth(1).locator('img').count()).toBe(0);
   expect(await page.evaluate(() => (window as { __xss?: number }).__xss)).toBeUndefined();
@@ -126,7 +174,7 @@ test('an empty or unreachable board says so', async ({ page }) => {
   await expect(page.locator('.board-empty')).toContainText('לא נטען');
 });
 
-test('sending an idea: pictures, text and several names', async ({ page }) => {
+test('sending an idea: one icon, a description and a sender name', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const posts = await fakeApi(page);
   await page.goto('/');
@@ -135,33 +183,35 @@ test('sending an idea: pictures, text and several names', async ({ page }) => {
   await expect(dialog).toBeVisible();
   const send = page.locator('#idea-send');
   await expect(send).toBeDisabled();
+  await expect(page.locator('label[for="idea-text"]')).toHaveText('תיאור המשחק');
+  await expect(page.locator('#idea-text')).toHaveAttribute('placeholder', /כמה שיותר/);
+  await expect(page.locator('label[for="idea-name"]')).toContainText('שם השולח');
+  // there is a single name box and no "add another name"
+  await expect(page.locator('input.name')).toHaveCount(1);
+  await expect(page.getByText('עוד שם')).toHaveCount(0);
 
-  // one picture per row; tapping again unpicks
+  // only one icon at a time; tapping again unpicks it
   await page.click('[data-pic="dog"]');
   await page.click('[data-pic="cat"]');
-  await expect(page.locator('[data-pic="dog"]')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.pic[aria-pressed="true"]')).toHaveCount(1);
   await expect(page.locator('[data-pic="cat"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.click('[data-pic="cat"]');
+  await expect(page.locator('.pic[aria-pressed="true"]')).toHaveCount(0);
+  await expect(send).toBeDisabled();
   await page.click('[data-pic="snow"]');
-  await page.click('[data-pic="music"]');
-  await page.click('[data-pic="music"]');
   await expect(send).toBeEnabled();
 
-  await page.fill('#idea-text', 'חתול   שמחליק על הקרח');
-  await page.locator('input.name').nth(0).fill('נועה');
-  await page.click('#add-name');
-  await page.locator('input.name').nth(1).fill('דן 123');
+  const long = 'חתול שמחליק על הקרח '.repeat(20).trim();
+  await page.fill('#idea-text', long);
+  await page.fill('#idea-name', 'דן 123');
   await send.click();
   await expect(page.locator('#idea-error')).toHaveText('בשם אפשר לכתוב רק אותיות.');
   expect(posts).toHaveLength(0);
 
-  await page.locator('input.name').nth(1).fill('דן');
-  await page.click('#add-name');
-  await page.click('#add-name');
-  await expect(page.locator('input.name')).toHaveCount(4);
-  await expect(page.locator('#add-name')).toBeHidden();
+  await page.fill('#idea-name', 'נועה כהן');
   await send.click();
   await expect(page.locator('#idea-done')).toBeVisible();
-  expect(posts).toEqual([{ type: 'idea', id: expect.stringMatching(/^[a-z0-9]{8,32}$/), pics: ['cat', 'snow'], text: 'חתול שמחליק על הקרח', names: ['נועה', 'דן'] }]);
+  expect(posts).toEqual([{ type: 'idea', id: expect.stringMatching(/^[a-z0-9]{8,32}$/), pic: 'snow', text: long, name: 'נועה כהן' }]);
 
   // closing and opening again starts a fresh form
   await page.locator('#idea-done [data-close]').click();
@@ -169,7 +219,18 @@ test('sending an idea: pictures, text and several names', async ({ page }) => {
   await page.click('.idea-box');
   await expect(page.locator('#idea-step')).toBeVisible();
   await expect(page.locator('.pic[aria-pressed="true"]')).toHaveCount(0);
-  await expect(page.locator('input.name')).toHaveCount(1);
+  await expect(page.locator('#idea-name')).toHaveValue('');
+});
+
+test('a description alone is enough, and the name can stay empty', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const posts = await fakeApi(page);
+  await page.goto('/');
+  await page.click('.idea-box');
+  await page.fill('#idea-text', 'משחק על חלל');
+  await page.click('#idea-send');
+  await expect(page.locator('#idea-done')).toBeVisible();
+  expect(posts[0]).toMatchObject({ pic: null, text: 'משחק על חלל', name: '' });
 });
 
 test('a refused idea explains why and keeps what was written', async ({ page }) => {

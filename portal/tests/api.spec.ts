@@ -55,28 +55,32 @@ async function call(fetchImpl: unknown, req: { method: string; body?: unknown; q
   return out;
 }
 
-const idea = (over: object = {}) => ({ type: 'idea', id: 'anon12345', pics: ['dino', 'space'], text: 'דינוזאור בחלל', names: ['נועה'], ...over });
+const idea = (over: object = {}) => ({ type: 'idea', id: 'anon12345', pic: 'dino', text: 'דינוזאור בחלל', name: 'נועה', ...over });
 
 test('server and page agree on pictures and limits', () => {
   expect(API_PICS).toEqual(PICTURE_IDS);
   expect(API_LIMITS).toEqual(LIMITS);
 });
 
-test('validation keeps only safe, short ideas', () => {
-  expect(validateIdea(idea())).toEqual({ pics: ['dino', 'space'], text: 'דינוזאור בחלל', names: ['נועה'] });
-  expect(validateIdea(idea({ pics: ['unicorn'] }))).toBeNull();
-  expect(validateIdea(idea({ pics: ['dog', 'dog'] }))).toBeNull();
-  expect(validateIdea(idea({ pics: ['dog', 'sea', 'fly', 'cat'] }))).toBeNull();
-  expect(validateIdea(idea({ text: 'א'.repeat(141) }))).toBeNull();
-  expect(validateIdea(idea({ names: ['דנה 0501234567'] }))).toBeNull();
-  expect(validateIdea(idea({ names: ['a@b.com'] }))).toBeNull();
-  expect(validateIdea(idea({ names: ['א', 'ב', 'ג', 'ד', 'ה'] }))).toBeNull();
-  expect(validateIdea(idea({ pics: [], text: ' ' }))).toBeNull();
+test('validation keeps only safe, bounded ideas', () => {
+  expect(validateIdea(idea())).toEqual({ pic: 'dino', text: 'דינוזאור בחלל', name: 'נועה' });
+  expect(validateIdea(idea({ pic: 'unicorn' }))).toBeNull();
+  expect(validateIdea(idea({ pic: ['dog'] }))).toBeNull();
+  expect(validateIdea(idea({ text: 'א'.repeat(LIMITS.text + 1) }))).toBeNull();
+  expect(validateIdea(idea({ text: 'א'.repeat(LIMITS.text) }))?.text.length).toBe(LIMITS.text);
+  expect(validateIdea(idea({ name: 'דנה 0501234567' }))).toBeNull();
+  expect(validateIdea(idea({ name: 'a@b.com' }))).toBeNull();
+  expect(validateIdea(idea({ name: 'א'.repeat(LIMITS.name + 1) }))).toBeNull();
+  expect(validateIdea(idea({ name: 5 }))).toBeNull();
+  expect(validateIdea(idea({ pic: null, text: ' ' }))).toBeNull();
   expect(validateIdea(idea({ text: 5 }))).toBeNull();
-  // names: letters with a space or hyphen are fine, blanks are dropped
-  expect(validateIdea(idea({ names: ['בת-אל', 'Mary Ann', '  '] }))?.names).toEqual(['בת-אל', 'Mary Ann']);
+  // the icon alone is enough; the name is optional
+  expect(validateIdea({ pic: 'fish' })).toEqual({ pic: 'fish', text: '', name: '' });
+  expect(validateIdea({ text: 'חנות גלידה' })).toEqual({ pic: null, text: 'חנות גלידה', name: '' });
+  // a name may have a space or hyphen
+  expect(validateIdea(idea({ name: 'בת-אל כהן' }))?.name).toBe('בת-אל כהן');
   // bidi overrides and control characters are stripped
-  expect(validateIdea(idea({ text: 'שלום‮olleh\u0007  עולם' }))?.text).toBe('שלוםolleh עולם');
+  expect(validateIdea(idea({ text: 'שלום\u202Eolleh\u0007  עולם' }))?.text).toBe('שלוםolleh עולם');
 });
 
 test('an idea waits for approval, then shows and collects hearts', async () => {
@@ -95,7 +99,7 @@ test('an idea waits for approval, then shows and collects hearts', async () => {
   expect((await call(fetchImpl, { method: 'POST', body: { type: 'approve', key: 'nope', idea: id } })).status).toBe(401);
   expect((await call(fetchImpl, { method: 'POST', body: { type: 'approve', key: 'secret', idea: id } })).status).toBe(200);
   pub = await call(fetchImpl, { method: 'GET' });
-  expect(pub.body.ideas).toEqual([{ id, pics: ['dino', 'space'], text: 'דינוזאור בחלל', names: ['נועה'], t: expect.any(Number), hearts: 0 }]);
+  expect(pub.body.ideas).toEqual([{ id, pic: 'dino', text: 'דינוזאור בחלל', name: 'נועה', t: expect.any(Number), hearts: 0 }]);
 
   const heart = (anon: string, on: boolean) => call(fetchImpl, { method: 'POST', body: { type: 'heart', id: anon, idea: id, on } });
   expect((await heart('anon12345', true)).body).toEqual({ changed: true, hearts: 1 });
@@ -121,7 +125,7 @@ test('rejected ideas never show; bad requests are refused', async () => {
   expect(admin.body).toEqual({ pending: [], approved: [] });
   expect((await call(fetchImpl, { method: 'POST', body: { type: 'approve', key: 'secret', idea: id } })).status).toBe(404);
   expect((await call(fetchImpl, { method: 'POST', body: idea({ id: 'NOT VALID' }) })).status).toBe(400);
-  expect((await call(fetchImpl, { method: 'POST', body: idea({ pics: ['<script>'] }) })).status).toBe(400);
+  expect((await call(fetchImpl, { method: 'POST', body: idea({ pic: '<script>' }) })).status).toBe(400);
   expect((await call(fetchImpl, { method: 'POST', body: 'not json' })).status).toBe(400);
   expect((await call(fetchImpl, { method: 'DELETE' })).status).toBe(405);
 });

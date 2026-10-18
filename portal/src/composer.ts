@@ -1,7 +1,7 @@
-// The "I have an idea!" form: pick pictures, optionally write, optionally sign.
+// The "I have an idea!" form: pick one icon, describe the game, optionally sign.
 
+import { PICTURES, pictureSVG } from './pictures';
 import { LIMITS, NAME_RE } from './rules';
-import { PICTURE_GROUPS, pictureSVG } from './pictures';
 import { anonId } from './stats';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -11,92 +11,61 @@ const MESSAGES: Record<string, string> = {
   full: 'יש המון רעיונות שמחכים לקריאה. נסו שוב בעוד כמה ימים.',
   off: 'תיבת הרעיונות עוד לא פתוחה. נסו שוב בקרוב.',
   name: 'בשם אפשר לכתוב רק אותיות.',
-  empty: 'בחרו תמונה או כתבו כמה מילים.',
+  empty: 'בחרו אייקון או כתבו כמה מילים.',
   failed: 'משהו לא הסתדר. נסו שוב.',
 };
+
+const tidy = (s: string) => s.replace(/\s+/g, ' ').trim();
 
 export function setupComposer() {
   const dialog = $<HTMLDialogElement>('idea-dialog');
   const form = $<HTMLFormElement>('idea-form');
   const text = $<HTMLTextAreaElement>('idea-text');
-  const nameList = $('name-list');
-  const addName = $<HTMLButtonElement>('add-name');
+  const name = $<HTMLInputElement>('idea-name');
+  const row = $('pic-row');
   const error = $('idea-error');
   const send = $<HTMLButtonElement>('idea-send');
   const step = $('idea-step');
   const done = $('idea-done');
-  const picked = new Map<string, string>(); // group → picture id
+  let picked: string | null = null;
 
-  // one row of picture buttons per group; one pick per group
-  const pickers = $('pickers');
-  for (const g of PICTURE_GROUPS) {
-    const fs = document.createElement('fieldset');
-    fs.className = 'picker';
-    const legend = document.createElement('legend');
-    legend.textContent = g.label;
-    fs.appendChild(legend);
-    const row = document.createElement('div');
-    row.className = 'pic-row';
-    for (const item of g.items) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'pic';
-      b.dataset.pic = item.id;
-      b.setAttribute('aria-pressed', 'false');
-      b.setAttribute('aria-label', item.label);
-      b.innerHTML = `${pictureSVG(item.id, 52)}<span class="pic-label"></span>`;
-      b.querySelector('.pic-label')!.textContent = item.label;
-      b.addEventListener('click', () => {
-        if (picked.get(g.id) === item.id) picked.delete(g.id);
-        else picked.set(g.id, item.id);
-        for (const other of row.querySelectorAll<HTMLButtonElement>('.pic')) {
-          other.setAttribute('aria-pressed', String(picked.get(g.id) === other.dataset.pic));
-        }
-        refresh();
-      });
-      row.appendChild(b);
-    }
-    fs.appendChild(row);
-    pickers.appendChild(fs);
+  text.maxLength = LIMITS.text;
+  name.maxLength = LIMITS.name;
+
+  // one pick; tapping the same icon again unpicks it
+  for (const item of PICTURES) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pic';
+    b.dataset.pic = item.id;
+    b.setAttribute('aria-pressed', 'false');
+    b.setAttribute('aria-label', item.label);
+    b.innerHTML = `${pictureSVG(item.id, 52)}<span class="pic-label"></span>`;
+    b.querySelector('.pic-label')!.textContent = item.label;
+    b.addEventListener('click', () => {
+      picked = picked === item.id ? null : item.id;
+      paintPicks();
+      refresh();
+    });
+    row.appendChild(b);
   }
 
-  function nameInput(): HTMLInputElement {
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'name';
-    input.maxLength = LIMITS.name;
-    input.autocomplete = 'off';
-    input.setAttribute('aria-labelledby', 'names-label');
-    input.placeholder = 'שם פרטי';
-    input.addEventListener('input', () => (error.textContent = ''));
-    return input;
+  function paintPicks() {
+    for (const b of row.querySelectorAll<HTMLButtonElement>('.pic')) b.setAttribute('aria-pressed', String(b.dataset.pic === picked));
   }
-
-  function names(): HTMLInputElement[] {
-    return [...nameList.querySelectorAll<HTMLInputElement>('input.name')];
-  }
-
-  addName.addEventListener('click', () => {
-    if (names().length >= LIMITS.names) return;
-    const input = nameInput();
-    nameList.appendChild(input);
-    input.focus();
-    addName.hidden = names().length >= LIMITS.names;
-  });
 
   function refresh() {
     error.textContent = '';
-    send.disabled = picked.size === 0 && text.value.trim().length < 2;
+    send.disabled = picked === null && tidy(text.value).length < 2;
   }
   text.addEventListener('input', refresh);
+  name.addEventListener('input', () => (error.textContent = ''));
 
   function reset() {
-    picked.clear();
-    for (const b of pickers.querySelectorAll('.pic')) b.setAttribute('aria-pressed', 'false');
+    picked = null;
+    paintPicks();
     text.value = '';
-    nameList.textContent = '';
-    nameList.appendChild(nameInput());
-    addName.hidden = false;
+    name.value = '';
     step.hidden = false;
     done.hidden = true;
     send.textContent = 'לשלוח';
@@ -105,17 +74,12 @@ export function setupComposer() {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const pics = PICTURE_GROUPS.map((g) => picked.get(g.id)).filter((x): x is string => Boolean(x));
-    const msgText = text.value.replace(/\s+/g, ' ').trim();
-    const signed = names().map((i) => i.value.replace(/\s+/g, ' ').trim()).filter(Boolean);
-    if (!pics.length && msgText.length < 2) return void (error.textContent = MESSAGES.empty);
-    const bad = names().find((i) => {
-      const v = i.value.replace(/\s+/g, ' ').trim();
-      return v && !NAME_RE.test(v);
-    });
-    if (bad) {
+    const msgText = tidy(text.value);
+    const sender = tidy(name.value);
+    if (picked === null && msgText.length < 2) return void (error.textContent = MESSAGES.empty);
+    if (sender && !NAME_RE.test(sender)) {
       error.textContent = MESSAGES.name;
-      bad.focus();
+      name.focus();
       return;
     }
     send.disabled = true;
@@ -125,7 +89,7 @@ export function setupComposer() {
       const r = await fetch('/api/ideas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'idea', id: anonId(), pics, text: msgText, names: signed }),
+        body: JSON.stringify({ type: 'idea', id: anonId(), pic: picked, text: msgText, name: sender }),
       });
       if (r.status === 201) {
         step.hidden = true;

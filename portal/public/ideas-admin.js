@@ -15,10 +15,10 @@
   }
   function card(idea, actions) {
     var c = el('div', 'idea');
-    if (idea.pics.length) c.appendChild(el('div', 'meta', 'Pictures: ' + idea.pics.map(function (p) { return PICS[p] || p; }).join(' + ')));
+    if (idea.pic) c.appendChild(el('div', 'meta', 'Icon: ' + (PICS[idea.pic] || idea.pic)));
     if (idea.text) c.appendChild(el('div', 'text', idea.text));
     var meta = [];
-    meta.push(idea.names.length ? 'Names: ' + idea.names.join(', ') : 'No names');
+    meta.push(idea.name ? 'From: ' + idea.name : 'No name');
     if (idea.t) meta.push(new Date(idea.t).toLocaleString());
     if (idea.hearts != null) meta.push('♥ ' + idea.hearts);
     c.appendChild(el('div', 'meta', meta.join(' · ')));
