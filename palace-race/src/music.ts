@@ -2,7 +2,7 @@
 // in a warm room:
 // - a pad: slow chords (I–vi–IV–V and friends) from softly detuned voices through a lowpass, fading in and out;
 // - a soft bass note under each chord;
-// - in the races, a quicker tempo (116–128 BPM) with a bouncing bass, a running arpeggio and a soft galloping beat;
+// - in the races, a quicker tempo (138–152 BPM) with a bouncing bass, a running arpeggio and a soft galloping beat;
 // - a melody in short phrases (a motif, its echo, an answer and a resting note) that follows the chords, played on
 //   a music box or a kalimba (Karplus–Strong plucks rendered once into buffers) or on soft FM electric-piano bells,
 //   with small timing and loudness differences so it sounds played by a person;
@@ -42,12 +42,12 @@ const vi = [-3, 0, 4];
 const MOODS: Record<TrackId | 'menu', Mood> = {
   menu: { key: 67, bpm: 72, chords: [I, vi, IV, V], scale: MAJ_P, lead: 'musicbox', answer: 'epiano', air: null, bright: 900 },
   // the races are quicker and bouncier (owner's request), still soft: a galloping beat under the same instruments
-  forest: { key: 65, bpm: 120, chords: [I, IV, vi, V], scale: MAJ_P, lead: 'kalimba', answer: 'musicbox', air: 'wind', bright: 1100, drive: true },
-  meadow: { key: 67, bpm: 128, chords: [I, V, vi, IV], scale: MAJ_P, lead: 'kalimba', answer: 'epiano', air: 'breeze', bright: 1300, drive: true },
-  snow: { key: 62, bpm: 116, chords: [I, vi, ii, V], scale: MAJ_P, lead: 'musicbox', answer: 'epiano', air: 'snow', bright: 1000, drive: true },
+  forest: { key: 65, bpm: 144, chords: [I, IV, vi, V], scale: MAJ_P, lead: 'kalimba', answer: 'musicbox', air: 'wind', bright: 1100, drive: true },
+  meadow: { key: 67, bpm: 152, chords: [I, V, vi, IV], scale: MAJ_P, lead: 'kalimba', answer: 'epiano', air: 'breeze', bright: 1300, drive: true },
+  snow: { key: 62, bpm: 138, chords: [I, vi, ii, V], scale: MAJ_P, lead: 'musicbox', answer: 'epiano', air: 'snow', bright: 1000, drive: true },
   // a warm minor colour at sunset: i–VI–III–VII
-  canyon: { key: 64, bpm: 120, chords: [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]], scale: MIN_P, lead: 'kalimba', answer: 'epiano', air: 'warm', bright: 1000, drive: true },
-  garden: { key: 63, bpm: 124, chords: [I, iii, IV, V], scale: MAJ_P, lead: 'epiano', answer: 'musicbox', air: 'fountain', bright: 1100, drive: true },
+  canyon: { key: 64, bpm: 144, chords: [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]], scale: MIN_P, lead: 'kalimba', answer: 'epiano', air: 'warm', bright: 1000, drive: true },
+  garden: { key: 63, bpm: 148, chords: [I, iii, IV, V], scale: MAJ_P, lead: 'epiano', answer: 'musicbox', air: 'fountain', bright: 1100, drive: true },
 };
 
 const hz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
