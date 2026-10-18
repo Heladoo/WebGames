@@ -368,23 +368,35 @@ function helmet(k: Kid, H: (x: number, y: number) => P, id: HelmetId, defs: stri
   defs.push(`<clipPath id="${clip}"><path d="${blob(dome, 0.9)}"/></clipPath>`);
   // things that stand on top of the helmet are drawn first, so the dome covers their feet
   let behind = '';
+  let horn = ''; // the unicorn's horn stands in front of the dome, on its crown
   const up = (x: number, y: number) => H(r * x, r * y);
   if (id === 'unicorn') {
-    // pink ears and a golden spiral horn
-    for (const [x, rot] of [[-0.22, -12], [0.12, 8]] as const) {
-      const b = up(x, -1.18);
-      behind += `<path d="M${f(b.x - 6)} ${f(b.y + 4)} L${f(b.x + rot * 0.3)} ${f(b.y - 17)} L${f(b.x + 6)} ${f(b.y + 4)}Z" fill="#fff6fb" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M${f(b.x - 3)} ${f(b.y + 2)} L${f(b.x + rot * 0.25)} ${f(b.y - 11)} L${f(b.x + 3)} ${f(b.y + 2)}Z" fill="#ffa8cc"/>`;
+    // pink ears, and a golden spiral horn: a curved, tapering cone with a collar, twisting bands, a shine and a sparkle
+    for (const [x, rot] of [[-0.3, -12], [0.04, 6]] as const) {
+      const b = up(x, -1.2);
+      behind += `<path d="M${f(b.x - 7)} ${f(b.y + 5)} Q${f(b.x - 6 + rot * 0.2)} ${f(b.y - 12)} ${f(b.x + rot * 0.4)} ${f(b.y - 20)} Q${f(b.x + 6)} ${f(b.y - 10)} ${f(b.x + 7)} ${f(b.y + 5)}Z" fill="#fff6fb" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M${f(b.x - 3.4)} ${f(b.y + 3)} Q${f(b.x - 3 + rot * 0.15)} ${f(b.y - 8)} ${f(b.x + rot * 0.3)} ${f(b.y - 14)} Q${f(b.x + 3)} ${f(b.y - 7)} ${f(b.x + 3.4)} ${f(b.y + 3)}Z" fill="#ffa8cc"/>`;
     }
-    const b0 = up(0.36, -1.2);
-    const tip = up(0.7, -2.4);
-    const nx = (tip.y - b0.y) * 0.24;
-    const ny = (b0.x - tip.x) * 0.24;
-    behind += `<path d="M${f(b0.x - nx)} ${f(b0.y - ny)} L${f(tip.x)} ${f(tip.y)} L${f(b0.x + nx)} ${f(b0.y + ny)}Z" fill="#ffd84a" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`;
-    for (const t of [0.3, 0.52, 0.74]) {
-      const a = { x: b0.x + (tip.x - b0.x) * t, y: b0.y + (tip.y - b0.y) * t };
-      const wv = 1 - t;
-      behind += `<path d="M${f(a.x - nx * wv)} ${f(a.y - ny * wv + 3)} L${f(a.x + nx * wv)} ${f(a.y + ny * wv - 3)}" stroke="#e8a21c" stroke-width="2" stroke-linecap="round"/>`;
+    const b0 = up(0.3, -1.2);
+    const axis = up(0.3, -2.2);
+    const lean = 12; // leans a little forward, like a unicorn's horn
+    const ang = (Math.atan2(axis.x - b0.x, b0.y - axis.y) * 180) / Math.PI + lean;
+    const L = 46;
+    const W = 8.5;
+    const hid = `${uid}hn`;
+    defs.push(linG(hid, [[0, '#fff3b0'], [0.45, '#ffd84a'], [1, '#e8a21c']], 0, 0, 1, 0));
+    defs.push(`<clipPath id="${hid}c"><path d="M${-W} 2 C${-W * 0.9} ${-L * 0.35} ${-W * 0.35} ${-L * 0.8} 0.6 ${-L} C${W * 0.5} ${-L * 0.72} ${W * 0.95} ${-L * 0.3} ${W} 2Z"/></clipPath>`);
+    let bands = '';
+    for (let i = 0; i < 5; i++) {
+      const y = -4 - i * 8.4;
+      const w = W * (1 - (i * 8.4) / L) * 1.1;
+      bands += `<path d="M${-w - 2} ${y + 4} Q0 ${y - 2} ${w + 2} ${y - 7} L${w + 2} ${y - 3} Q0 ${y + 3} ${-w - 2} ${y + 8}Z" fill="#d68a14" opacity=".75"/>`;
     }
+    horn = `<g transform="translate(${f(b0.x)} ${f(b0.y + 5)}) rotate(${f(ang)})">` +
+      `<path d="M${-W} 2 C${-W * 0.9} ${-L * 0.35} ${-W * 0.35} ${-L * 0.8} 0.6 ${-L} C${W * 0.5} ${-L * 0.72} ${W * 0.95} ${-L * 0.3} ${W} 2Z" fill="url(#${hid})"/>` +
+      `<g clip-path="url(#${hid}c)">${bands}<path d="M${-W * 0.45} 0 C${-W * 0.4} ${-L * 0.35} ${-W * 0.1} ${-L * 0.7} 0 ${-L * 0.92}" stroke="#fffbe0" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".85"/></g>` +
+      `<path d="M${-W} 2 C${-W * 0.9} ${-L * 0.35} ${-W * 0.35} ${-L * 0.8} 0.6 ${-L} C${W * 0.5} ${-L * 0.72} ${W * 0.95} ${-L * 0.3} ${W} 2Z" fill="none" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>` +
+      `<ellipse cx="0" cy="2" rx="${W + 1.5}" ry="3.4" fill="#ffcf3a" stroke="${INK}" stroke-width="1.8"/>` +
+      `<path d="M3 ${-L - 6} l1.2 3.4 3.4 1.2 -3.4 1.2 -1.2 3.4 -1.2 -3.4 -3.4 -1.2 3.4 -1.2Z" fill="#fff" stroke="#e8a21c" stroke-width="1"/></g>`;
   } else if (id === 'knight') {
     // a red plume sweeping back from the crest
     const a = up(0.0, -1.28);
@@ -441,6 +453,7 @@ function helmet(k: Kid, H: (x: number, y: number) => P, id: HelmetId, defs: stri
   }
   s += `<g clip-path="url(#${clip})">${deco}<path d="${curve([H(-r * 0.7, -r * 0.9), H(-r * 0.1, -r * 1.2), H(r * 0.5, -r * 1.06)])}" stroke="#fff" stroke-width="4" fill="none" opacity=".55" stroke-linecap="round"/></g>`;
   s += `<path d="${blob(dome, 0.9)}" fill="none" stroke="${INK}" stroke-width="2"/>`;
+  s += horn;
   // chin strap: down behind the ear and along the jaw, clear of the face
   s += `<path d="${curve([H(-r * 0.42, -r * 0.3), H(-r * 0.4, r * 0.42), H(-r * 0.06, r * 0.9)])}" stroke="${shade(base, -0.35)}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
   return s;

@@ -6,7 +6,7 @@ It is built to be **stress free** and **playable without reading**: every button
 
 ## How to play
 
-1. **Choose:** the game opens on the home screen (the map, with the logo above the road of tracks). Tap a track, then an animal and a rider (all pictures). Every other screen has a house button or a back button that returns here.
+1. **Choose:** the game opens on the home screen (the map: the palace and a quiet flower meadow in the background, the logo over the palace at the right on wide screens, and the road of tracks). Tap a track, then an animal and a rider (all pictures). Every other screen has a house button or a back button that returns here.
 2. **Race:** the animal runs by itself.
    - **Controls:** ⬆ jump, ⬇ duck, ↖ and ↘ move to the far or near lane. On a keyboard: the arrows (or W A S D, Space to jump), and Esc to pause. On a touch screen: the big round buttons, or swipe on the race.
    - **Hints:** a glowing bubble above each obstacle shows which button to press. In the first two races everything slows down before the first obstacles and a hand points at the button.
@@ -41,7 +41,7 @@ npm test         # art, simulation and game-flow checks (Playwright + Chromium)
 - `?debug=wardrobe`: helmets, hairstyles and saddles in the race poses.
 - `?debug=hair`: every hairstyle on every child (`&helmet=stars`).
 - `?debug=helmets`: every helmet on every child.
-- `?debug=meadow`: the home screen's sky and flower meadow.
+- `?debug=meadow`: the home screen's background.
 - `?debug=obstacles`: obstacles per track, and the candies.
 - `?debug=track&track=forest`: one track's painted layers.
 - `?debug=podium`: the end-of-race picture (`&frame=1` for the other half of the clap).

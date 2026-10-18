@@ -6,7 +6,7 @@
 
 **The game is playable.** The owner approved the art; stage 2 built the game around it:
 - **Flow:** the home screen (the map, with the logo; there is no separate title screen) → animal → rider → race → ceremony with coins and medals. The shop returns to the home screen with a back arrow.
-- **Third round** (done): no title screen (the map is home, with the logo), a painted flower meadow, a shop sorted cheapest first with new helmets (unicorn, knight, racing, dinosaur), a back button instead of the check mark, and help mode off by default.
+- **Third round** (done): no title screen (the map is home, with the logo over the palace), a quiet painted flower meadow, a shop sorted cheapest first with new helmets (unicorn, knight, racing, dinosaur), a back button instead of the check mark, and help mode off by default.
 - **Second round of owner feedback** (done): medals on the chest, real clapping, coins rising into the total, no "again" button, tooltips, candy shadows, medal progression, shared candies, the palace on its own hill, more hairstyles, new hair and saddle icons, and new music.
 - **Also:** a shop, a grown-ups panel, sound and music, and anonymous stats.
 
@@ -44,7 +44,7 @@
   - Check `?debug=faces`. A test keeps every eye at least 4 px in the far lane of a 1280 × 720 screen (`EYE_R` in animals.ts, `eyeR` on the anchors).
 - **Children** (`art/riders.ts`): `maya`, `tamar` (girls), `yoav`, `ari` (boys). Big round heads in a 3/4 turn: both eyes, the far one narrower.
   - **Poses:** `ride0-2`, `jump`, `duck`, `bump`, `wave`, `stand`, `clap0/1`, `trophy`.
-  - **Items:** helmets (`basic` in the child's colour, `flowers`, `stars`, `racer` with stripes and flames, `rainbow`, `knight` with a red plume, `dino` with orange spikes, `unicorn` with a golden horn, ears and a rainbow mane, `crown`), hairstyles and saddles (in `runner.ts`). Things that stand on top of a helmet are drawn *behind* the dome so it covers their feet. Check `?debug=helmets`.
+  - **Items:** helmets (`basic` in the child's colour, `flowers`, `stars`, `racer` with stripes and flames, `rainbow`, `knight` with a red plume, `dino` with orange spikes, `unicorn` with pink ears, a rainbow mane and a golden spiral horn (a curved, tapering cone with a collar, twisting bands, a shine and a sparkle, drawn in front of the dome on its crown), `crown`), hairstyles and saddles (in `runner.ts`). The ears, plume and spikes are drawn *behind* the dome so it covers their feet. Check `?debug=helmets`.
   - **Hairstyles** (`hair`, replacing the hair at the back): `spikes` with blue tips, `curls`, `surfer` (long locks with a sunny streak and a side fringe that stays clear of the eyes), `ponytail`, and braids in `pink`, `gold` and `rainbow` (`BRAID_STYLES`; opponents that are boys never get braids). The owner asked for styles that suit boys too. Check `?debug=hair`.
   - **Clapping:** `clap0` (hands apart) and `clap1` (hands together, with little clap lines) place the hands with two-joint IK (`reach` in the pose, `reachAngles`).
   - **Medals:** `drawKid(…, medal)` hangs a medal on the chest: the ribbon goes behind the chin, the disc in front of the arm, and its number is turned back for mirrored children.
@@ -55,7 +55,7 @@
   - `far`, `mid`, `ground`, `front`: the scrolling layers (`PARALLAX`).
   - Lanes: hooves touch at `LANE_Y` = 655 / 745 / 835 (far, middle, near), and runners are drawn at `LANE_SCALE`.
   - **Seamless tiles:** every scrolling layer is a tile drawn three times one tile apart (`<use>` in `trackLayer`), so anything that crosses an edge comes back on the other side. Skylines are `periodic()` sums of sines.
-- **Meadow** (`art/meadow.ts`, `?debug=meadow`): four rolling hills with light on their crests, tufts of grass, twelve patches of flowers (daisy, tulip, poppy, bluebell, buttercup, cosmos) each with a shadow, stem and leaves, bigger the nearer and drawn back to front, blossoming bushes at the sides and butterflies. The first version scattered dots; the owner said it looked bad.
+- **Meadow** (`art/meadow.ts`, `?debug=meadow`): a quiet backdrop. Low hills in nearly the palace hill's greens, a few tufts of grass, eight loose groups of three to five small flowers (daisy, tulip, poppy, cosmos, buttercup; each with a shadow, stem and leaves, drawn back to front), two round bushes with a few blossoms at the sides, and two butterflies. History: the first version scattered dots (the owner said it looked bad), the second was a dense carpet of flowers (too busy), so this one keeps the look with far fewer, smaller details.
 - **Icons** (`art/icons.ts`): `hair` is a happy face with a ponytail and a bow, `saddle` a riding saddle from the side (blanket, seat, flap and stirrup); `medal`, `medalEmpty` and `unlock` are for the medal progression.
 - **Obstacles and candies** (`art/props.ts`): three per track (`TRACK_OBSTACLES`), each a `jump` or a `duck` obstacle.
   - **Overhead obstacles** (`duck`) hang with their bottom at `DUCK_GAP`. Their far post or trunk is in `back` (drawn behind the runner), the rest in `svg`.
@@ -71,10 +71,10 @@
   - Purple and blue (`PALACE_LOOK`) conical roofs with fish-scale shingles, gold rings and finials, and dormers.
   - Eleven spires and turrets, arched blue-glass windows in gold frames, stone courses and battlements.
   - A crown and balcony on the keep, a golden gate with lanterns, pennants, and a golden glow with sparkles.
-  - **It always stands on ground:** its own grassy hill with a stone foundation and a path from the gate is part of the drawing (`grass` in the look: snowy on the snow track, sandy in the canyon, `palaceGrass`). The home screen has no big castle (the logo has its own): `mapPic` is the garden sky without the palace (`skyWithoutPalace`) plus `art/meadow.ts`.
+  - **It always stands on ground:** its own grassy hill with a stone foundation and a path from the gate is part of the drawing (`grass` in the look: snowy on the snow track, sandy in the canyon, `palaceGrass`). The home screen keeps the palace in the background (owner's request, after a first version without it): `mapPic` is the garden sky with the palace plus the quiet meadow of `art/meadow.ts`, whose low hills hide the bottom of the palace's hill.
   - Used in every track's sky and in the ceremony; `haze` mixes it toward the sky for distance.
 - **The owner's pictures** (not drawn in code; only the processed results are committed, in `public/`). The processing was done once with a Python/PIL script outside the repo.
-  - `logo.webp` (900 px) and `logo-small.webp` (360 px) come from the logo on black. A cutout would eat into the logo's own dark outlines, so the black was lifted to a deep indigo night sky and the picture given soft, feathered edges that follow its shape. It is shown above the tracks on the home screen (`img.map-logo`) and is drawn on the link preview.
+  - `logo.webp` (900 px) and `logo-small.webp` (360 px) come from the logo on black. A cutout would eat into the logo's own dark outlines, so the black was lifted to a deep indigo night sky and the picture given soft, feathered edges that follow its shape. It is shown on the home screen over the palace (`img.map-logo`): at the right on wide screens (the palace is in the middle), at the top centre on tall ones, and it is drawn on the link preview.
   - `icon-512.png`, `icon-192.png` and `apple-touch-icon.png` come from the logo in its frame: the black corners outside the rounded frame were filled with the frame's light-blue rim, since iOS turns transparent corners black.
   - `favicon.png` is a round crop of the unicorn-and-palace picture, with transparent corners. `icon-maskable-512.png` is that picture whole, because its full purple background survives round masks.
 - **Painting:** `art/sprite.ts` `paint()` turns an SVG string into a canvas (`raster.ts`, copied from bead-box). Characters are drawn in local coordinates with the ground at y = 0, inside `RUNNER_BOX`. Debug sheets paint each piece into its own canvas, so gradient ids never collide.
@@ -105,7 +105,7 @@ All of them set `window.__ready`; screenshot after it.
 - every sheet renders without errors;
 - every eye is big enough to read at game size;
 - every button has an icon and a label;
-- the home screen's logo, five track cards and top bar fit and do not overlap at four sizes;
+- the home screen's logo (right on wide screens, top centre on tall ones), five track cards and top bar fit and do not overlap at five sizes;
 - the HUD stays on screen without overlaps at a landscape phone, a tablet and a portrait phone.
 
 When art changes, fix the art until these pass; don't loosen a rule.

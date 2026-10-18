@@ -4,7 +4,7 @@
 import { drawAnimal, type AnimalId, type PoseId } from './art/animals';
 import { drawKid, HIP_H, type KidId, type Outfit, type RiderPose } from './art/riders';
 import { saddle } from './art/runner';
-import { LAYERS, STAGE_H, STAGE_W, skyWithoutPalace, trackLayer, type TrackId } from './art/tracks';
+import { LAYERS, STAGE_H, STAGE_W, trackLayer, type TrackId } from './art/tracks';
 import { meadow } from './art/meadow';
 import { paint } from './art/sprite';
 import { ICONS } from './art/icons';
@@ -71,10 +71,10 @@ export async function trackPic(track: TrackId, cssW: number) {
   return copy(pic, cssW);
 }
 
-/** The home screen's background: a day sky and a meadow full of flowers (the logo brings its own castle). */
+/** The home screen's background: the garden sky with the palace, and a soft flower meadow in front of it. */
 export async function mapPic(cssW: number) {
   const k = (cssW / STAGE_W) * Math.min(1.5, dpr());
-  const pic = await once(`m:${k.toFixed(2)}`, () => paint(skyWithoutPalace('garden') + meadow(), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, k));
+  const pic = await once(`m:${k.toFixed(2)}`, () => paint(trackLayer('garden', 'sky') + meadow(), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, k));
   return copy(pic, cssW);
 }
 

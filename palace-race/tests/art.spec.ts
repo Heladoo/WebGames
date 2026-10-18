@@ -141,23 +141,30 @@ for (const size of [{ width: 844, height: 390 }, { width: 1024, height: 768 }, {
   });
 }
 
-for (const size of [{ width: 844, height: 390 }, { width: 1024, height: 768 }, { width: 390, height: 844 }, { width: 667, height: 375 }]) {
+for (const size of [{ width: 844, height: 390 }, { width: 1024, height: 768 }, { width: 1440, height: 800 }, { width: 390, height: 844 }, { width: 667, height: 375 }]) {
   test(`the home screen's logo, tracks and buttons fit and do not overlap at ${size.width}x${size.height}`, async ({ page }) => {
     await page.setViewportSize(size);
     await open(page, '/');
-    const logo = await page.locator('.map-logo').evaluate((e) => e.getBoundingClientRect().toJSON() as DOMRect);
-    const bar = await page.locator('.topbar').evaluate((e) => e.getBoundingClientRect().toJSON() as DOMRect);
-    const cards = await page.locator('.track-card').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect));
+    const box = (sel: string) => page.locator(sel).evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect));
+    const [logo] = await box('.map-logo');
+    const buttons = await box('.topbar button, .topbar .pill');
+    const cards = await box('.track-card');
     expect(logo.left).toBeGreaterThanOrEqual(0);
+    expect(logo.top).toBeGreaterThanOrEqual(0);
     expect(logo.right).toBeLessThanOrEqual(size.width + 0.5);
-    expect(logo.top).toBeGreaterThanOrEqual(bar.bottom - 1);
     expect(logo.width).toBeGreaterThan(100);
+    const overlap = (a: DOMRect, b: DOMRect) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+    for (const b of buttons) expect(overlap(logo, b), 'the logo never covers a top-bar button').toBe(false);
     expect(cards.length).toBe(5);
     for (const c of cards) {
-      expect(c.top).toBeGreaterThanOrEqual(logo.bottom - 1);
+      expect(overlap(logo, c), 'the logo never covers a track card').toBe(false);
       expect(c.bottom).toBeLessThanOrEqual(size.height + 0.5);
       expect(c.left).toBeGreaterThanOrEqual(-0.5);
       expect(c.right).toBeLessThanOrEqual(size.width + 0.5);
     }
+    // on wide screens the logo stands at the right, over the palace's side; on tall ones it is centred at the top
+    const cx = (logo.left + logo.right) / 2;
+    if (size.width > size.height) expect(cx).toBeGreaterThan(size.width * 0.68);
+    else expect(Math.abs(cx - size.width / 2)).toBeLessThan(size.width * 0.1);
   });
 }

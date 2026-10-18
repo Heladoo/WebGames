@@ -262,9 +262,11 @@ button:focus-visible { outline: 3px solid #ffb43a; outline-offset: 3px; }
 .tip::after { content: ''; position: absolute; left: calc(var(--arrow, 50%) - 7px); top: 100%; border: 7px solid transparent; border-top-color: #4a2a4a; }
 .tip.below::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: #4a2a4a; }
 @media (prefers-reduced-motion: reduce) { .tip { transition: none; transform: none; } }
-/* the home screen: the logo above the road of tracks */
-.map-logo { align-self: center; flex: 0 0 auto; height: clamp(84px, 30vh, 330px); width: auto; max-width: 70vw; object-fit: contain; z-index: 1; filter: drop-shadow(0 6px 12px rgba(60, 30, 90, 0.3)); user-select: none; -webkit-user-drag: none; }
-@media (max-aspect-ratio: 1/1) { .map-logo { height: min(24vh, 46vw); } }
+/* the home screen: the logo over the palace. On wide screens it stands at the right (the palace is in the middle);
+   on tall ones it sits at the top, above the road of tracks */
+.map-logo { z-index: 1; width: auto; object-fit: contain; filter: drop-shadow(0 6px 12px rgba(60, 30, 90, 0.3)); user-select: none; -webkit-user-drag: none; }
+@media (min-aspect-ratio: 1/1) { .map-logo { position: absolute; right: max(18px, 3vw); top: max(8px, 2vh); height: clamp(90px, 38vh, 380px); max-width: 34vw; } }
+@media (max-aspect-ratio: 1/1) { .map-logo { align-self: center; flex: 0 0 auto; height: min(24vh, 46vw); } }
 /* the back button sits over the corner of the shop, so the list leaves room under it */
 .shop .items { padding-bottom: 14px; }
 @media (max-height: 500px) { .shop .items { padding-bottom: 90px; } }

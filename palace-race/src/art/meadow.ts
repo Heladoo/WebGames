@@ -1,7 +1,7 @@
-// The meadow at the bottom of the home screen: rolling hills with soft light on their crests, tufts of grass, and
-// patches of flowers that stand on the ground (each with a stem, leaves and a shadow, bigger the nearer it is, drawn
-// back to front), a few round blossoming bushes at the sides, and butterflies. It is painted once, seeded, on the
-// 1600 x 900 stage; everything above y = 560 is left to the sky.
+// The meadow at the bottom of the home screen, a quiet backdrop in front of the palace's hill: low rolling hills,
+// a few tufts of grass, small loose groups of flowers that stand on the ground (each with a stem, leaves and a
+// shadow, drawn back to front), two round bushes at the sides and two butterflies. Painted once, seeded, on the
+// 1600 x 900 stage; everything above y = 670 is left to the sky and the palace.
 
 import { rng, f1, lg, butterfly } from './paint';
 import { mix, shade } from './geom';
@@ -98,12 +98,12 @@ function flower(x: number, y: number, s: number, kind: Bloom, petal: string, r: 
 }
 
 /** A round bush covered in blossoms, to frame the meadow at the sides. */
-function bush(x: number, y: number, s: number, r: () => number, bloom: string): string {
+function bush(x: number, y: number, s: number, r: () => number, bloom: string, blossoms = 16): string {
   let g = `<ellipse cx="${f1(x)}" cy="${f1(y + 4 * s)}" rx="${f1(120 * s)}" ry="${f1(16 * s)}" fill="#2f6a2a" opacity=".3"/>`;
   const blobs = [[-70, -26, 52], [-26, -50, 60], [30, -46, 58], [74, -22, 50], [0, -22, 66], [-46, -8, 46], [48, -6, 46]];
   for (const [dx, dy, rr] of blobs) g += `<circle cx="${f1(x + dx * s)}" cy="${f1(y + dy * s)}" r="${f1(rr * s)}" fill="${mix('#3f9a4a', '#2f7a3a', r() * 0.6)}"/>`;
   for (const [dx, dy, rr] of blobs) g += `<ellipse cx="${f1(x + (dx - rr * 0.2) * s)}" cy="${f1(y + (dy - rr * 0.35) * s)}" rx="${f1(rr * 0.6 * s)}" ry="${f1(rr * 0.4 * s)}" fill="#7cc65e" opacity=".55"/>`;
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < blossoms; i++) {
     const a = r() * Math.PI * 2;
     const d = Math.sqrt(r()) * 70 * s;
     const bx = x + Math.cos(a) * d * 1.3;
@@ -115,50 +115,48 @@ function bush(x: number, y: number, s: number, r: () => number, bloom: string): 
 
 export function meadow(): string {
   const r = rng(2025);
-  const far = hill(606, 26, 3, '#c4e6c0', '#9fd49a', 'mfar', 'b2');
-  const h1 = hill(664, 36, 5, '#a6dc78', '#84c85c', 'mh1');
-  const h2 = hill(740, 32, 8, '#78c455', '#5cae4a', 'mh2');
-  const h3 = hill(818, 26, 13, '#5cae4a', '#459a40', 'mh3');
-  let s = far.svg + h1.svg + h2.svg + h3.svg;
+  // low, quiet hills in front of the palace's own hill, in nearly the same greens
+  const base = hill(662, 8, 3, '#76c357', '#62b24e', 'mfar');
+  const h1 = hill(712, 22, 5, '#6ebd52', '#5aa94a', 'mh1');
+  const h2 = hill(786, 22, 8, '#5aa94a', '#4c9d45', 'mh2');
+  const h3 = hill(850, 16, 13, '#4c9d45', '#41933f', 'mh3');
+  let s = base.svg + h1.svg + h2.svg + h3.svg;
   // a soft light on the crests
-  for (const h of [h1, h2, h3]) {
+  for (const h of [h1, h2]) {
     let d = `M0 ${f1(h.crest(0) + 3)}`;
     for (let x = 20; x <= 1600; x += 20) d += `L${x} ${f1(h.crest(x) + 3)}`;
-    s += `<path d="${d}" stroke="#d8f4a8" stroke-width="4" fill="none" opacity=".55" stroke-linecap="round"/>`;
+    s += `<path d="${d}" stroke="#c8ee98" stroke-width="3" fill="none" opacity=".4" stroke-linecap="round"/>`;
   }
-  // tufts of grass all over, bigger nearer
-  for (let i = 0; i < 150; i++) {
+  // a few small tufts of grass
+  for (let i = 0; i < 40; i++) {
     const x = r() * 1600;
-    const y = 640 + Math.pow(r(), 0.8) * 250;
-    if (y < Math.min(h1.crest(x), far.crest(x)) + 14) continue;
-    s += tuft(x, y, 0.5 + ((y - 640) / 260) * 1.1, r, '#4a9a42', '#9ad46a');
+    const y = 730 + r() * 160;
+    s += tuft(x, y, 0.5 + ((y - 720) / 180) * 0.5, r, '#468f40', '#86c860');
   }
-  // the flowers: patches, drawn back to front
-  const top = (x: number) => Math.min(far.crest(x), h1.crest(x)) + 22;
-  const kinds: Bloom[] = ['daisy', 'tulip', 'poppy', 'bell', 'butter', 'cosmos'];
+  // sparse, small flowers in a few loose groups, drawn back to front
+  const kinds: Bloom[] = ['daisy', 'tulip', 'poppy', 'cosmos', 'butter'];
   const list: { x: number; y: number; k: Bloom; c: string }[] = [];
-  const patches = 12;
+  const patches = 8;
   for (let p = 0; p < patches; p++) {
-    const cx = 60 + ((p + r() * 0.8) / patches) * 1480;
-    const cy = 690 + r() * 170;
-    const mainKind = kinds[Math.floor(r() * kinds.length)];
-    const n = 6 + Math.floor(r() * 7);
+    const cx = 110 + ((p + 0.2 + r() * 0.6) / patches) * 1380;
+    const cy = 760 + r() * 100;
+    const main = kinds[Math.floor(r() * kinds.length)];
+    const n = 3 + Math.floor(r() * 3);
     for (let i = 0; i < n; i++) {
-      const x = cx + (r() - 0.5) * 230;
-      const y = Math.max(top(x), Math.min(892, cy + (r() - 0.5) * 80));
-      const k = r() < 0.7 ? mainKind : kinds[Math.floor(r() * kinds.length)];
+      const x = cx + (r() - 0.5) * 190;
+      const y = Math.max(h1.crest(x) + 24, Math.min(886, cy + (r() - 0.5) * 70));
+      const k = r() < 0.75 ? main : kinds[Math.floor(r() * kinds.length)];
       list.push({ x, y, k, c: PETALS[k][Math.floor(r() * PETALS[k].length)] });
     }
   }
   list.sort((a, b) => a.y - b.y);
   for (const fl of list) {
-    const sc = 0.5 + ((fl.y - 640) / 260) * 1.05;
-    s += tuft(fl.x, fl.y, sc * 0.8, r, '#3f8a3e', '#8acb5e');
+    const sc = 0.46 + ((fl.y - 730) / 160) * 0.34;
     s += flower(fl.x, fl.y, sc, fl.k, fl.c, r);
   }
-  // blossoming bushes frame the sides
-  s += bush(70, 790, 1.15, r, '#ff9ec8') + bush(1540, 800, 1.2, r, '#fff4fa');
-  // butterflies over the flowers
-  s += butterfly(430, 650, 0.9, -18, '#ffb0d8', '#e8609c', 'mbf1') + butterfly(1180, 690, 1.1, 14, '#ffe27a', '#f0a030', 'mbf2') + butterfly(860, 760, 0.8, -8, '#b8a0f8', '#7a5ad0', 'mbf3');
+  // two plain round bushes frame the sides, with only a few blossoms
+  s += bush(60, 800, 0.9, r, '#ff9ec8', 6) + bush(1550, 810, 0.95, r, '#fff4fa', 6);
+  // two small butterflies
+  s += butterfly(520, 740, 0.7, -18, '#ffb0d8', '#e8609c', 'mbf1') + butterfly(1130, 770, 0.8, 14, '#ffe27a', '#f0a030', 'mbf2');
   return s;
 }

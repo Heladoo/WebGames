@@ -19,7 +19,7 @@ import { meadow } from './art/meadow';
 import { palace } from './art/palace';
 import { ICONS } from './art/icons';
 import { CANDIES, TRACK_OBSTACLES, candy, obstacle } from './art/props';
-import { LANE_SCALE, LANE_Y, LAYERS, PARALLAX, STAGE_H, STAGE_W, skyWithoutPalace, trackLayer, type TrackId } from './art/tracks';
+import { LANE_SCALE, LANE_Y, LAYERS, PARALLAX, STAGE_H, STAGE_W, trackLayer, type TrackId } from './art/tracks';
 import { drawKid, HAIRS, HELMETS, KIDS, PLAIN, RIDER_POSES, HIP_H, type Outfit } from './art/riders';
 
 function page(html: string) {
@@ -286,7 +286,7 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
   }
   if (kind === 'meadow') {
     // the home screen's background on its own (?debug=meadow)
-    const pic = await paint(skyWithoutPalace('garden') + meadow(), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, Number(params.get('scale')) || 1);
+    const pic = await paint(trackLayer('garden', 'sky') + meadow(), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, Number(params.get('scale')) || 1);
     page('').appendChild(pic);
     w.__ready = true;
     return true;
