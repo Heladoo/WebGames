@@ -2,9 +2,10 @@ import { expect, test } from '@playwright/test';
 
 // The race is simulated (no drawing) hundreds of times with different kinds of players. These are the promises
 // of a stress-free race: it always ends in about a minute, a stumble never stops anyone, a lane is always free,
-// everyone earns coins, a child who never presses anything still finishes close, and playing well pays off.
+// everyone earns coins, medals (which open tracks) come often, a child who never presses anything still finishes
+// close, and playing well pays off.
 
-interface Report { races: number; winRate: number; avgPlace: number; worstPlace: number; minCoins: number; maxTime: number; minTime: number; maxGap: number; minSpeed: number; obstacles: number; blockedLanes: number }
+interface Report { races: number; winRate: number; medalRate: number; avgPlace: number; worstPlace: number; minCoins: number; maxTime: number; minTime: number; maxGap: number; minSpeed: number; obstacles: number; blockedLanes: number }
 
 test('races are fair, close and stress free on every track', async ({ page }) => {
   test.setTimeout(120_000);
@@ -12,6 +13,7 @@ test('races are fair, close and stress free on every track', async ({ page }) =>
   await page.waitForFunction(() => (window as unknown as { __ready?: boolean }).__ready === true, null, { timeout: 110_000 });
   const rep = await page.evaluate(() => (window as unknown as { __sim: Record<string, Report> }).__sim);
   expect(await page.evaluate(() => (window as unknown as { __det: boolean }).__det), 'deterministic').toBe(true);
+  expect(await page.evaluate(() => (window as unknown as { __shared: number }).__shared), 'an opponent never takes a candy away from the child').toBeGreaterThan(0);
   for (const t of ['forest', 'meadow', 'snow', 'canyon', 'garden']) {
     for (const p of ['perfect', 'average', 'idle', 'idleHelp']) {
       const r = rep[`${t}:${p}`];
@@ -28,5 +30,9 @@ test('races are fair, close and stress free on every track', async ({ page }) =>
     expect(avg, `${t}: an average child wins often but not always`).toBeLessThanOrEqual(0.8);
     expect(rep[`${t}:perfect`].winRate, `${t}: playing well pays off`).toBeGreaterThanOrEqual(avg - 0.05);
     expect(rep[`${t}:idleHelp`].avgPlace, `${t}: help mode helps`).toBeLessThanOrEqual(rep[`${t}:idle`].avgPlace + 0.1);
+    // medals open the next tracks, so an average child wins them most of the time
+    expect(rep[`${t}:average`].medalRate, `${t}: an average child usually gets a medal`).toBeGreaterThanOrEqual(0.75);
   }
+  // even a child who only lets help mode play gets a medal in the first track now and then
+  expect(rep['forest:idleHelp'].medalRate, 'help mode alone sometimes earns a medal').toBeGreaterThanOrEqual(0.2);
 });

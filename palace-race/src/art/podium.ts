@@ -1,7 +1,7 @@
 // The picture at the end of every race: in the palace garden, the winner stands on the top step holding a big
-// golden cup, and every other child stands on a step or beside the podium, clapping with a medal on, while the
-// animals stand behind them looking happy. Children left of the winner face right and those on the right are
-// mirrored, so everyone turns toward the winner. 1600 x 900, painted once.
+// golden cup, 2nd and 3rd stand on their steps with medals and 4th and 5th beside the podium, all clapping, while
+// the animals stand behind them looking happy. Children left of the winner face right and those on the right are
+// mirrored, so everyone turns toward the winner. 1600 x 900, painted twice (the two halves of a clap).
 
 import { drawAnimal, type AnimalId } from './animals';
 import { drawKid, HIP_H, type KidId, type Outfit } from './riders';
@@ -18,6 +18,7 @@ const STEP = [
   { x: 1040, top: 690, w: 220, label: '3', col: '#e8a26a' },
 ];
 const FLOOR = 790;
+const MEDAL = ['#ffcf3a', '#e4e8f2', '#e8a26a'];
 
 /** The golden cup, its foot at `c`. */
 export function trophy(c: P, s: number): string {
@@ -30,12 +31,6 @@ export function trophy(c: P, s: number): string {
     `<path d="M-22 -2 H22 V14 H-22Z" fill="#b07a48" stroke="#5a3418" stroke-width="3"/><path d="M-14 4 H14" stroke="#ffd23f" stroke-width="3"/>` +
     `<path d="M-20 -68 C-22 -50 -14 -36 -6 -30" stroke="#fff" stroke-width="5" fill="none" opacity=".7" stroke-linecap="round"/>` +
     `<path d="M0 -66 l4 9 h10 l-8 6 l3 10 l-9 -6 l-9 6 l3 -10 l-8 -6 h10Z" fill="#fff8c8" stroke="#c8700e" stroke-width="1.4"/></g>`;
-}
-
-function medal(c: P, s: number, col: string, n: number): string {
-  return `<path d="M${f(c.x - 8 * s)} ${f(c.y - 24 * s)} L${f(c.x)} ${f(c.y)} L${f(c.x + 8 * s)} ${f(c.y - 24 * s)}" fill="none" stroke="#4dabf7" stroke-width="${f(5 * s)}"/>` +
-    `<circle cx="${f(c.x)}" cy="${f(c.y + 6 * s)}" r="${f(9 * s)}" fill="${col}" stroke="#4a2a1e" stroke-width="${f(2 * s)}"/>` +
-    `<text x="${f(c.x)}" y="${f(c.y + 10 * s)}" font-size="${f(11 * s)}" text-anchor="middle" font-family="sans-serif" font-weight="700" fill="#4a2a1e">${n}</text>`;
 }
 
 function confetti(seed: number): string {
@@ -57,8 +52,11 @@ function confetti(seed: number): string {
   return s;
 }
 
-/** Places `order[0]` is the winner. The animals stand behind their children. */
-export function podiumSVG(order: Racer[]): string {
+/**
+ * Places: `order[0]` is the winner. The animals stand behind their children. `frame` 0 and 1 are the two halves of
+ * a clap (hands apart, hands together); the ceremony shows them in turn.
+ */
+export function podiumSVG(order: Racer[], frame: 0 | 1 = 0): string {
   let s = trackLayer('garden', 'sky');
   // a lawn and a hedge around the stage
   s += `<path d="M0 700 Q800 640 1600 700 V900 H0Z" fill="#5fae5a"/><path d="M0 760 Q800 720 1600 760 V900 H0Z" fill="#4a9e52"/>`;
@@ -100,8 +98,11 @@ export function podiumSVG(order: Racer[]): string {
   const K = 1.85;
   order.forEach((rc, i) => {
     const sp = spots[i];
-    const pose = i === 0 ? 'trophy' : i % 2 ? 'clap0' : 'clap1';
-    const k = drawKid(rc.kid, pose, rc.outfit, pt(0, -HIP_H));
+    // neighbours clap a beat apart, so the clapping looks lively
+    const pose = i === 0 ? 'trophy' : (i + frame) % 2 ? 'clap1' : 'clap0';
+    // medals for 2nd and 3rd only (4th and 5th just clap), with the number turned back for mirrored children
+    const medal = i === 1 || i === 2 ? { n: i + 1, color: MEDAL[i], mirror: sp.face < 0 } : undefined;
+    const k = drawKid(rc.kid, pose, rc.outfit, pt(0, -HIP_H), 0, medal);
     let body = `<ellipse cx="0" cy="2" rx="34" ry="7" fill="#2a3a10" opacity=".25"/>` + k.back + k.front;
     if (i === 0) {
       // the cup is held in front of the tummy, below the face
@@ -111,9 +112,6 @@ export function podiumSVG(order: Racer[]): string {
       body += [[-40, -170], [44, -180], [-52, -120], [56, -110]].map(([x, y]) => `<path d="M${x} ${y - 8} L${x + 2.4} ${y - 2.4} L${x + 8} ${y} L${x + 2.4} ${y + 2.4} L${x} ${y + 8} L${x - 2.4} ${y + 2.4} L${x - 8} ${y} L${x - 2.4} ${y - 2.4}Z" fill="#ffe066" stroke="#c8700e" stroke-width="1.2"/>`).join('');
     }
     s += `<g transform="translate(${sp.x} ${sp.y}) scale(${f(K * sp.face)} ${K})">${body}</g>`;
-    // medals for 2nd and 3rd only (4th and 5th just clap); drawn outside the mirrored group, so their numbers read
-    // the right way round
-    if (i === 1 || i === 2) s += medal(pt(sp.x + k.chest.x * K * sp.face, sp.y + k.chest.y * K), K, ['#ffcf3a', '#d8dce8', '#e8a26a', '#8fd0f0', '#c9a0ff'][i], i + 1);
   });
   s += confetti(17);
   // a soft frame

@@ -102,7 +102,9 @@ export class RaceView {
     if (e.type === 'candy') {
       const c = e.candy;
       const cy = gy - (c.high ? 300 : 150) * k;
-      for (let i = 0; i < (this.reduced ? 4 : 12); i++) {
+      // an opponent's candy stays for the child, so it only twinkles a little
+      const n = e.id === this.race.player ? (this.reduced ? 4 : 12) : this.reduced ? 0 : 3;
+      for (let i = 0; i < n; i++) {
         const a = (i / 12) * Math.PI * 2;
         this.particles.push({ x: c.x, y: cy, vx: Math.cos(a) * 160 + ru.speed * 0.6, vy: Math.sin(a) * 160, life: 0, max: 0.6, kind: 'spark', color: i % 2 ? '#fff6b0' : RAINBOW[i % 6], size: 7 });
       }
@@ -143,7 +145,7 @@ export class RaceView {
     const lo = camX - 500;
     const hi = camX + this.vw + 500;
     const obs = race.course.obstacles.filter((o) => o.x > lo && o.x < hi);
-    const candies = race.course.candies.filter((c) => c.taken < 0 && c.x > lo && c.x < hi);
+    const candies = race.course.candies.filter((c) => !c.taken.includes(race.player) && c.x > lo && c.x < hi);
     for (let lane = 0; lane < 3; lane++) {
       const k = RUNNER_DRAW * LANE_SCALE[lane];
       const gy = LANE_Y[lane];
@@ -157,6 +159,12 @@ export class RaceView {
         if (c.lane !== lane) continue;
         const pic = this.pics.candies[`${c.kind}:${c.kind === 'gold' ? 0 : c.tone}`];
         const bob = this.reduced ? 0 : Math.sin(this.time * 3 + c.x * 0.01) * 8;
+        // a shadow on the ground shows which lane the candy is in
+        const sh = c.high ? 0.7 : 1 - bob / 60;
+        g.fillStyle = 'rgba(40,24,10,0.3)';
+        g.beginPath();
+        g.ellipse((c.x - camX) * s, top + gy * s, 34 * k * s * sh, 10 * k * s * sh, 0, 0, Math.PI * 2);
+        g.fill();
         this.blit(pic, CANDY_BOX, c.x, gy - (c.high ? 300 : 150) * k + bob * k, k);
       }
       const here = race.runners.filter((r) => Math.round(r.laneF) === lane).sort((a, b) => a.x - b.x);

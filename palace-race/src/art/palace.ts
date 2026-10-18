@@ -1,14 +1,15 @@
 // The fairy-tale palace at the end of every race, in the spirit of the owner's logo: round towers under tall
 // purple and blue roofs with fish-scale shingles, gold rings and finials, many spires and turrets, arched windows of
 // blue glass in gold frames, dormers in the big roofs, stone walls with battlements, a golden gate with lanterns,
-// pennants, and a warm golden glow with sparkles behind it. Drawn around its base centre (0, 0), about 440 wide and
-// 420 tall. `haze` mixes it toward the sky colour, for when it stands far away.
+// pennants, and a warm golden glow with sparkles behind it, all on its own grassy hill. Drawn around its base
+// centre (0, 0), about 600 wide and 510 tall (the hill reaches 90 below the base). `haze` mixes it toward the sky
+// colour, for when it stands far away.
 
 import { f, linG, mix, radG, shade } from './geom';
 
 let uidN = 0;
 
-export interface PalaceLook { wall: string; roofA: string; roofB: string; haze?: string; hazeK?: number; wave?: number }
+export interface PalaceLook { wall: string; roofA: string; roofB: string; grass?: string; haze?: string; hazeK?: number; wave?: number }
 
 export const PALACE_LOOK: PalaceLook = { wall: '#efe4f8', roofA: '#9a5ad6', roofB: '#3f8ee0' };
 
@@ -115,6 +116,17 @@ export function palace(x: number, y: number, sc: number, look: PalaceLook = PALA
   s += `<ellipse cx="0" cy="-200" rx="300" ry="250" fill="url(#${gid})" opacity="${f(1 - k * 0.8)}"/>`;
   [[-230, -330, 9], [210, -360, 11], [-150, -420, 7], [160, -440, 8], [250, -230, 7], [-260, -200, 6], [60, -470, 6]].forEach(([sx, sy, r]) => {
     s += `<path d="M${sx} ${sy - r} L${sx + r * 0.25} ${sy - r * 0.25} L${sx + r} ${sy} L${sx + r * 0.25} ${sy + r * 0.25} L${sx} ${sy + r} L${sx - r * 0.25} ${sy + r * 0.25} L${sx - r} ${sy} L${sx - r * 0.25} ${sy - r * 0.25}Z" fill="${hz('#fff6c8')}" opacity="${f(1 - k)}"/>`;
+  });
+  // its own grassy hill with a stone foundation and a path from the gate, so the palace always stands on ground
+  const grass = hz(look.grass ?? '#6cbf5a');
+  const hid = `${u}hill`;
+  defs.push(linG(hid, [[0, hz(shade(look.grass ?? '#6cbf5a', 0.2))], [0.5, grass], [1, hz(shade(look.grass ?? '#6cbf5a', -0.25))]]));
+  s += `<path d="M-300 70 C-270 18 -230 -6 -150 -8 H150 C230 -6 270 18 300 70 Q0 92 -300 70Z" fill="url(#${hid})" stroke="${ink}" stroke-width="2"/>`;
+  s += `<path d="M-214 4 H214 V-8 H-214Z" fill="${hz('#c9b8d8')}" stroke="${ink}" stroke-width="1.6"/>` + `<path d="M-214 -2 H214" stroke="${wallD}" stroke-width="1" opacity=".6"/>`;
+  s += `<path d="M-30 4 C-40 30 -70 50 -60 80 H60 C70 50 40 30 30 4Z" fill="${hz('#f3dca8')}" stroke="${ink}" stroke-width="1.6"/>`;
+  [[-250, 40], [-180, 30], [-120, 44], [120, 40], [190, 30], [255, 44], [-90, 62], [100, 64]].forEach(([bx, by], i) => {
+    s += `<circle cx="${bx}" cy="${by}" r="${9 + (i % 3) * 3}" fill="${hz(shade(look.grass ?? '#6cbf5a', -0.12))}" stroke="${ink}" stroke-width="1.2"/>`;
+    s += `<circle cx="${bx + 4}" cy="${by - 6}" r="2.6" fill="${hz(['#ff8fc8', '#fff', '#ffd43b'][i % 3])}"/>`;
   });
   const A = look.roofA;
   const B = look.roofB;

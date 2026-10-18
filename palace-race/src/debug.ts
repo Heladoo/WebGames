@@ -1,7 +1,8 @@
 // Debug pages (open with ?debug=...). They render test sheets for screenshots and expose numbers on `window`
 // so Playwright can check the art without anyone looking at it by hand.
 //   ?debug=animals   every animal in every pose (window.__animals has the anchors)
-//   ?debug=riders, wardrobe, faces, palace, obstacles, track, podium, icons, mock, og   art sheets and stills
+//   ?debug=music     every music mood rendered offline (levels, Play buttons, window.__wav)
+//   ?debug=riders, hair, wardrobe, faces, palace, obstacles, track, podium, icons, mock, og   art sheets and stills
 //   ?debug=rig, seams   numbers for the tests (window.__rig, window.__seams)
 
 import { ANIMALS, POSES, drawAnimal } from './art/animals';
@@ -9,14 +10,16 @@ import { RUNNER_BOX, RUNNER_DRAW, paint } from './art/sprite';
 import { RIDER_SCALE, drawRunner } from './art/runner';
 import { DUCK_GAP, JUMP_PEAK, type ObstacleId } from './art/props';
 import { simulate, simulateAll } from './race/calibrate';
+import { Race } from './race/sim';
 import { runRace } from './race/race';
 import { sfx } from './sfx';
 import { podiumSVG } from './art/podium';
+import { MOOD_IDS, renderMusic } from './music';
 import { palace } from './art/palace';
 import { ICONS } from './art/icons';
 import { CANDIES, TRACK_OBSTACLES, candy, obstacle } from './art/props';
 import { LANE_SCALE, LANE_Y, LAYERS, PARALLAX, STAGE_H, STAGE_W, trackLayer, type TrackId } from './art/tracks';
-import { drawKid, KIDS, PLAIN, RIDER_POSES, HIP_H, type Outfit } from './art/riders';
+import { drawKid, HAIRS, KIDS, PLAIN, RIDER_POSES, HIP_H, type Outfit } from './art/riders';
 
 function page(html: string) {
   document.getElementById('app')!.innerHTML = `<div id="sheet" style="position:absolute;inset:0;overflow:auto;background:#fdf6e8;padding:12px;direction:ltr">${html}</div>`;
@@ -125,9 +128,9 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     const runners: [typeof ANIMALS[number], 'maya' | 'tamar' | 'yoav' | 'ari', number, number, string, Outfit][] = [
       ['deer', 'tamar', 0, 380, 'run2', PLAIN],
       ['dragon', 'ari', 0, 1230, 'run4', PLAIN],
-      ['unicorn', 'maya', 1, 690, 'run1', { helmet: 'rainbow', braids: 'pink', saddle: 'royal' }],
+      ['unicorn', 'maya', 1, 690, 'run1', { helmet: 'rainbow', hair: 'pink', saddle: 'royal' }],
       ['reindeer', 'yoav', 2, 210, 'run3', PLAIN],
-      ['horse', 'maya', 2, 1420, 'run0', { helmet: 'stars', braids: 'none', saddle: 'stars' }],
+      ['horse', 'maya', 2, 1420, 'run0', { helmet: 'stars', hair: 'none', saddle: 'stars' }],
     ];
     const o1 = obstacle(obst[0], id);
     const o2 = obstacle(obst[2], id);
@@ -189,8 +192,8 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     await put(sh + drawRunner('deer', 'tamar', 'run2', PLAIN).svg, 0, 980);
     await put(sh + drawRunner('reindeer', 'yoav', 'run3', PLAIN).svg, 1, 1380);
     await put(`<g transform="translate(0 -170)">${candy('gold', 0)}</g>`, 1, 820);
-    await put(sh + drawRunner('unicorn', 'maya', 'run1', { helmet: 'rainbow', braids: 'pink', saddle: 'royal' }).svg, 2, 1090);
-    await put(sh + drawRunner('horse', 'maya', 'run0', { helmet: 'stars', braids: 'none', saddle: 'stars' }).svg, 2, 1470);
+    await put(sh + drawRunner('unicorn', 'maya', 'run1', { helmet: 'rainbow', hair: 'pink', saddle: 'royal' }).svg, 2, 1090);
+    await put(sh + drawRunner('horse', 'maya', 'run0', { helmet: 'stars', hair: 'none', saddle: 'stars' }).svg, 2, 1470);
     const url = cv.toDataURL('image/png');
     page(`<div id="og" style="position:relative;width:1200px;height:630px;overflow:hidden;background:url(${url}) 70% 100%/cover no-repeat">
       <img id="og-logo" src="/logo-small.webp" alt="" style="position:absolute;left:26px;top:14px;width:360px"></div>`).style.padding = '0';
@@ -205,7 +208,7 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
       track: (params.get('track') ?? 'forest') as TrackId,
       animal: (params.get('animal') ?? 'unicorn') as never,
       kid: (params.get('kid') ?? 'maya') as never,
-      outfit: { helmet: (params.get('helmet') ?? 'rainbow') as never, braids: (params.get('braids') ?? 'pink') as never, saddle: (params.get('saddle') ?? 'royal') as never },
+      outfit: { helmet: (params.get('helmet') ?? 'rainbow') as never, hair: (params.get('hair') ?? 'pink') as never, saddle: (params.get('saddle') ?? 'royal') as never },
       seed: Number(params.get('seed')) || 1,
       tutorial: params.get('tutorial') === '1',
       help: params.get('help') !== '0',
@@ -219,6 +222,47 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     void res.then((r) => (w.__result = r));
     return true;
   }
+  if (kind === 'music') {
+    // every mood rendered offline: levels for the checks, a Play button to listen, and WAV data for review
+    // (?debug=music&s=20&moods=menu,forest)
+    const secs = Number(params.get('s')) || 16;
+    const moods = (params.get('moods')?.split(',') ?? MOOD_IDS) as typeof MOOD_IDS;
+    const sheet = page('<p>Music moods, rendered offline</p>');
+    const out: Record<string, { peak: number; rms: number; ms: number; quietFrom: number }> = {};
+    const wav: Record<string, string> = {};
+    let ctx: AudioContext | null = null;
+    for (const m of moods) {
+      const t0 = performance.now();
+      const { buf, notes } = await renderMusic(m, secs);
+      (w.__notes ??= {} as Record<string, unknown>) as Record<string, unknown>;
+      (w.__notes as Record<string, unknown>)[m] = notes;
+      let peak = 0;
+      let sum = 0;
+      const L = buf.getChannelData(0);
+      const R = buf.getChannelData(1);
+      for (let i = 0; i < L.length; i++) {
+        peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
+        sum += L[i] * L[i] + R[i] * R[i];
+      }
+      out[m] = { peak, rms: Math.sqrt(sum / (2 * L.length)), ms: Math.round(performance.now() - t0), quietFrom: 0 };
+      wav[m] = toWav(buf);
+      const b = document.createElement('button');
+      b.textContent = `▶ ${m} (peak ${peak.toFixed(2)}, rms ${out[m].rms.toFixed(3)})`;
+      b.style.cssText = 'display:block;margin:8px;font:16px sans-serif;padding:8px 14px';
+      b.onclick = () => {
+        ctx ??= new AudioContext();
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start();
+      };
+      sheet.appendChild(b);
+    }
+    w.__music = out;
+    w.__wav = wav;
+    w.__ready = true;
+    return true;
+  }
   if (kind === 'sim') {
     // many races without drawing: how often each kind of player wins, how close it is, how slow it ever gets
     const n = Number(params.get('n')) || 60;
@@ -229,15 +273,20 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     const a = simulate('average', 'meadow', 3, 77);
     const b = simulate('average', 'meadow', 3, 77);
     w.__det = JSON.stringify(a) === JSON.stringify(b);
-    const rows = Object.entries(rep).map(([k, r]) => `<tr><td>${k}</td>${[r.winRate, r.avgPlace, r.worstPlace, r.minCoins, r.minTime, r.maxTime, r.maxGap, r.minSpeed, r.obstacles].map((v) => `<td>${typeof v === 'number' ? v.toFixed(2) : v}</td>`).join('')}</tr>`).join('');
-    page(`<p>${n} races each, ${Math.round(performance.now() - t0)} ms</p><table border="1" cellpadding="4" style="border-collapse:collapse;font:13px monospace"><tr><th></th><th>win</th><th>avg place</th><th>worst</th><th>min coins</th><th>min s</th><th>max s</th><th>max gap s</th><th>min speed</th><th>obstacles</th></tr>${rows}</table>`);
+    // candies are shared: one an opponent took is still there for the child
+    const shared = new Race({ track: 'meadow', seed: 5, autopilot: 1 });
+    shared.started = true;
+    for (let i = 0; i < 30 * 200 && !shared.done; i++) shared.step(1 / 30);
+    w.__shared = shared.course.candies.filter((c) => c.taken.includes(shared.player) && c.taken.some((id) => id !== shared.player)).length;
+    const rows = Object.entries(rep).map(([k, r]) => `<tr><td>${k}</td>${[r.winRate, r.medalRate, r.avgPlace, r.worstPlace, r.minCoins, r.minTime, r.maxTime, r.maxGap, r.minSpeed, r.obstacles].map((v) => `<td>${typeof v === 'number' ? v.toFixed(2) : v}</td>`).join('')}</tr>`).join('');
+    page(`<p>${n} races each, ${Math.round(performance.now() - t0)} ms</p><table border="1" cellpadding="4" style="border-collapse:collapse;font:13px monospace"><tr><th></th><th>win</th><th>medal</th><th>avg place</th><th>worst</th><th>min coins</th><th>min s</th><th>max s</th><th>max gap s</th><th>min speed</th><th>obstacles</th></tr>${rows}</table>`);
     w.__ready = true;
     return true;
   }
   if (kind === 'palace') {
     // the palace close up, on a night sky like the logo's and on a day sky
     const sheet = page('');
-    for (const bg of ['#2a2370', '#bfe0f6']) sheet.appendChild(await paint(`<rect x="-300" y="-520" width="600" height="560" fill="${bg}"/>` + palace(0, 0, 1), { x: -300, y: -520, w: 600, h: 560 }, 1));
+    for (const bg of ['#2a2370', '#bfe0f6']) sheet.appendChild(await paint(`<rect x="-320" y="-520" width="640" height="620" fill="${bg}"/>` + palace(0, 0, 1), { x: -320, y: -520, w: 640, h: 620 }, 1));
     w.__ready = true;
     return true;
   }
@@ -311,15 +360,15 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     const animals = (params.get('order')?.split(',') ?? ['unicorn', 'horse', 'deer', 'reindeer', 'dragon']) as typeof ANIMALS;
     const kids = ['maya', 'yoav', 'tamar', 'ari', 'maya'] as const;
     const fits: Outfit[] = [
-      { helmet: 'rainbow', braids: 'pink', saddle: 'royal' },
-      { helmet: 'basic', braids: 'none', saddle: 'basic' },
-      { helmet: 'basic', braids: 'none', saddle: 'stars' },
-      { helmet: 'basic', braids: 'none', saddle: 'basic' },
-      { helmet: 'flowers', braids: 'none', saddle: 'flowers' },
+      { helmet: 'rainbow', hair: 'pink', saddle: 'royal' },
+      { helmet: 'basic', hair: 'none', saddle: 'basic' },
+      { helmet: 'basic', hair: 'none', saddle: 'stars' },
+      { helmet: 'basic', hair: 'none', saddle: 'basic' },
+      { helmet: 'flowers', hair: 'none', saddle: 'flowers' },
     ];
     const order = animals.map((a, i) => ({ animal: a, kid: kids[i], outfit: fits[i] }));
     const scale = Number(params.get('scale')) || 1;
-    const cv = await paint(podiumSVG(order), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, scale);
+    const cv = await paint(podiumSVG(order, params.get('frame') === '1' ? 1 : 0), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, scale);
     cv.id = 'stage';
     const sheet = page('');
     sheet.style.padding = '0';
@@ -360,17 +409,41 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     w.__ready = true;
     return true;
   }
+  if (kind === 'hair') {
+    // every hairstyle on every child, standing and riding: ?debug=hair&helmet=stars
+    const scale = Number(params.get('scale')) || 1;
+    const sheet = page('');
+    const helmet = (params.get('helmet') ?? 'basic') as Outfit['helmet'];
+    const box = { x: -80, y: -180, w: 160, h: 200 };
+    for (const kid of KIDS) {
+      const row = document.createElement('div');
+      row.style.whiteSpace = 'nowrap';
+      sheet.appendChild(row);
+      for (const hair of HAIRS) {
+        const k = drawKid(kid, 'stand', { ...PLAIN, helmet, hair }, { x: 0, y: -HIP_H });
+        row.appendChild(await paint(`<rect x="-80" y="0" width="160" height="20" fill="#d8c08a"/>` + k.back + k.front, box, scale));
+      }
+      row.appendChild(await paint(ground(RUNNER_BOX.w) + drawRunner('horse', kid, 'run1', { ...PLAIN, helmet, hair: 'surfer' }).svg, RUNNER_BOX, scale * 0.42));
+      row.appendChild(await paint(ground(RUNNER_BOX.w) + drawRunner('unicorn', kid, 'run3', { ...PLAIN, helmet, hair: 'ponytail' }).svg, RUNNER_BOX, scale * 0.42));
+    }
+    w.__ready = true;
+    return true;
+  }
   if (kind === 'wardrobe') {
-    // every helmet, braid and saddle on a child, in every pose of the race
+    // every helmet, hairstyle and saddle on a child, in every pose of the race
     const scale = Number(params.get('scale')) || 0.5;
     const sheet = page('');
     const animal = (params.get('animal') ?? 'unicorn') as never;
     const kid = (params.get('kid') ?? 'maya') as never;
     const outfits: Outfit[] = [
-      { helmet: 'rainbow', braids: 'pink', saddle: 'royal' },
-      { helmet: 'stars', braids: 'gold', saddle: 'stars' },
-      { helmet: 'crown', braids: 'rainbow', saddle: 'rainbow' },
-      { helmet: 'flowers', braids: 'none', saddle: 'flowers' },
+      { helmet: 'rainbow', hair: 'pink', saddle: 'royal' },
+      { helmet: 'stars', hair: 'gold', saddle: 'stars' },
+      { helmet: 'crown', hair: 'rainbow', saddle: 'rainbow' },
+      { helmet: 'flowers', hair: 'none', saddle: 'flowers' },
+      { helmet: 'basic', hair: 'spikes', saddle: 'basic' },
+      { helmet: 'stars', hair: 'curls', saddle: 'royal' },
+      { helmet: 'rainbow', hair: 'surfer', saddle: 'stars' },
+      { helmet: 'crown', hair: 'ponytail', saddle: 'flowers' },
     ];
     for (const o of outfits) {
       const row = document.createElement('div');
@@ -382,4 +455,34 @@ export async function runDebug(kind: string, params: URLSearchParams): Promise<b
     return true;
   }
   return false;
+}
+
+/** A 16-bit stereo WAV of a buffer, as base64 (for saving rendered music from Playwright). */
+function toWav(buf: AudioBuffer): string {
+  const n = buf.length;
+  const sr = buf.sampleRate;
+  const bytes = new DataView(new ArrayBuffer(44 + n * 4));
+  const str = (o: number, t: string) => [...t].forEach((ch, i) => bytes.setUint8(o + i, ch.charCodeAt(0)));
+  str(0, 'RIFF');
+  bytes.setUint32(4, 36 + n * 4, true);
+  str(8, 'WAVEfmt ');
+  bytes.setUint32(16, 16, true);
+  bytes.setUint16(20, 1, true);
+  bytes.setUint16(22, 2, true);
+  bytes.setUint32(24, sr, true);
+  bytes.setUint32(28, sr * 4, true);
+  bytes.setUint16(32, 4, true);
+  bytes.setUint16(34, 16, true);
+  str(36, 'data');
+  bytes.setUint32(40, n * 4, true);
+  const L = buf.getChannelData(0);
+  const R = buf.getChannelData(1);
+  for (let i = 0; i < n; i++) {
+    bytes.setInt16(44 + i * 4, Math.max(-1, Math.min(1, L[i])) * 32767, true);
+    bytes.setInt16(46 + i * 4, Math.max(-1, Math.min(1, R[i])) * 32767, true);
+  }
+  let bin = '';
+  const u8 = new Uint8Array(bytes.buffer);
+  for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+  return btoa(bin);
 }

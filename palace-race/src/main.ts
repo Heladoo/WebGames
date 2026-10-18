@@ -5,6 +5,7 @@ import { load, stopSaving } from './state';
 import { TRACKS } from './art/tracks';
 import { animalScreen, kidScreen, mapScreen, raceScreen, shopScreen, titleScreen } from './screens';
 import { stats } from './stats';
+import { tooltips } from './tip';
 
 const params = new URLSearchParams(location.search);
 const debug = params.get('debug');
@@ -17,6 +18,7 @@ else {
   if (params.has('coins')) data.coins = Math.max(0, Math.min(1e6, Number(params.get('coins')) || 0));
   if (params.get('open') === 'all') data.unlocked = [...TRACKS];
   if (params.has('races')) data.races = Math.max(0, Number(params.get('races')) || 0);
+  tooltips();
   const app = new App(document.getElementById('app')!, data);
   app.register('title', titleScreen);
   app.register('map', mapScreen);

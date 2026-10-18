@@ -1,17 +1,17 @@
 // The screens. No reading is needed anywhere: every choice is a picture, every button an icon, prices and rewards
-// are coins with numbers, and "not yet" is a gentle wobble with a coin jar showing how close the child is.
+// are coins or medals with numbers, and "not yet" is a gentle wobble with a coin jar (shop) or medal pips (map).
 
-import { ANIMALS, type AnimalId } from './art/animals';
-import { BRAIDS, HELMETS, KIDS, SADDLES, type KidId } from './art/riders';
+import { ANIMALS, ANIMAL_NAME, type AnimalId } from './art/animals';
+import { HAIRS, HELMETS, KIDS, KID_NAME, SADDLES, type KidId } from './art/riders';
 import { TRACKS, TRACK_NAME, STAGE_W, STAGE_H, type TrackId } from './art/tracks';
 import { podiumSVG } from './art/podium';
 import { paint } from './art/sprite';
 import { ICONS } from './art/icons';
-import { ITEMS, TRACK_PRICE, TUTORIAL_RACES, itemKey, type ItemKind } from './content';
+import { ITEMS, ITEM_NAME, TRACK_MEDALS, TUTORIAL_RACES, isMedal, itemKey, openTracks, type ItemKind } from './content';
 import { sfx } from './sfx';
 import { stats } from './stats';
 import { runRace, type RaceResult } from './race/race';
-import { animalPic, coinTag, fill, flyCoins, jar, kidPic, skyPic, trackPic } from './ui';
+import { animalPic, coinTag, fill, flyCoins, jar, kidPic, mapPic, trackPic } from './ui';
 import type { App } from './app';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -53,16 +53,20 @@ export function titleScreen(app: App) {
 
 // ---------------------------------------------------------------- map
 
+/** Medal pips: how many medals a track needs, the ones already won filled in. */
+const medalPips = (have: number, need: number) =>
+  `<span class="pips" role="img" aria-label="${Math.min(have, need)} מתוך ${need} מדליות">${Array.from({ length: need }, (_, i) => (i < have ? ICONS.medal : ICONS.medalEmpty)).join('')}</span>`;
+
 export function mapScreen(app: App) {
   app.setTrack('menu');
   const d = app.data;
   app.root.innerHTML = `<section class="screen map"><div class="map-bg slot"></div>${app.topbar()}
     <div class="journey">${TRACKS.map((t, i) => {
       const open = d.unlocked.includes(t);
-      return `<button class="track-card ${open ? 'open' : 'locked'}" data-t="${t}" aria-label="${TRACK_NAME[t]}${open ? '' : `: נעול, ${TRACK_PRICE[t]} מטבעות`}">
+      return `<button class="track-card ${open ? 'open' : 'locked'}" data-t="${t}" aria-label="${TRACK_NAME[t]}${open ? '' : `: נפתח אחרי ${TRACK_MEDALS[t]} מדליות`}">
         <div class="thumb slot"></div>
         <span class="step">${i + 1}</span>
-        ${open ? `<span class="badge go">${ICONS.play}</span>` : `<span class="badge lock">${ICONS.lock}</span>${coinTag(TRACK_PRICE[t])}`}
+        ${open ? `<span class="badge go">${ICONS.play}</span>` : `<span class="badge lock">${ICONS.lock}</span>${medalPips(d.medals, TRACK_MEDALS[t])}`}
       </button>`;
     }).join('<i class="path"></i>')}<i class="path"></i><div class="goal-palace" aria-hidden="true">${ICONS.palace}</div></div>
   </section>`;
@@ -70,33 +74,34 @@ export function mapScreen(app: App) {
   app.wireTopbar(el, 'map');
   const portrait = innerWidth < innerHeight;
   const cardW = portrait ? Math.min(220, (innerWidth - 70) / 2) : Math.min(260, (innerWidth - 48 - 6 * 28 - 96) / 5, (innerHeight - 160) * 0.9);
-  fill(el.querySelector('.map-bg')!, skyPic('garden', Math.max(innerWidth, (innerHeight * STAGE_W) / STAGE_H)));
+  fill(el.querySelector('.map-bg')!, mapPic(Math.max(innerWidth, (innerHeight * STAGE_W) / STAGE_H)));
   el.querySelectorAll<HTMLElement>('.track-card').forEach((c) => {
     const t = c.dataset.t as TrackId;
     fill(c.querySelector('.thumb')!, trackPic(t, cardW));
-    c.addEventListener('click', async () => {
-      if (d.unlocked.includes(t)) {
-        sfx.select();
-        d.track = t;
-        app.save();
-        app.go('animal');
+    // the pips shrink to stay within their card
+    const pips = c.querySelector<HTMLElement>('.pips');
+    if (pips) pips.style.setProperty('--pip', `${Math.min(24, (cardW - 14) / TRACK_MEDALS[t])}px`);
+    c.addEventListener('click', () => {
+      if (!d.unlocked.includes(t)) {
+        // not yet: the medal pips show how many more medals open it
+        sfx.notYet();
+        wobble(c);
+        wobble(c.querySelector('.pips')!);
         return;
       }
-      const price = TRACK_PRICE[t];
-      if (d.coins < price) return notYet(c, d.coins, price);
-      // open it: the coins fly to the card and the lock opens
-      d.coins -= price;
-      d.unlocked.push(t);
+      sfx.select();
+      d.track = t;
       app.save();
-      await flyCoins(el.querySelector('[data-tb="coins"]')!, c, 8, (i) => sfx.coin(i));
-      app.showCoins();
-      sfx.open();
-      c.classList.remove('locked');
-      c.classList.add('open', 'opened');
-      c.querySelector('.badge.lock')!.outerHTML = `<span class="badge go">${ICONS.play}</span>`;
-      c.querySelector('.coin-tag')?.remove();
+      app.go('animal');
     });
   });
+  // a track that opened in the last race opens here with a little celebration
+  const fresh = el.querySelector<HTMLElement>(`.track-card[data-t="${app.fresh}"]`);
+  if (fresh) {
+    fresh.classList.add('opened');
+    sfx.open();
+    app.fresh = null;
+  }
   (window as unknown as { __ready: boolean }).__ready = true;
 }
 
@@ -106,7 +111,7 @@ function chooser(app: App, kind: 'animal' | 'kid') {
   const d = app.data;
   const items: string[] = kind === 'animal' ? ANIMALS : KIDS;
   app.root.innerHTML = `<section class="screen choose ${kind}">${app.topbar()}
-    <div class="choices">${items.map((id) => `<button class="choice" data-id="${id}" aria-label="${id}" aria-pressed="false"><div class="slot"></div><span class="badge chosen">${ICONS.check}</span></button>`).join('')}</div>
+    <div class="choices">${items.map((id) => `<button class="choice" data-id="${id}" aria-label="${kind === 'animal' ? ANIMAL_NAME[id as AnimalId] : KID_NAME[id as KidId]}" aria-pressed="false"><div class="slot"></div><span class="badge chosen">${ICONS.check}</span></button>`).join('')}</div>
     <button class="round-btn big go" id="btn-next" aria-label="${kind === 'animal' ? 'בוחרים רוכב' : 'למרוץ'}">${ICONS.play}</button>
   </section>`;
   const el = app.root.firstElementChild as HTMLElement;
@@ -158,7 +163,7 @@ export function shopScreen(app: App) {
   const d = app.data;
   app.root.innerHTML = `<section class="screen shop">${app.topbar({ shop: false })}
     <div class="shop-body">
-      <div class="tabs" role="tablist">${(['helmet', 'braids', 'saddle'] as ItemKind[]).map((k) => `<button class="round-btn tab" role="tab" data-k="${k}" aria-label="${k === 'helmet' ? 'קסדות' : k === 'braids' ? 'צמות' : 'אוכפים'}">${ICONS[k]}</button>`).join('')}</div>
+      <div class="tabs" role="tablist">${(['helmet', 'hair', 'saddle'] as ItemKind[]).map((k) => `<button class="round-btn tab" role="tab" data-k="${k}" aria-label="${k === 'helmet' ? 'קסדות' : k === 'hair' ? 'תסרוקות' : 'אוכפים'}">${ICONS[k]}</button>`).join('')}</div>
       <div class="preview slot"></div>
       <div class="items"></div>
     </div>
@@ -178,13 +183,13 @@ export function shopScreen(app: App) {
       t.classList.toggle('on', t.dataset.k === shopTab);
       t.setAttribute('aria-selected', String(t.dataset.k === shopTab));
     });
-    const ids: string[] = shopTab === 'helmet' ? HELMETS : shopTab === 'braids' ? BRAIDS : SADDLES;
+    const ids: string[] = shopTab === 'helmet' ? HELMETS : shopTab === 'hair' ? HAIRS : SADDLES;
     const items = ITEMS.filter((i) => i.kind === shopTab).sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
     const worn = d.outfit[shopTab];
     list.innerHTML = items
       .map((it) => {
         const owned = d.owned.includes(itemKey(it));
-        return `<button class="item ${owned ? 'owned' : ''} ${worn === it.id ? 'on' : ''}" data-id="${it.id}" aria-label="${it.id}${owned ? '' : `: ${it.price} מטבעות`}" aria-pressed="${worn === it.id}"><div class="slot"></div>${worn === it.id ? `<span class="badge chosen">${ICONS.check}</span>` : owned ? '' : coinTag(it.price)}</button>`;
+        return `<button class="item ${owned ? 'owned' : ''} ${worn === it.id ? 'on' : ''}" data-id="${it.id}" aria-label="${ITEM_NAME[it.kind][it.id]}${owned ? '' : `: ${it.price} מטבעות`}" aria-pressed="${worn === it.id}"><div class="slot"></div>${worn === it.id ? `<span class="badge chosen">${ICONS.check}</span>` : owned ? '' : coinTag(it.price)}</button>`;
       })
       .join('');
     const iw = portrait ? Math.min(120, innerWidth / 3.6) : Math.min(130, innerHeight / 4.2);
@@ -259,68 +264,116 @@ export async function raceScreen(app: App) {
     },
   );
   if (!res) return app.go('map');
-  // the coins are saved straight away, before any celebration
+  // the coins and medals are saved straight away, before any celebration
+  const before = { coins: d.coins, medals: d.medals };
   d.coins += res.coins;
   d.races++;
   if (res.place === 1) d.wins++;
+  if (isMedal(res.place)) d.medals++;
+  const opened = openTracks(d.medals).filter((t) => !d.unlocked.includes(t));
+  d.unlocked.push(...opened);
+  app.fresh = opened[0] ?? null;
   app.save();
-  ceremony(app, res);
+  ceremony(app, res, before, app.fresh);
 }
 
-function ceremony(app: App, res: RaceResult) {
+function ceremony(app: App, res: RaceResult, before: { coins: number; medals: number }, opened: TrackId | null) {
   app.setTrack('menu');
+  (window as unknown as { __ready: boolean }).__ready = false;
+  const d = app.data;
+  const medal = isMedal(res.place);
   app.root.innerHTML = `<section class="screen ceremony">
     <canvas class="podium" aria-label="טקס המנצחים"></canvas>
+    <canvas class="podium clap" aria-hidden="true"></canvas>
     <div class="confetti" aria-hidden="true"></div>
+    ${opened ? `<button class="card new-track hidden" id="c-new" aria-label="מסלול חדש נפתח: ${TRACK_NAME[opened]}"><div class="thumb slot"></div><span class="badge go">${ICONS.play}</span><span class="new-star">${ICONS.unlock}</span></button>` : ''}
     <div class="card reward hidden">
-      <div class="medal p${res.place}">${res.place <= 3 ? res.place : ICONS.trophy.replace('class="icon"', 'class="icon star"')}</div>
-      <div class="sum">${ICONS.coin}<b id="sum">0</b></div>
+      <div class="medal p${res.place}" aria-label="מקום ${res.place}">${res.place <= 3 ? res.place : ICONS.trophy.replace('class="icon"', 'class="icon star"')}</div>
+      <div class="sum medals" aria-label="${d.medals} מדליות">${ICONS.medal}<b id="medals">${before.medals}</b>${medal ? '<i class="plus">+1</i>' : ''}</div>
+      <div class="sum coins" aria-label="${d.coins} מטבעות">${ICONS.coin}<b id="sum">${before.coins}</b><i class="plus">+${res.coins}</i></div>
       <div class="row-btns">
-        <button class="round-btn big" id="c-again" aria-label="עוד מרוץ">${ICONS.again}</button>
-        <button class="round-btn" id="c-map" aria-label="למפה">${ICONS.home}</button>
+        <button class="round-btn big" id="c-map" aria-label="למפה">${ICONS.home}</button>
         <button class="round-btn" id="c-shop" aria-label="חנות">${ICONS.shop}</button>
         <button class="round-btn" id="c-share" aria-label="לשתף את התמונה">${ICONS.share}</button>
       </div>
     </div>
   </section>`;
   const el = app.root.firstElementChild as HTMLElement;
-  const cv = el.querySelector<HTMLCanvasElement>('canvas')!;
+  const [cv, cv2] = el.querySelectorAll<HTMLCanvasElement>('canvas');
   const k = Math.min(1.6, (Math.max(innerWidth, (innerHeight * STAGE_W) / STAGE_H) / STAGE_W) * Math.min(2, devicePixelRatio || 1));
-  void paint(podiumSVG(res.racers), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, k).then((pic) => {
-    cv.width = pic.width;
-    cv.height = pic.height;
-    cv.getContext('2d')!.drawImage(pic, 0, 0);
+  const put = (c: HTMLCanvasElement, pic: HTMLCanvasElement) => {
+    c.width = pic.width;
+    c.height = pic.height;
+    c.getContext('2d')!.drawImage(pic, 0, 0);
+  };
+  let clapping = 0;
+  void paint(podiumSVG(res.racers, 0), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, k).then(async (pic) => {
+    put(cv, pic);
     cv.classList.add('ready');
     sfx.clap(2.5);
     if (!reduced()) confetti(el.querySelector('.confetti')!);
     window.setTimeout(() => showReward(), 1300);
-  });
-  const showReward = () => {
-    const card = el.querySelector<HTMLElement>('.reward')!;
-    card.classList.remove('hidden');
-    const sum = el.querySelector<HTMLElement>('#sum')!;
+    // the other half of the clap, painted next; then the two pictures take turns (still under reduced motion)
+    put(cv2, await paint(podiumSVG(res.racers, 1), { x: 0, y: 0, w: STAGE_W, h: STAGE_H }, k));
+    if (reduced() || !el.isConnected) return;
     let n = 0;
-    const step = Math.max(1, Math.round(res.coins / 20));
-    const t = window.setInterval(() => {
-      n = Math.min(res.coins, n + step);
-      sum.textContent = String(n);
-      sfx.coin(n);
-      if (n >= res.coins) {
-        clearInterval(t);
-        (window as unknown as { __ready: boolean }).__ready = true;
-      }
-    }, 70);
+    clapping = window.setInterval(() => {
+      if (!el.isConnected) return clearInterval(clapping);
+      // clap for a few seconds, rest a moment, clap again
+      const on = n++ % 24 < 14;
+      cv2.classList.toggle('ready', on && n % 2 === 0);
+    }, 260);
+  });
+  // the coins won rise into the total, and a medal joins the medals
+  const countUp = (box: HTMLElement, from: number, to: number, each: (n: number) => void) =>
+    new Promise<void>((done) => {
+      const b = box.querySelector('b')!;
+      box.classList.add('merging');
+      let n = from;
+      const step = Math.max(1, Math.round((to - from) / 20));
+      if (from >= to) return done();
+      const t = window.setInterval(() => {
+        n = Math.min(to, n + step);
+        b.textContent = String(n);
+        each(n);
+        if (n >= to) {
+          clearInterval(t);
+          box.classList.remove('merging');
+          box.classList.add('merged');
+          done();
+        }
+      }, 70);
+    });
+  const showReward = async () => {
+    el.querySelector('.reward')!.classList.remove('hidden');
+    await new Promise((r) => window.setTimeout(r, 500));
+    await countUp(el.querySelector('.sum.coins')!, before.coins, d.coins, (n) => sfx.coin(n));
+    if (medal) {
+      await countUp(el.querySelector('.sum.medals')!, before.medals, d.medals, () => {});
+      sfx.open();
+    }
+    if (opened) {
+      const c = el.querySelector<HTMLElement>('#c-new')!;
+      fill(c.querySelector('.thumb')!, trackPic(opened, Math.min(190, innerWidth * 0.22, innerHeight * 0.3)));
+      c.classList.remove('hidden');
+      sfx.open();
+    }
+    (window as unknown as { __ready: boolean }).__ready = true;
   };
-  el.querySelector('#c-again')!.addEventListener('click', () => {
+  const leave = () => clearInterval(clapping);
+  el.querySelector('#c-new')?.addEventListener('click', () => {
     sfx.select();
-    app.go('race');
+    leave();
+    app.go('map');
   });
   el.querySelector('#c-map')!.addEventListener('click', () => {
     sfx.tap();
+    leave();
     app.go('map');
   });
   el.querySelector('#c-shop')!.addEventListener('click', () => {
     sfx.tap();
+    leave();
     app.back = 'map';
     app.go('shop');
   });

@@ -7,7 +7,7 @@ import { drawRunner } from '../art/runner';
 import type { AnimalId, PoseId } from '../art/animals';
 import type { KidId, Outfit } from '../art/riders';
 import { CANDIES, TRACK_OBSTACLES, candy, obstacle, type CandyId, type Obstacle } from '../art/props';
-import { LAYERS, STAGE_H, STAGE_W, trackLayer, type Layer, type TrackId } from '../art/tracks';
+import { LAYERS, STAGE_H, STAGE_W, palaceGrass, trackLayer, type Layer, type TrackId } from '../art/tracks';
 import { palace, PALACE_LOOK } from '../art/palace';
 import { ICONS } from '../art/icons';
 import { RUNNER_BOX, RUNNER_DRAW, paint } from '../art/sprite';
@@ -16,7 +16,7 @@ import { svgToCanvas } from '../raster';
 export const RACE_POSES: PoseId[] = ['run0', 'run1', 'run2', 'run3', 'run4', 'run5', 'jump', 'duck', 'bump', 'happy'];
 export const PROP_BOX = { x: -170, y: -470, w: 340, h: 500 };
 export const CANDY_BOX = { x: -60, y: -60, w: 120, h: 120 };
-export const PALACE_BOX = { x: -330, y: -560, w: 660, h: 580 };
+export const PALACE_BOX = { x: -330, y: -560, w: 660, h: 660 };
 
 export type Frames = Record<PoseId, HTMLCanvasElement>;
 export interface PropPics { ob: Obstacle; front: HTMLCanvasElement; back: HTMLCanvasElement | null }
@@ -48,7 +48,7 @@ export async function inBatches<T>(jobs: (() => Promise<T>)[], onProgress?: (don
 
 /** Paint jobs for one runner, one per pose in `RACE_POSES` order (see `framesOf`). */
 export function runnerJobs(animal: AnimalId, kid: KidId, outfit: Outfit, k: number): (() => Promise<HTMLCanvasElement>)[] {
-  const key = `r:${animal}:${kid}:${outfit.helmet}:${outfit.braids}:${outfit.saddle}:${k.toFixed(2)}`;
+  const key = `r:${animal}:${kid}:${outfit.helmet}:${outfit.hair}:${outfit.saddle}:${k.toFixed(2)}`;
   return RACE_POSES.map((p) => () => once(`${key}:${p}`, () => paint(drawRunner(animal, kid, p, outfit).svg, RUNNER_BOX, k * RUNNER_DRAW)));
 }
 
@@ -75,11 +75,11 @@ export function candyJobs(k: number): (() => Promise<[string, HTMLCanvasElement]
   return keys.map(([c, t]) => () => once(`c:${c}:${t}:${k.toFixed(2)}`, async () => [`${c}:${t}`, await paint(candy(c, t), CANDY_BOX, k * RUNNER_DRAW)] as [string, HTMLCanvasElement]));
 }
 
-export function extraJobs(k: number): (() => Promise<[string, HTMLCanvasElement]>)[] {
+export function extraJobs(k: number, track: TrackId): (() => Promise<[string, HTMLCanvasElement]>)[] {
   const icon = (name: 'up' | 'down', svg: string) => () => once(`i:${name}`, async () => [name, await svgToCanvas(svg.replace(/width="\d+" height="\d+"/, 'width="128" height="128"'), 128, 128)] as [string, HTMLCanvasElement]);
   return [
     icon('up', ICONS.up),
     icon('down', ICONS.down),
-    () => once(`p:${k.toFixed(2)}`, async () => ['palace', await paint(palace(0, 0, 1, { ...PALACE_LOOK, wave: 0.4 }), PALACE_BOX, k)] as [string, HTMLCanvasElement]),
+    () => once(`p:${track}:${k.toFixed(2)}`, async () => ['palace', await paint(palace(0, 0, 1, { ...PALACE_LOOK, grass: palaceGrass(track), wave: 0.4 }), PALACE_BOX, k)] as [string, HTMLCanvasElement]),
   ];
 }
