@@ -5,15 +5,15 @@ Guidance for `portal/` only: the Hebrew homepage "משחקי דורותי" (Doro
 ## What it is
 
 - A Hebrew, right-to-left page (`lang="he" dir="rtl"`) styled as a toy shelf: each game is a box on a wooden plank (design "A" of the owner's mockups). Fonts are self-hosted: Secular One for headings, Rubik for text.
-- Picture-first for children aged 4–99: boxes show a picture and a name, under the owner's logo (the header; the `<h1>` is the logo image with the alt text "משחקי דורותי"). A game's one-line description lives in the tooltip of its (i) button (`.info` + `.tip`, in the HTML at build time so search engines see it). Under the shelf there is one quiet line (`SITE.facts`: ages 4–99, free, no ads, no sign-up, no cookies, safe and calm) and nothing else; the owner removed the game list and the counting note.
+- Picture-first for children aged 4–99: boxes show just a square logo picture (the name is in the logo, so it is not printed under it; it stays as screen-reader text, `.sr-only`), under the owner's logo (the header; the `<h1>` is the logo image with the alt text "משחקי דורותי"). A game's one-line description lives in the tooltip of its (?) button (`.info` + `.tip`, in the HTML at build time so search engines see it). Under the shelf there is one quiet line (`SITE.facts`: ages 4–99, free, no ads, no sign-up, no cookies, safe and calm) and nothing else; the owner removed the game list and the counting note.
 - Games open in a **new tab** (`target="_blank" rel="noopener"`; the owner changed this so the portal doesn't depend on any change in a game). They live on their own origins (one Vercel project each), so the portal never frames them and their saves are untouched.
 
 ## Map
 
 | File | Purpose |
 |---|---|
-| `src/games.ts` | **The registry.** Games (Hebrew name, one sentence for the tooltip, url, alt text, `isNew`), `COMING_SOON` box count, site texts (`SITE`, including the facts line). All four games are in this repo; a game from outside would just be an entry with an outside url. |
-| `vite.config.ts` | Writes the shelf (with each game's (i) button and tooltip) and the JSON-LD (`WebSite` + `ItemList` of `VideoGame`) into `index.html` **at build time** from `games.ts`, so the page works and is indexed without JavaScript. Also `%SITE_URL%`, `robots.txt`, `sitemap.xml`. |
+| `src/games.ts` | **The registry.** Games (Hebrew name, one sentence for the tooltip, url, `isNew`), `COMING_SOON` box count, site texts (`SITE`, including the facts line). Four games are in this repo; Birdnet Kids is not (`github.com/Heladoo/Birdnet_kids`, GitHub Pages, English UI), so it is just an entry with an outside url and its logo is a copy of that repo's `logo-badge.png`. |
+| `vite.config.ts` | Writes the shelf (with each game's (?) button and tooltip) and the JSON-LD (`WebSite` + `ItemList` of `VideoGame`) into `index.html` **at build time** from `games.ts`, so the page works and is indexed without JavaScript. Also `%SITE_URL%`, `robots.txt`, `sitemap.xml`. |
 | `src/main.ts` | Rounds each shelf row's plank ends (`markRows`, the grid wraps by itself), board open/closed by width, install button (`beforeinstallprompt`, an instructions dialog on iOS), service worker, stats. |
 | `src/ideas.ts` | Ideas board: notes from `/api/ideas`, hearts (optimistic, remembered in `localStorage` `dorothy-games-hearts`). |
 | `src/composer.ts` | The idea form (`<dialog>`): one icon (optional), a description (≤500 characters), one optional sender name. |
@@ -24,7 +24,7 @@ Guidance for `portal/` only: the Hebrew homepage "משחקי דורותי" (Doro
 | `public/stats.html`, `public/stats.js` | The owner's page (static, outside the bundle, `noindex`, behind `STATS_KEY`): **the ideas waiting for approval come first** (Approve, Reject, and Remove for approved ones), then visits, visitors and which games were tapped. Player text is shown with `textContent`; the sender name sits in a `<bdi>` so Hebrew doesn't scramble the line. |
 | `public/sw.js` | Network-first service worker (offline fallback only, never caches `/api/`). Bump `VERSION` to drop old caches. |
 | `src/debug.ts` | `?debug=og` (the logo plus the shelf pictures), screenshotted by `scripts/render-art.mjs`. |
-| `scripts/tile-art.mjs` | Renders `public/games/<id>.jpg`: from each scene-art game's `?debug=og` page with the English title removed, cropped 4:3 around the hero (Otter River, Bead Box); from the game's own `public/logo.webp` on a backdrop of its colours (`LOGO_TILES`: Word Trail, Race to the Palace). |
+| `scripts/tile-art.mjs` | Renders `public/games/<id>.jpg` (square, 700×700) for all five games from their logos (`TILES`): the logos in `art/logos/` (Otter River, Bead Box, Birdnet Kids) sit on the logo's own background colour, so no square shows; Word Trail's and Race to the Palace's logos are read from their game folders and sit on a gradient of the game's colours. |
 | `scripts/logo-assets.py`, `art/dorothy-logo.jpg` | The owner's logo and the Pillow script that makes `public/logo.webp` / `logo-small.webp` (background flood-filled to transparent), the icons (cream background, since iOS turns transparent corners black) and `favicon.png` (a round crop of the girl). |
 
 ## Ideas: safety rules (keep them if anything changes)
@@ -53,9 +53,9 @@ Before shipping, also check the production build against the real headers: `npm 
 ## Art
 
 - The logo is the owner's picture on a flat cream background. `--wall` (#fef7e5) is that cream; `logo.webp` has a transparent background so there is no box around it, and the icons keep the cream. After changing the logo, run `python3 scripts/logo-assets.py`, then `node scripts/render-art.mjs` with the dev server on 5199 for `og-image.png`.
-- Game pictures: rerun `scripts/tile-art.mjs` when a game's look or logo changes. Don't show the English title text on a scene tile; the Hebrew name is under it. Otter River and Bead Box have no logo yet, so their tiles are scene art (the owner will make logos for them later).
+- Game pictures: rerun `node scripts/tile-art.mjs` when a logo changes (no dev servers needed). When adding a logo, sample its edge colours and use that as the tile `bg` (a vertical gradient if the sky varies, as in the Bead Box logo). Tiles are 1:1 (`aspect-ratio` in `.box img`).
 
 ## Open items
 
-- All four game urls were confirmed by the owner. The sandbox can't reach vercel.app, so none has been opened from here.
+- All five game urls were given by the owner (the Birdnet Kids address is GitHub Pages, so it is not a `vercel.app` one). The sandbox can't reach vercel.app, so none has been opened from here.
 - Postponed ideas are in `BACKLOG.md`.

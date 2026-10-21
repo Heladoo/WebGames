@@ -1,6 +1,6 @@
 // The homepage in a real browser: shelf layout, the ideas board and the idea form.
 import { expect, test, type Page } from '@playwright/test';
-import { GAMES, SITE } from '../src/games';
+import { COMING_SOON, GAMES, SITE } from '../src/games';
 
 const SIZES = [
   { name: 'small phone', width: 360, height: 740, perRow: 2, boardOpen: false },
@@ -39,7 +39,7 @@ for (const s of SIZES) {
     await fakeApi(page);
     await page.goto('/');
     const boxes = page.locator('#tiles > .cell');
-    await expect(boxes).toHaveCount(GAMES.length + 2);
+    await expect(boxes).toHaveCount(GAMES.length + 1 + COMING_SOON);
     // boxes per shelf row
     const tops = await boxes.evaluateAll((els) => els.map((e) => (e as HTMLElement).offsetTop));
     expect(tops.filter((t) => t === tops[0]).length).toBe(s.perRow);
@@ -63,7 +63,12 @@ test('game boxes are links with pictures, and the newest has a badge', async ({ 
   for (const g of GAMES) {
     const box = page.locator(`a.box[data-game="${g.id}"]`);
     await expect(box).toHaveAttribute('href', g.url);
-    await expect(box.locator('.box-name')).toHaveText(g.name);
+    // the logo already shows the name, so it is not printed under the picture; screen readers still get it
+    await expect(box.locator('.sr-only')).toHaveText(g.name);
+    await expect(box.locator('.box-name')).toHaveCount(0);
+    // the picture is a square
+    const r = (await box.locator('img').boundingBox())!;
+    expect(Math.abs(r.width - r.height)).toBeLessThanOrEqual(1);
     await expect(box.locator('.badge')).toHaveCount(g.isNew ? 1 : 0);
     const loaded = await box.locator('img').evaluate((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0);
     expect(loaded).toBe(true);
@@ -94,6 +99,13 @@ test('under the shelf there is one quiet line and nothing else', async ({ page }
   for (const g of GAMES) expect(await page.locator('footer').innerText()).not.toContain(g.about);
 });
 
+test('only the newest game has the "new" tag', async ({ page }) => {
+  await fakeApi(page);
+  await page.goto('/');
+  expect(GAMES.filter((g) => g.isNew).map((g) => g.id)).toEqual(['palace-race']);
+  await expect(page.locator('.badge')).toHaveCount(1);
+});
+
 test('the logo is the page heading, and games open in a new tab', async ({ page }) => {
   await fakeApi(page);
   await page.goto('/');
@@ -118,7 +130,7 @@ test('the logo is the page heading, and games open in a new tab', async ({ page 
   expect(alpha).toEqual([0, 0, 255]);
 });
 
-test('each game box has an (i) button whose tooltip shows on hover, focus and tap', async ({ page }) => {
+test('each game box has a (?) button whose tooltip shows on hover, focus and tap', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await fakeApi(page);
   await page.goto('/');
@@ -147,12 +159,20 @@ test('each game box has an (i) button whose tooltip shows on hover, focus and ta
   await page.locator(`.cell:has(a[data-game="${GAMES[1].id}"]) .info`).click();
   await expect(tip).toBeHidden();
   await expect(page.locator(`#tip-${GAMES[1].id}`)).toBeVisible();
-  // tapping the (i) doesn't open the game, and it is a big enough target
+  // tapping the (?) doesn't open the game, and it is a big enough target
   expect(page.url()).toBe('http://localhost:5199/');
   const r = (await info.boundingBox())!;
   expect(Math.min(r.width, r.height)).toBeGreaterThanOrEqual(44);
   // the idea and coming-soon boxes have none
   await expect(page.locator('.info')).toHaveCount(GAMES.length);
+  // it is a question mark, drawn on the picture
+  await expect(info).toHaveText('?');
+  const dot = (await info.locator('.info-dot').boundingBox())!;
+  const pic = (await page.locator(`a[data-game="${g.id}"] img`).boundingBox())!;
+  expect(dot.x).toBeGreaterThanOrEqual(pic.x);
+  expect(dot.x + dot.width).toBeLessThanOrEqual(pic.x + pic.width);
+  expect(dot.y).toBeGreaterThanOrEqual(pic.y);
+  expect(dot.y + dot.height).toBeLessThanOrEqual(pic.y + pic.height);
 });
 
 test('ideas show as notes; player text stays text', async ({ page }) => {
