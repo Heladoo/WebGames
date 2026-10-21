@@ -17,7 +17,7 @@ export async function render() {
   const img = Math.min(222, Math.floor((1112 - gap * (GAMES.length - 1)) / GAMES.length) - 16);
   const tiles = GAMES.map(
     (g) => `<div style="padding:8px;border-radius:20px;background:#fff;box-shadow:0 4px 0 rgba(80,50,20,.12)">
-      <img src="/games/${g.id}.jpg" alt="" style="display:block;width:${img}px;height:${Math.round(img * 0.75)}px;object-fit:cover;border-radius:13px"></div>`,
+      <img src="/games/${g.id}.jpg" alt="" style="display:block;width:${img}px;height:${img}px;object-fit:cover;border-radius:13px"></div>`,
   ).join('');
   root.innerHTML = `
     <img src="/logo.webp" alt="" style="position:absolute;top:12px;left:50%;transform:translateX(-50%);height:410px">

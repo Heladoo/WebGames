@@ -130,7 +130,7 @@ h1 { margin: 0; line-height: 0; flex-shrink: 0; }
 a.box:hover, button.box:hover { color: var(--ink); transform: translateY(-4px); }
 .box:active { transform: translateY(-1px) scale(0.98); }
 .box img {
-  display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover;
+  display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover;
   border-radius: 12px; background: #e9dcc7;
 }
 .box-name { margin-top: auto; padding: 9px 0 3px; text-align: center; font-weight: 700; font-size: 17px; line-height: 1.2; }
@@ -173,7 +173,7 @@ a.box:hover, button.box:hover { color: var(--ink); transform: translateY(-4px); 
   .soon-icon svg { width: 60px; height: 60px; }
 }
 
-/* the (i) button and its one-line tooltip */
+/* the (?) button and its one-line tooltip */
 .info {
   position: absolute; z-index: 2;
   /* a 44px tap area whose 34px button sits 8px in from the picture's corner */
@@ -192,6 +192,7 @@ a.box:hover, button.box:hover { color: var(--ink); transform: translateY(-4px); 
   box-shadow: 0 2px 6px rgba(40, 25, 15, 0.45);
   transition: background 0.15s ease;
 }
+.q { font: 700 21px/1 'Rubik', system-ui, sans-serif; }
 .info:hover .info-dot, .info:focus-visible .info-dot { background: var(--teal); }
 .tip {
   display: none;

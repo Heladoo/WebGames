@@ -6,7 +6,7 @@
 export interface Game {
   /** stable id, used for stats and the tile picture: /games/<id>.jpg */
   id: string;
-  /** name shown on the box (Hebrew) */
+  /** the name, read by screen readers and used in the tooltip button's label (the picture, a logo, already shows it) */
   name: string;
   /** one sentence for parents and search engines (Hebrew) */
   about: string;
@@ -14,8 +14,6 @@ export interface Game {
   url: string;
   /** shows the "new" badge */
   isNew?: boolean;
-  /** what the art shows, for screen readers (Hebrew) */
-  alt: string;
   /** for JSON-LD */
   genre: string[];
   /** language of the game itself, for JSON-LD; leave out when unknown */
@@ -28,7 +26,6 @@ export const GAMES: Game[] = [
     name: 'חיי לוטרה',
     about: 'שטים על הנהר, אוספים צדפים ומלבישים את הלוטרה.',
     url: 'https://web-games-otter-river.vercel.app/',
-    alt: 'הלוגו של חיי לוטרה: לוטרה עם משקפת צלילה וצדף בנהר',
     genre: ['Casual', 'Relaxing'],
     inLanguage: 'en',
   },
@@ -37,7 +34,6 @@ export const GAMES: Game[] = [
     name: 'שביל המילים',
     about: 'הרפתקה של מילים באנגלית: בוחרים, מקשיבים ומציירים אותיות.',
     url: 'https://word-trail-rho.vercel.app/',
-    alt: 'הלוגו של שביל המילים: כלבלב עם כובע הולך בשביל מתחת לקשת',
     genre: ['Educational', 'Adventure'],
     inLanguage: 'en',
   },
@@ -46,8 +42,6 @@ export const GAMES: Game[] = [
     name: 'צמיד לדרך',
     about: 'משחילים צמידים מחרוזים צבעוניים ולומדים מילים באנגלית.',
     url: 'https://bead-box.vercel.app/',
-    isNew: true,
-    alt: 'הלוגו של צמיד לדרך: צמיד חרוזים צבעוני סביב שלט עץ על אי',
     genre: ['Educational', 'Creative'],
     inLanguage: 'en',
   },
@@ -57,7 +51,6 @@ export const GAMES: Game[] = [
     about: 'מרוץ רגוע: בוחרים חיה מלכותית ורוכב, דוהרים לארמון, אוספים ממתקים וזוכים בגביע.',
     url: 'https://web-games-palace-race.vercel.app/',
     isNew: true,
-    alt: 'הלוגו של המרוץ לארמון: ארמון קסום, חד-קרן ואיל',
     genre: ['Casual', 'Racing'],
     inLanguage: 'he',
   },
@@ -67,8 +60,6 @@ export const GAMES: Game[] = [
     name: 'Birdnet Kids',
     about: 'לוחצים על ציפור ושומעים את השיר שלה.',
     url: 'https://heladoo.github.io/Birdnet_kids/',
-    isNew: true,
-    alt: 'הלוגו של Birdnet Kids: דוכיפת שרה על ענף',
     genre: ['Educational', 'Nature'],
     inLanguage: 'en',
   },

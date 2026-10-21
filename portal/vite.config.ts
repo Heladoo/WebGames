@@ -12,7 +12,7 @@ function siteUrl() {
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-const infoIcon = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M12 10.5v7" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><circle cx="12" cy="6.4" r="2.1" fill="currentColor"/></svg>`;
+const infoIcon = `<span class="q" aria-hidden="true">?</span>`;
 const ideaIcon = `<svg viewBox="0 0 24 24" width="48" height="48" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V17h5v-1.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>`;
 const giftIcon = `<svg viewBox="0 0 24 24" width="56" height="56" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18M12 8c-2-4-6-4-6-1.5S10 8 12 8zm0 0c2-4 6-4 6-1.5S14 8 12 8z"/></svg>`;
 
@@ -20,8 +20,8 @@ const giftIcon = `<svg viewBox="0 0 24 24" width="56" height="56" aria-hidden="t
 export function tilesMarkup() {
   const games = GAMES.map(
     (g) => `<li class="cell"><a class="box" href="${esc(g.url)}" target="_blank" rel="noopener" data-game="${esc(g.id)}">
-      <img src="/games/${esc(g.id)}.jpg" alt="${esc(g.alt)}" width="640" height="480" loading="eager" decoding="async" />
-      <span class="box-name">${esc(g.name)}</span>${g.isNew ? '<span class="badge">חדש</span>' : ''}</a>
+      <img src="/games/${esc(g.id)}.jpg" alt="" width="700" height="700" loading="eager" decoding="async" />
+      <span class="sr-only">${esc(g.name)}</span>${g.isNew ? '<span class="badge">חדש</span>' : ''}</a>
       <button type="button" class="info" aria-label="על ${esc(g.name)}" aria-describedby="tip-${esc(g.id)}"><span class="info-dot">${infoIcon}</span></button>
       <span class="tip" role="tooltip" id="tip-${esc(g.id)}">${esc(g.about)}</span></li>`,
   );
