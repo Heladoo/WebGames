@@ -101,8 +101,9 @@ h1 { margin: 0; line-height: 0; flex-shrink: 0; }
 }
 
 /* each cell carries its own piece of plank; with no column gap they join into one shelf per row */
-.cell { position: relative; display: flex; flex-direction: column; padding: 0 7px 22px; }
-@media (min-width: 600px) { .cell { padding-inline: 13px; } }
+/* --cp: space around a box inside its cell; --bp: the white frame around the picture. The (i) button is placed from these, so it always sits on the picture. */
+.cell { --cp: 7px; --bp: 7px; position: relative; display: flex; flex-direction: column; padding: 0 var(--cp) 22px; }
+@media (min-width: 600px) { .cell { --cp: 13px; --bp: 8px; } }
 .cell::after {
   content: '';
   position: absolute; inset-inline: 0; bottom: 0;
@@ -118,7 +119,7 @@ h1 { margin: 0; line-height: 0; flex-shrink: 0; }
   position: relative; z-index: 1;
   flex: 1;
   display: flex; flex-direction: column;
-  padding: 7px;
+  padding: var(--bp);
   border-radius: 18px;
   background: var(--paper);
   box-shadow: 0 4px 0 rgba(80, 50, 20, 0.12);
@@ -142,7 +143,7 @@ a.box:hover, button.box:hover { color: var(--ink); transform: translateY(-4px); 
   transform: rotate(-8deg);
 }
 @media (min-width: 600px) {
-  .box { padding: 8px; border-radius: 20px; }
+  .box { border-radius: 20px; }
   .box img { border-radius: 14px; }
   .box-name { font-size: 21px; padding-top: 10px; }
   .box-sub { font-size: 14px; }
@@ -175,23 +176,27 @@ a.box:hover, button.box:hover { color: var(--ink); transform: translateY(-4px); 
 /* the (i) button and its one-line tooltip */
 .info {
   position: absolute; z-index: 2;
-  top: 4px; inset-inline-start: 10px;
+  /* a 44px tap area whose 34px button sits 8px in from the picture's corner */
+  top: calc(var(--bp) + 3px); inset-inline-start: calc(var(--cp) + var(--bp) + 3px);
   width: 44px; height: 44px; padding: 0;
   display: flex; align-items: center; justify-content: center;
-  border: 0; background: none; color: var(--ink);
+  border: 0; background: none; color: #fff;
   cursor: pointer;
 }
+/* dark with a white ring: easy to see on any picture, light or dark */
 .info-dot {
-  width: 28px; height: 28px; border-radius: 50%;
+  width: 34px; height: 34px; box-sizing: border-box; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(255, 253, 248, 0.92);
-  box-shadow: 0 1px 4px rgba(40, 25, 15, 0.3);
+  background: var(--ink);
+  border: 2.5px solid #fff;
+  box-shadow: 0 2px 6px rgba(40, 25, 15, 0.45);
+  transition: background 0.15s ease;
 }
-.info:hover .info-dot { background: #fff; }
+.info:hover .info-dot, .info:focus-visible .info-dot { background: var(--teal); }
 .tip {
   display: none;
   position: absolute; z-index: 3;
-  top: 52px; inset-inline: 16px;
+  top: calc(var(--bp) + 52px); inset-inline: calc(var(--cp) + var(--bp) + 4px);
   padding: 10px 12px; border-radius: 12px;
   background: var(--ink); color: #fff;
   font-size: 15px; line-height: 1.35;
