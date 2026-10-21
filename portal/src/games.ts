@@ -28,7 +28,7 @@ export const GAMES: Game[] = [
     name: 'חיי לוטרה',
     about: 'שטים על הנהר, אוספים צדפים ומלבישים את הלוטרה.',
     url: 'https://web-games-otter-river.vercel.app/',
-    alt: 'לוטרה עם כובע קש שטה על גלגל ים ורוד בנהר',
+    alt: 'הלוגו של חיי לוטרה: לוטרה עם משקפת צלילה וצדף בנהר',
     genre: ['Casual', 'Relaxing'],
     inLanguage: 'en',
   },
@@ -37,17 +37,17 @@ export const GAMES: Game[] = [
     name: 'שביל המילים',
     about: 'הרפתקה של מילים באנגלית: בוחרים, מקשיבים ומציירים אותיות.',
     url: 'https://word-trail-rho.vercel.app/',
-    alt: 'כלבלב עם כובע הולך בשביל בפארק ודבורה לידו',
+    alt: 'הלוגו של שביל המילים: כלבלב עם כובע הולך בשביל מתחת לקשת',
     genre: ['Educational', 'Adventure'],
     inLanguage: 'en',
   },
   {
     id: 'bead-box',
-    name: 'קופסת החרוזים',
+    name: 'צמיד לדרך',
     about: 'משחילים צמידים מחרוזים צבעוניים ולומדים מילים באנגלית.',
     url: 'https://bead-box.vercel.app/',
     isNew: true,
-    alt: 'צמיד חרוזים צבעוני על שולחן עץ בחוף ים',
+    alt: 'הלוגו של צמיד לדרך: צמיד חרוזים צבעוני סביב שלט עץ על אי',
     genre: ['Educational', 'Creative'],
     inLanguage: 'en',
   },
@@ -61,10 +61,21 @@ export const GAMES: Game[] = [
     genre: ['Casual', 'Racing'],
     inLanguage: 'he',
   },
+  {
+    // not in this repo: github.com/Heladoo/Birdnet_kids, served by GitHub Pages
+    id: 'birdnet-kids',
+    name: 'Birdnet Kids',
+    about: 'לוחצים על ציפור ושומעים את השיר שלה.',
+    url: 'https://heladoo.github.io/Birdnet_kids/',
+    isNew: true,
+    alt: 'הלוגו של Birdnet Kids: דוכיפת שרה על ענף',
+    genre: ['Educational', 'Nature'],
+    inLanguage: 'en',
+  },
 ];
 
 /** "Coming soon" boxes at the end of the shelf; 0 hides them. */
-export const COMING_SOON = 1;
+export const COMING_SOON = 0;
 
 export const SITE = {
   name: 'משחקי דורותי',

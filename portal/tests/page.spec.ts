@@ -1,6 +1,6 @@
 // The homepage in a real browser: shelf layout, the ideas board and the idea form.
 import { expect, test, type Page } from '@playwright/test';
-import { GAMES, SITE } from '../src/games';
+import { COMING_SOON, GAMES, SITE } from '../src/games';
 
 const SIZES = [
   { name: 'small phone', width: 360, height: 740, perRow: 2, boardOpen: false },
@@ -39,7 +39,7 @@ for (const s of SIZES) {
     await fakeApi(page);
     await page.goto('/');
     const boxes = page.locator('#tiles > .cell');
-    await expect(boxes).toHaveCount(GAMES.length + 2);
+    await expect(boxes).toHaveCount(GAMES.length + 1 + COMING_SOON);
     // boxes per shelf row
     const tops = await boxes.evaluateAll((els) => els.map((e) => (e as HTMLElement).offsetTop));
     expect(tops.filter((t) => t === tops[0]).length).toBe(s.perRow);
