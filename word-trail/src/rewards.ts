@@ -142,13 +142,12 @@ export async function makePostcard(t: Trip): Promise<{ png: string; caption: str
   // the game logo in the top-left corner of the picture
   const logo = await loadImage('/logo.webp').catch(() => null);
   if (logo) {
-    const lh = 180; // sized by height, so a taller logo doesn't reach down into the scene
-    const lw = (lh * logo.width) / logo.height;
+    const lw = 190;
     ctx.save();
     ctx.shadowColor = 'rgba(58, 42, 32, 0.25)';
     ctx.shadowBlur = 8;
     ctx.shadowOffsetY = 3;
-    ctx.drawImage(logo, pad + 16, pad + 12, lw, lh);
+    ctx.drawImage(logo, pad + 16, pad + 12, lw, (lw * logo.height) / logo.width);
     ctx.restore();
   }
   // the browser only loads a font face once it is used: load the caption's bold face first

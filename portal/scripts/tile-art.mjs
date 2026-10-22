@@ -2,10 +2,9 @@
 //
 //   node scripts/tile-art.mjs
 //
-// The logos of Otter River, Word Trail, Bead Box and Birdnet Kids live in art/logos/ (Birdnet Kids is a
+// The logos of Otter River, Bead Box and Birdnet Kids live in art/logos/ (Birdnet Kids is a
 // separate repo, Heladoo/Birdnet_kids, and its logo is a copy of that repo's logo-badge.png).
-// Race to the Palace's logo is read from its own folder (Word Trail's is the owner's square original,
-// a copy of word-trail/art/logo-source.webp, on its own blue).
+// Word Trail's and Race to the Palace's logos are read from their own folders.
 //
 // A logo is drawn on a backdrop (`bg`): the logo's own background colour where it has one (so
 // the picture blends in with no visible square; sampled from the file's edges), or a gradient
@@ -21,7 +20,7 @@ const OUT = new URL('../public/games/', import.meta.url);
 
 const TILES = [
   { id: 'otter-river', logo: '../art/logos/otter-river.webp', bg: '#fcf6e8', width: 100 },
-  { id: 'word-trail', logo: '../art/logos/word-trail.webp', bg: '#77cfed', width: 100 },
+  { id: 'word-trail', logo: '../../word-trail/public/logo.webp', bg: 'radial-gradient(circle at 50% 42%, #f4fbf4 0%, #cfe9e4 100%)', width: 88 },
   { id: 'bead-box', logo: '../art/logos/bead-box.webp', bg: 'linear-gradient(#76d8fd 0%, #9be7fd 50%, #8ce1fb 100%)', width: 100 },
   { id: 'palace-race', logo: '../../palace-race/public/logo.webp', bg: 'radial-gradient(circle at 50% 48%, #3b2d7a 0%, #1b1450 100%)', width: 92 },
   { id: 'birdnet-kids', logo: '../art/logos/birdnet-kids.png', bg: '#faf6eb', width: 100 },
