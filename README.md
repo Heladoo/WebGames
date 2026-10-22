@@ -234,7 +234,7 @@ npm run build    # static site in portal/dist
 npm test         # Playwright + Chromium
 ```
 
-**Adding a game:** add an entry to `portal/src/games.ts` (Hebrew name, one sentence for the tooltip, address), and save a square logo picture as `portal/public/games/<id>.jpg`. `node scripts/tile-art.mjs` renders every picture from the game's logo (the logos of Otter River, Bead Box and Birdnet Kids are in `portal/art/logos/`; Word Trail's and Race to the Palace's are read from their own folders). A game that lives in another repo is listed by its address, like Birdnet Kids (`github.com/Heladoo/Birdnet_kids`, on GitHub Pages). Set `isNew` on the newest games and `COMING_SOON` to the number of "coming soon" boxes.
+**Adding a game:** add an entry to `portal/src/games.ts` (Hebrew name, one sentence for the tooltip, address), and save a square logo picture as `portal/public/games/<id>.jpg`. `node scripts/tile-art.mjs` renders every picture from the game's logo (the logos of Otter River, Word Trail, Bead Box and Birdnet Kids are in `portal/art/logos/`; Race to the Palace's is read from its own folder). A game that lives in another repo is listed by its address, like Birdnet Kids (`github.com/Heladoo/Birdnet_kids`, on GitHub Pages). Set `isNew` on the newest games and `COMING_SOON` to the number of "coming soon" boxes.
 
 **The logo** is the owner's (`portal/art/dorothy-logo.jpg`). `python3 scripts/logo-assets.py` (needs Pillow) makes the transparent web logo, the app icons and the favicon from it, and `node scripts/render-art.mjs` (dev server on port 5199) redraws the link-preview image.
 

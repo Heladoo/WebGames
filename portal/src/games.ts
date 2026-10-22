@@ -8,7 +8,7 @@ export interface Game {
   id: string;
   /** the name, read by screen readers and used in the tooltip button's label (the picture, a logo, already shows it) */
   name: string;
-  /** one sentence for parents and search engines (Hebrew) */
+  /** the tooltip: one short, fun line (Hebrew); also the game's description in the search-engine data */
   about: string;
   /** full address of the game; games open in a new tab, so the portal doesn't depend on any game's own page */
   url: string;
@@ -32,7 +32,7 @@ export const GAMES: Game[] = [
   {
     id: 'word-trail',
     name: 'שביל המילים',
-    about: 'הרפתקה של מילים באנגלית: בוחרים, מקשיבים ומציירים אותיות.',
+    about: 'הולכים בשביל ולומדים מילים באנגלית!',
     url: 'https://word-trail-rho.vercel.app/',
     genre: ['Educational', 'Adventure'],
     inLanguage: 'en',
@@ -40,7 +40,7 @@ export const GAMES: Game[] = [
   {
     id: 'bead-box',
     name: 'צמיד לדרך',
-    about: 'משחילים צמידים מחרוזים צבעוניים ולומדים מילים באנגלית.',
+    about: 'משחילים חרוזים במקומות מעניינים!',
     url: 'https://bead-box.vercel.app/',
     genre: ['Educational', 'Creative'],
     inLanguage: 'en',
@@ -48,7 +48,7 @@ export const GAMES: Game[] = [
   {
     id: 'palace-race',
     name: 'המרוץ לארמון',
-    about: 'מרוץ רגוע: בוחרים חיה מלכותית ורוכב, דוהרים לארמון, אוספים ממתקים וזוכים בגביע.',
+    about: 'דוהרים לארמון על חיות מלכותיות ואוספים ממתקים בדרך!',
     url: 'https://web-games-palace-race.vercel.app/',
     isNew: true,
     genre: ['Casual', 'Racing'],
@@ -58,7 +58,7 @@ export const GAMES: Game[] = [
     // not in this repo: github.com/Heladoo/Birdnet_kids, served by GitHub Pages
     id: 'birdnet-kids',
     name: 'Birdnet Kids',
-    about: 'לוחצים על ציפור ושומעים את השיר שלה.',
+    about: 'מקשיבים לציפורים שהוקלטו בתחנת המחקר בקיבוץ דורות!',
     url: 'https://heladoo.github.io/Birdnet_kids/',
     genre: ['Educational', 'Nature'],
     inLanguage: 'en',
