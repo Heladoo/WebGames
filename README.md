@@ -118,7 +118,7 @@ An endless, gentle English word adventure for young children (about 4–7) who a
 - **Quiet celebrations:** badges and photos are celebrated with pictures, sounds and confetti, not speech.
 - **Paper confetti:** a small burst for each finished word, falling paper bunting for a new badge, and a full-screen paper party for milestones (10, 25 or 50 words, A to Z, every place).
 - **Stickers, badges and photos:** every learned word becomes a sticker. The camera makes a postcard of the trip with a caption. Postcards and the sticker page can be shared (system share sheet) or saved as images.
-- **Start over** with the paw button: it asks "Choose a new friend?" with big ✓ and ✕ buttons.
+- **Home screen** (at the start, and when the house button or the logo in the corner is tapped): Play or Continue, New game (it asks "Choose a new friend?" with big ✓ and ✕ buttons), Album, and the Dorothy Games logo, which leads back to the games homepage. Every button has a picture, for children who can't read yet.
 - **For grown-ups** (hold the ⚙️ button): uppercase or lowercase letters, tap/trace/both, the voice (every English voice on the device, a British female voice by default) and its speed, music, sound effects, progress, and "New trip". Progress is saved only in the browser (localStorage and IndexedDB). There are no accounts, ads or cookies.
 
 ### Run locally

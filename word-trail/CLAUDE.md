@@ -85,7 +85,9 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 
 **Words.** Every letter A–Z is in at least one word (tested). For J, Q, V, Y and Z the owner chose JELLYFISH, SQUIRREL, BUNNY, MONKEY and ZEBRA (friends) and VIOLIN and KEY (carried); words must be easy to recognise and not look like another word's picture, so **ask the owner to approve new words before drawing them** (VAN, PONY, JAR and QUAIL were rejected). Words of 8–9 letters appear once 30 words are learned (`maxLength`). A new word needs its picture, a rig case if a hero wears, carries or rides it, and passing art tests.
 
-**Logo.** `public/logo.webp` (640 px) and `logo-small.webp` (256 px) are the owner's logo with the backdrop cut out (transparent). It is the title-screen heading, sits in the top-left corner while playing (`#corner-logo`; the panels on wide screens leave room for it, tested), and is drawn top-left on postcards.
+**Logo.** `public/logo.webp` (640 px) and `logo-small.webp` (256 px) are the owner's logo with the backdrop cut out (transparent). The owner tried a newer logo and kept this one, because its colours match the game's palette. It heads the home screen, sits in the top-left corner while playing (`#corner-logo`, a button that opens the home screen; the panels on wide screens leave room for it, tested), and is drawn top-left on postcards.
+
+**Home screen** (`#title`, `initHome()` in `main.ts`): the logo, then big buttons that each pair a word with a picture for children who can't read: Play (Continue once a game is going), New game (only when there is a friend on the trail; it asks the yes/no "Choose a new friend?" card), Album (the book on its Photos tab), then the Dorothy Games logo (`public/dorothy-logo.webp`, a copy of `portal/public/logo-small.webp`) linking back to the portal, https://dorothy-games.vercel.app/. It opens at the start and, while playing, from the house button in the top bar or the corner logo, with a plain tap (the owner replaced the hold-to-start-over button with it). While it is open the walk and the idle hints pause (`anyOverlayOpen`). The first tap on any of its buttons wakes speech and sound (`wakeAudio`). On short landscape screens the logo sits beside the buttons.
 
 **Card pictures** come from `content.ts` `picture(word)`. Item cards are framed by `ITEM_BOX` in `wearables.ts`.
 
@@ -100,6 +102,8 @@ npx playwright test -g "fits inside its frame"    # one test, by name
 - **Scenery** (`?debug=tiles`): every tile repeats, and where neighbouring tiles overlap they agree, including at a scroll position between two pixels (no seam or hairline).
 
 **`layout.spec.ts`** loads `?debug=learn` for the longest words on a small phone, a phone, a tablet and a landscape phone, in both activities, and checks that the big word stays on one line and everything fits in the panel and on screen, clear of the top buttons. It also checks that long words on a phone are tapped instead of traced.
+
+**`home.spec.ts`**: the home screen fits on four screen sizes with every button showing a picture and its word (Play and Album for a fresh game; Continue, New game and Album with a saved trip), the Dorothy Games link, the house button and corner logo opening it with a tap, Album on the Photos tab, and New game asking first.
 
 **`spot.spec.ts`** loads `?debug=spot` for a sky thing, friends, clothes, a carried thing, a ride and the hero on four screen sizes: the question is small, has its picture and finger, and the thing is on screen and not behind it. Tapping the thing answers, tapping elsewhere doesn't, and the hint ring lands on it.
 
@@ -130,12 +134,12 @@ You can also set up a scene directly from the URL: `?hero=fox&wear=cap,glasses&f
 
 ## Controls children shouldn't hit by accident
 
-`holdButton()` (`ui.ts`) acts only after a press and hold, with a filling ring: the grown-ups gear (1.5 s) and start-over (1 s, then a yes/no card). A short tap only wobbles and shows a hint. Idle hints (spoken letters, hint dots) pause while any overlay is open or the page is hidden.
+`holdButton()` (`ui.ts`) acts only after a press and hold, with a filling ring: the grown-ups gear (1.5 s). A short tap only shows a hint. Starting over is on the home screen and always asks yes/no first. Idle hints (spoken letters, hint dots) pause while any overlay is open or the page is hidden.
 
 ## Voice, music and sound
 
 - **Speech** (`speech.ts`, Web Speech): the default voice is a British female voice (`PREFERRED_GB`). The grown-ups menu (hold ⚙️) lists every English voice on the device. Letters are spoken as capitals, with an override for `a`.
-- **Music** (`music.ts`): generative notes and nature sounds per place and sky (birds, waves, wind, brook, frogs, crickets at night, rain). Polled every 200 ms, it ducks while `speechSynthesis.speaking`. It is started from the Start tap with `sfx.context`.
+- **Music** (`music.ts`): generative notes and nature sounds per place and sky (birds, waves, wind, brook, frogs, crickets at night, rain). Polled every 200 ms, it ducks while `speechSynthesis.speaking`. It is started from the first home-screen tap with `sfx.context`.
 - **Sound effects** (`sfx.ts`): effects, plus the shared `AudioContext` and the master limiter (`sfx.output`, a `DynamicsCompressorNode`). Effects and music both end in it.
 - Ambience swells (waves, wind, brook) are scheduled gain ramps on a timer, never an oscillator on a gain (the root `CLAUDE.md` rule). The flute vibrato modulates `frequency`, which is allowed.
 
@@ -146,4 +150,4 @@ The game uses the shared stats pattern, with the Redis key prefix **`wt:`** (Ott
 - function: `api/stats.js`;
 - dashboard: `public/stats.html` and `stats.js`, which are static files outside the Vite bundle.
 
-A play is counted when Start is tapped. Play time ticks once a second while the page is visible and is flushed with `sendBeacon` when the page is hidden.
+A play is counted when the home screen is first left (Play, Continue or New game). Play time ticks once a second while the page is visible and is flushed with `sendBeacon` when the page is hidden.
