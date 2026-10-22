@@ -19,7 +19,7 @@ import { tapWord } from './tapLetters';
 import { traceLetterPx, traceWord } from './trace';
 import { findWord } from './findWord';
 import { spotTargets, spottableWords, spotWord } from './spot';
-import { $, anyOverlayOpen, celebrate, fitText, flash, h, holdButton, ICONS, sleep, toast } from './ui';
+import { $, anyOverlayOpen, celebrate, fitText, flash, h, ICONS, sleep, toast } from './ui';
 import { runDebug } from './debug';
 import { installDefs } from './art/paper';
 
@@ -85,20 +85,12 @@ function boot() {
   $('btn-book').innerHTML = ICONS.book;
   $('btn-camera').innerHTML = ICONS.camera;
   $('btn-parents').insertAdjacentHTML('beforeend', ICONS.gear);
-  $('btn-new').insertAdjacentHTML('beforeend', ICONS.restart);
-  // starting over erases the dressed-up hero and friends, so it needs a hold
-  const btnNew = $('btn-new');
-  holdButton(btnNew, 1000, async () => {
-    sfx.tap();
-    if (await askNewTrip()) startNewTrip();
-  }, () => {
-    sfx.soft();
-    btnNew.classList.remove('wobble');
-    void btnNew.offsetWidth;
-    btnNew.classList.add('wobble');
-    toast('Hold to start a new trip');
-  });
-  $('btn-start').innerHTML = ICONS.play;
+  $('btn-home').innerHTML = ICONS.home;
+  // every home button has a picture, for children who can't read yet
+  const icon = (id: string, svg: string) => ($(id).querySelector('.home-ic')!.innerHTML = svg);
+  icon('btn-start', ICONS.play);
+  icon('btn-new-game', ICONS.restart);
+  icon('btn-album', ICONS.book);
 
   scene.fit();
   scene.render(s.trip);
@@ -122,25 +114,71 @@ function boot() {
     el?.classList.add('boing');
   });
 
-  $('btn-start').addEventListener('click', () => {
-    speech.unlock();
-    sfx.unlock();
-    sfx.pop();
-    const ctx = sfx.context;
-    const out = sfx.output;
-    if (ctx && out) {
-      music.setScene(s.trip.place, s.trip.sky);
-      music.start(ctx, out);
-    }
+  // the home screen: at the start, and whenever the logo or the house is tapped
+  const home = initHome(menus);
+  $('btn-home').addEventListener('click', home.open);
+  $('corner-logo').addEventListener('click', home.open);
+}
+
+/** Sound can only start from a tap; each home button calls this (it is safe to repeat). */
+function wakeAudio() {
+  speech.unlock();
+  sfx.unlock();
+  const ctx = sfx.context;
+  const out = sfx.output;
+  if (ctx && out) {
+    music.setScene(s.trip.place, s.trip.sky);
+    music.start(ctx, out);
+  }
+}
+
+function initHome(menus: ReturnType<typeof initMenus>) {
+  let started = false;
+  const refresh = () => {
+    // "Play" for a fresh game, "Continue" (and "New game") once there is a friend on the trail
+    const going = started || !!s.trip.hero;
+    $('btn-start').querySelector('.home-label')!.textContent = going ? 'Continue' : 'Play';
+    $('btn-start').setAttribute('aria-label', going ? 'Continue the game' : 'Play');
+    $('btn-new-game').classList.toggle('hidden', !s.trip.hero);
+  };
+  const close = () => {
     $('title').classList.add('hidden');
     $('topbar').classList.remove('hidden');
+    if (started) return;
+    started = true;
     // anonymous play statistics: one play, then seconds while the game is on screen
     stats.start();
     window.setInterval(() => { if (!document.hidden) stats.tick(1); }, 1000);
     document.addEventListener('visibilitychange', () => { if (document.hidden) stats.flush(true); });
     window.addEventListener('pagehide', () => stats.flush(true));
     run();
-  }, { once: true });
+  };
+  refresh();
+  $('btn-start').addEventListener('click', () => {
+    wakeAudio();
+    sfx.pop();
+    close();
+  });
+  $('btn-new-game').addEventListener('click', async () => {
+    wakeAudio();
+    sfx.tap();
+    if (!(await askNewTrip())) return;
+    startNewTrip();
+    close();
+  });
+  $('btn-album').addEventListener('click', () => {
+    wakeAudio();
+    sfx.tap();
+    menus.openBook('photos');
+  });
+  return {
+    open() {
+      sfx.tap();
+      refresh();
+      $('title').classList.remove('hidden');
+      $('topbar').classList.add('hidden');
+    },
+  };
 }
 
 let restart = false;
@@ -473,7 +511,7 @@ function debugChrome() {
   $('btn-book').innerHTML = ICONS.book;
   $('btn-camera').innerHTML = ICONS.camera;
   $('btn-parents').insertAdjacentHTML('beforeend', ICONS.gear);
-  $('btn-new').insertAdjacentHTML('beforeend', ICONS.restart);
+  $('btn-home').innerHTML = ICONS.home;
   $('topbar').classList.remove('hidden');
   $('title').classList.add('hidden');
 }

@@ -118,7 +118,7 @@ An endless, gentle English word adventure for young children (about 4–7) who a
 - **Quiet celebrations:** badges and photos are celebrated with pictures, sounds and confetti, not speech.
 - **Paper confetti:** a small burst for each finished word, falling paper bunting for a new badge, and a full-screen paper party for milestones (10, 25 or 50 words, A to Z, every place).
 - **Stickers, badges and photos:** every learned word becomes a sticker. The camera makes a postcard of the trip with a caption. Postcards and the sticker page can be shared (system share sheet) or saved as images.
-- **Start over** with the paw button: it asks "Choose a new friend?" with big ✓ and ✕ buttons.
+- **Home screen** (at the start, and when the house button or the logo in the corner is tapped): Play or Continue, New game (it asks "Choose a new friend?" with big ✓ and ✕ buttons), Album, and the Dorothy Games logo, which leads back to the games homepage. Every button has a picture, for children who can't read yet.
 - **For grown-ups** (hold the ⚙️ button): uppercase or lowercase letters, tap/trace/both, the voice (every English voice on the device, a British female voice by default) and its speed, music, sound effects, progress, and "New trip". Progress is saved only in the browser (localStorage and IndexedDB). There are no accounts, ads or cookies.
 
 ### Run locally
@@ -234,7 +234,7 @@ npm run build    # static site in portal/dist
 npm test         # Playwright + Chromium
 ```
 
-**Adding a game:** add an entry to `portal/src/games.ts` (Hebrew name, one sentence for the tooltip, address), and save a square logo picture as `portal/public/games/<id>.jpg`. `node scripts/tile-art.mjs` renders every picture from the game's logo (the logos of Otter River, Bead Box and Birdnet Kids are in `portal/art/logos/`; Word Trail's and Race to the Palace's are read from their own folders). A game that lives in another repo is listed by its address, like Birdnet Kids (`github.com/Heladoo/Birdnet_kids`, on GitHub Pages). Set `isNew` on the newest games and `COMING_SOON` to the number of "coming soon" boxes.
+**Adding a game:** add an entry to `portal/src/games.ts` (Hebrew name, one sentence for the tooltip, address), and save a square logo picture as `portal/public/games/<id>.jpg`. `node scripts/tile-art.mjs` renders every picture from the game's logo (the logos of Otter River, Word Trail, Bead Box and Birdnet Kids are in `portal/art/logos/`; Race to the Palace's is read from its own folder). A game that lives in another repo is listed by its address, like Birdnet Kids (`github.com/Heladoo/Birdnet_kids`, on GitHub Pages). Set `isNew` on the newest games and `COMING_SOON` to the number of "coming soon" boxes.
 
 **The logo** is the owner's (`portal/art/dorothy-logo.jpg`). `python3 scripts/logo-assets.py` (needs Pillow) makes the transparent web logo, the app icons and the favicon from it, and `node scripts/render-art.mjs` (dev server on port 5199) redraws the link-preview image.
 

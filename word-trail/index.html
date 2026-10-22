@@ -59,19 +59,25 @@
       <div id="topbar" class="topbar hidden">
         <button id="btn-book" class="round-btn" aria-label="My stickers"></button>
         <button id="btn-camera" class="round-btn" aria-label="Take a photo"></button>
-        <button id="btn-new" class="round-btn" aria-label="Start a new trip: press and hold"><span class="hold-ring"></span></button>
+        <button id="btn-home" class="round-btn" aria-label="Home"></button>
         <button id="btn-parents" class="round-btn small" aria-label="Grown-ups: hold to open settings"><span class="hold-ring"></span></button>
       </div>
-      <img id="corner-logo" class="corner-logo" src="/logo-small.webp" alt="Word Trail" width="256" height="234" draggable="false" />
+      <button id="corner-logo" class="corner-logo" aria-label="Home"><img src="/logo-small.webp" alt="Word Trail" width="256" height="294" draggable="false" /></button>
 
       <section id="panel" class="panel hidden" aria-live="polite"></section>
 
       <div id="title" class="overlay title">
         <div class="card title-card">
-          <h1 class="title-logo"><img src="/logo.webp" alt="Word Trail" width="640" height="585" draggable="false" /></h1>
-          <p class="subtitle">choose · listen · tap · trace</p>
-          <button id="btn-start" class="play-btn" aria-label="Start"></button>
-          <p class="note">Turn the sound on 🔊</p>
+          <h1 class="title-logo"><img src="/logo.webp" alt="Word Trail" width="640" height="736" draggable="false" /></h1>
+          <div class="home-menu">
+            <nav class="home-buttons">
+              <button id="btn-start" class="home-btn go"><span class="home-ic"></span><span class="home-label">Play</span></button>
+              <button id="btn-new-game" class="home-btn hidden"><span class="home-ic"></span><span class="home-label">New game</span></button>
+              <button id="btn-album" class="home-btn"><span class="home-ic"></span><span class="home-label">Album</span></button>
+            </nav>
+            <a id="portal-link" class="portal-link" href="https://dorothy-games.vercel.app/" aria-label="Dorothy Games: more games"><img src="/dorothy-logo.webp" alt="Dorothy Games" width="360" height="307" draggable="false" /></a>
+            <p class="note">Turn the sound on 🔊</p>
+          </div>
         </div>
       </div>
 

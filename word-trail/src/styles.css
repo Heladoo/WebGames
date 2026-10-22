@@ -134,7 +134,6 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .round-btn:active { transform: scale(0.92); }
 .round-btn.small { width: 48px; height: 48px; opacity: 0.85; }
 .round-btn.small svg { width: 30px; height: 30px; }
-#btn-new.wobble { animation: wobble 0.45s ease; }
 .hold-ring { position: absolute; inset: -4px; border-radius: 50%; pointer-events: none; }
 .holding .hold-ring { background: conic-gradient(var(--green) calc(var(--p, 0) * 1%), transparent 0); animation: hold var(--hold, 1.5s) linear forwards; -webkit-mask: radial-gradient(circle, transparent 58%, #000 60%); mask: radial-gradient(circle, transparent 58%, #000 60%); }
 @property --p { syntax: '<number>'; inherits: false; initial-value: 0; }
@@ -326,17 +325,40 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .overlay { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(70, 50, 80, 0.32); padding: 12px; }
 .card { background: var(--paper); border-radius: 34px; box-shadow: var(--shadow); }
 
-.overlay.title { background: linear-gradient(rgba(255, 250, 244, 0.25), rgba(255, 250, 244, 0.1)); }
-.title-card { text-align: center; padding: 18px 40px 26px; max-width: 92vw; }
-.title-logo { margin: -70px auto 4px; width: min(clamp(220px, 46vw, 340px), 44dvh); }
+.overlay.title { background: linear-gradient(rgba(255, 250, 244, 0.35), rgba(255, 250, 244, 0.15)); }
+/* the home screen: the logo, then big picture-and-word buttons, then the way back to Dorothy Games */
+.title-card { text-align: center; padding: 18px 26px 18px; max-width: 94vw; max-height: calc(100dvh - 24px); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.title-logo { margin: 0; width: min(clamp(190px, 52vw, 340px), 38dvh); }
 .title-logo img { width: 100%; height: auto; display: block; animation: breathe 3.6s ease-in-out infinite; transform-origin: 50% 100%; }
-/* the game logo in the top-left corner while playing (the panels on wide screens start right of it) */
-.corner-logo { position: absolute; z-index: 21; top: calc(6px + var(--safe-t)); left: calc(8px + env(safe-area-inset-left, 0px)); width: clamp(64px, 8.5vw, 104px); height: auto; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(58, 42, 32, 0.18)); }
+.home-menu { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.home-buttons { display: flex; flex-direction: column; gap: 10px; width: min(280px, 76vw); }
+.home-btn { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 6px 22px 6px 8px; border-radius: 34px; background: var(--paper); box-shadow: 0 5px 0 #d9ccb8, var(--shadow); font-family: var(--title); font-size: 25px; font-weight: 600; color: var(--ink); text-align: left; transition: transform 0.12s; }
+.home-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #d9ccb8; }
+.home-btn.go { background: var(--green); color: #fff; box-shadow: 0 6px 0 #2e6f6b, var(--shadow); min-height: 72px; font-size: 29px; }
+.home-btn.go:active { box-shadow: 0 1px 0 #2e6f6b; }
+.home-btn.hidden { display: none; }
+.home-ic { flex: none; width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; background: var(--cream); }
+.go .home-ic { background: rgba(255, 255, 255, 0.22); width: 58px; height: 58px; }
+.home-ic svg { width: 38px; height: 38px; }
+.go .home-ic svg { width: 44px; height: 44px; margin-left: 5px; }
+.go:not(:active) .home-ic { animation: pulse 1.6s ease-in-out infinite; }
+.portal-link { display: block; width: clamp(96px, 26vw, 128px); margin-top: 2px; border-radius: 20px; transition: transform 0.15s; }
+.portal-link img { width: 100%; height: auto; display: block; filter: drop-shadow(0 3px 4px rgba(58, 42, 32, 0.16)); }
+.portal-link:active { transform: scale(0.94); }
+.title-card .note { margin: 0; }
+/* short landscape screens: the logo beside the buttons */
+@media (orientation: landscape) and (max-height: 560px) {
+  .title-card { flex-direction: row; gap: 26px; padding: 14px 26px; }
+  .title-logo { width: min(40vw, 62dvh); }
+  .home-btn { min-height: 54px; font-size: 23px; }
+  .home-btn.go { min-height: 62px; font-size: 26px; }
+  .portal-link { width: 92px; }
+}
+/* the game logo in the top-left corner while playing (tap it for the home screen; the panels on wide screens start right of it) */
+.corner-logo { position: absolute; z-index: 21; top: calc(6px + var(--safe-t)); left: calc(8px + env(safe-area-inset-left, 0px)); width: clamp(64px, 8.5vw, 104px); padding: 0; background: none; filter: drop-shadow(0 3px 4px rgba(58, 42, 32, 0.18)); transition: transform 0.15s; }
+.corner-logo img { width: 100%; height: auto; display: block; }
+.corner-logo:active { transform: scale(0.94); }
 #topbar.hidden + .corner-logo { display: none; }
-.subtitle { margin: 0 0 16px; font-size: clamp(18px, 3vw, 24px); color: #9a7e6a; }
-.play-btn { width: 116px; height: 116px; border-radius: 50%; background: var(--green); box-shadow: 0 7px 0 #2e6f6b; display: grid; place-items: center; margin: 0 auto; animation: pulse 1.6s ease-in-out infinite; }
-.play-btn svg { width: 70px; height: 70px; margin-left: 8px; }
-.play-btn:active { transform: translateY(5px); box-shadow: none; }
 .note { font-size: 14px; color: #8c7866; margin: 12px 0 0; line-height: 1.4; }
 
 .sheet { width: min(920px, 96vw); max-height: calc(100dvh - 24px); display: flex; flex-direction: column; overflow: hidden; }
