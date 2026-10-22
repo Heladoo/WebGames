@@ -81,6 +81,24 @@ For canvas games such as Otter River. Word Trail draws code-built paper-cut SVG 
 - Motion is whole-pixel offsets plus eased positions; honor `prefers-reduced-motion` (bob, shimmer, sparkles).
 - Characters that wear items should be puppets (separate parts moved per pose) with named **anchor points**, so any item follows any animation frame; check every item × pose on a generated sheet.
 
+## Home screen and the way back to Dorothy Games (every game)
+
+Every game opens on a home screen, and the player can always get back to it. Word Trail has the reference version (`#title` and `initHome()` in `word-trail/src/main.ts`, tested in `word-trail/tests/home.spec.ts`).
+
+- **What it shows:** the game's logo on top, then big buttons, then the Dorothy Games logo.
+  - **Play**, which becomes **Continue** once a game is going.
+  - **New game**: only shown when there is progress to lose, and it always asks a big yes/no question first. It never needs a hold.
+  - The game's own extras, such as an **Album** of photos or a shop.
+  - **The Dorothy Games logo** links back to the portal, https://dorothy-games.vercel.app/, in the same tab (`aria-label` "Dorothy Games: more games"). Copy `portal/public/logo-small.webp` into the game's `public/` (Word Trail uses `public/dorothy-logo.webp`) and show it small, under the buttons.
+- **Picture buttons:** every button that isn't a logo pairs its word with a common icon (▶ play, a circle arrow for new game, a book for the album, a house for home), so children who can't read can use it.
+- **Getting back:** while playing, a house button in the top bar and a tap on the corner logo open the home screen at once, with no hold. The game pauses while it is open (walking, idle hints, timers).
+- **Sound:** the first tap on any home button unlocks audio and speech, since browsers only allow that after a gesture.
+- **Fit:** it must fit every screen. On short landscape screens the logo sits beside the buttons. Add a Playwright test that, on a small phone, a phone, a tablet and a landscape phone, checks:
+  - the card fits on screen;
+  - every button has its icon and its word fits;
+  - buttons are at least 48 px tall;
+  - the portal link points to https://dorothy-games.vercel.app/.
+
 ## Persistence and UI conventions
 
 - Saves live in one versioned `localStorage` key; always wrap access in try/catch (private mode) and migrate old shapes on load. Large data (images) goes in IndexedDB.
