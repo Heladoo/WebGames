@@ -128,6 +128,11 @@ export const ICONS = {
   /** start over: a paper circle arrow around a little paw */
   restart: icon(`${line('M50 34 A18 18 0 1 1 42 18', C.coral, 6)}${piece('M38 8 L50 16 L38 25 Z', C.coral, { lift: 1 })}
     ${piece(ell(32, 37, 6, 5), C.bark, { lift: 0.6 })}${piece(`${ell(25, 29, 2.6, 3.2)} ${ell(30, 26, 2.6, 3.2)} ${ell(35, 26, 2.6, 3.2)} ${ell(40, 29, 2.6, 3.2)}`, C.bark, { lift: 0.5 })}`),
+  /** home: a little paper house */
+  home: icon(`${piece('M41 13 L47 13 L47 26 L41 21 Z', shade(C.coral, -0.2), { lift: 0.6 })}
+    ${piece('M14 31 L32 14 L50 31 L50 54 L14 54 Z', C.butter, { lift: 1.4 })}
+    ${piece('M8 33 L32 10 L56 33 C57 34 56 37 54 36 L32 16 L10 36 C8 37 7 34 8 33 Z', C.coral, { lift: 1.2 })}
+    ${piece('M27 54 L27 41 C27 37 37 37 37 41 L37 54 Z', C.teal, { lift: 0.8 })}`),
   /** a paper hand pointing up with one finger (tap here) */
   finger: icon(`${piece('M27 30 L27 10 C27 5 35 5 35 10 L35 30 Z', '#f6cfa8', { lift: 1 })}
     ${piece('M20 34 C20 29 27 28 27 33 M35 30 C35 26 42 26 42 31 C42 27 49 28 49 33 C49 30 55 31 55 36 L55 46 C55 55 48 60 40 60 L33 60 C26 60 21 55 19 49 L13 38 C11 33 17 30 20 34 L24 40 L24 33 C24 29 27 29 27 31 Z', '#f6cfa8', { lift: 1.4 })}
@@ -202,4 +207,4 @@ export function openOverlay(id: string): Promise<void> {
   });
 }
 
-export const anyOverlayOpen = () => [...document.querySelectorAll('.overlay')].some((o) => o.id !== 'title' && !o.classList.contains('hidden'));
+export const anyOverlayOpen = () => [...document.querySelectorAll('.overlay')].some((o) => !o.classList.contains('hidden'));
