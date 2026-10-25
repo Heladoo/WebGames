@@ -69,13 +69,15 @@ export function podiumSVG(order: Racer[], frame: 0 | 1 = 0): string {
     { x: 260, y: FLOOR, face: 1 },
     { x: 1340, y: FLOOR, face: -1 },
   ];
-  // animals first (behind), the winner's last so it is in front of the others
+  // animals first (behind), the winner's last so it is in front of the others. Each child stands in front of its
+  // animal's back, and the animal's head looks out into the gap beside its child, so no face is ever covered
+  // (owner's request). `head` is where the middle of the head goes, `face` the way the animal looks.
   const animalAt = [
-    { x: 712, y: 604, s: 0.8 },
-    { x: 470, y: 620, s: 0.58 },
-    { x: 1130, y: 640, s: 0.58 },
-    { x: 150, y: 740, s: 0.62 },
-    { x: 1450, y: 740, s: 0.62 },
+    { head: 652, y: 606, s: 0.95, face: -1 },
+    { head: 405, y: 620, s: 0.58, face: -1 },
+    { head: 1195, y: 640, s: 0.58, face: 1 },
+    { head: 105, y: 740, s: 0.62, face: -1 },
+    { head: 1495, y: 740, s: 0.62, face: 1 },
   ];
   [3, 4, 1, 2, 0].forEach((i) => {
     const rc = order[i];
@@ -83,8 +85,9 @@ export function podiumSVG(order: Racer[], frame: 0 | 1 = 0): string {
     const a = drawAnimal(rc.animal, 'happy');
     const sd = saddle(rc.outfit.saddle, a.anchors.seat, a.anchors.seatAngle);
     const at = animalAt[i];
-    const face = spots[i].face;
-    s += `<g transform="translate(${at.x} ${at.y}) scale(${f(at.s * face)} ${f(at.s)})">${a.svg}${sd.under}</g>`;
+    // the head's middle is a little behind the nose
+    const x = at.head - at.face * at.s * (a.anchors.nose - 28);
+    s += `<g transform="translate(${f(x)} ${at.y}) scale(${f(at.s * at.face)} ${f(at.s)})">${a.svg}${sd.under}</g>`;
   });
   // the podium steps
   STEP.forEach((st) => {

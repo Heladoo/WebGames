@@ -30,11 +30,12 @@ test('map → animal → rider → race → ceremony, and the coins are saved', 
   test.setTimeout(120_000);
   await start(page, base, { autopilot: 1, speed: 8 });
   await tap(page, '.track-card[data-t="forest"]');
+  // one tap on a picture chooses it and moves on (there is no separate Play button)
   await tap(page, '.choice[data-id="reindeer"]');
   await expect(page.locator('.choice[data-id="reindeer"]')).toHaveClass(/on/);
-  await tap(page, '#btn-next');
+  await page.locator('.screen.choose.kid').waitFor();
+  expect(await page.locator('#btn-next').count()).toBe(0);
   await tap(page, '.choice[data-id="tamar"]');
-  await tap(page, '#btn-next');
   await page.waitForFunction(() => (window as unknown as { game?: { started: boolean } }).game?.started, null, { timeout: 60_000 });
   await page.locator('canvas.podium.ready').waitFor({ timeout: 90_000 });
   await expect.poll(async () => (await saved(page))?.races, { timeout: 5000 }).toBe(6);
@@ -82,7 +83,7 @@ test('an early save keeps its tracks, wins (as medals) and braids (as hair)', as
   expect(d.outfit.hair).toBe('pink');
 });
 
-test('the shop sells an item, wears it, keeps coins safe, and the back button returns to the home screen', async ({ page }) => {
+test('the shop sells an item, wears it, keeps coins safe, and the home button returns to the home screen', async ({ page }) => {
   await start(page, { ...base, coins: 60 });
   await tap(page, '[data-tb="shop"]');
   await tap(page, '.item[data-id="stars"]');
@@ -95,9 +96,10 @@ test('the shop sells an item, wears it, keeps coins safe, and the back button re
   expect((await saved(page)).coins).toBe(10);
   await tap(page, '.tab[data-k="saddle"]');
   await expect(page.locator('.item[data-id="royal"]')).toBeVisible();
-  // one clear way back: the back button goes to the home screen (the map)
-  await expect(page.locator('#btn-back')).toHaveAttribute('aria-label', 'חזרה למסך הבית');
-  await tap(page, '#btn-back');
+  // one clear way back: the house button goes to the home screen (the map)
+  await expect(page.locator('#btn-home')).toHaveAttribute('aria-label', 'למסך הבית');
+  await expect(page.locator('#btn-home svg.icon')).toHaveCount(1);
+  await tap(page, '#btn-home');
   await page.locator('.screen.map').waitFor();
 });
 

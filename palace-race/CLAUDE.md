@@ -5,7 +5,8 @@
 ## Status
 
 **The game is playable.** The owner approved the art; stage 2 built the game around it:
-- **Flow:** the home screen (the map, with the logo; there is no separate title screen) → animal → rider → race → ceremony with coins and medals. The shop returns to the home screen with a back arrow.
+- **Flow:** the home screen (the map, with the logo; there is no separate title screen) → animal → rider → race → ceremony with coins and medals. One tap on an animal or a rider chooses it and moves on (the picture cheers for half a second; there is no Play button). The shop returns to the home screen with a house button.
+- **Fourth round** (done): one-tap choosing, a house button in the shop, and no child covering an animal's face in the ceremony.
 - **Third round** (done): no title screen (the map is home, with the logo over the palace), a quiet painted flower meadow, a shop sorted cheapest first with new helmets (unicorn, knight, racing, dinosaur), a back button instead of the check mark, and help mode off by default.
 - **Second round of owner feedback** (done): medals on the chest, real clapping, coins rising into the total, no "again" button, tooltips, candy shadows, medal progression, shared candies, the palace on its own hill, more hairstyles, new hair and saddle icons, and new music.
 - **Also:** a shop, a grown-ups panel, sound and music, and anonymous stats.
@@ -66,7 +67,7 @@
   - 2nd and 3rd stand on their steps with medals on their chests. **4th and 5th have no medal and no number** (owner's request): they stand on the lawn and clap.
   - **Everyone claps:** `podiumSVG(order, frame)` paints the two halves of a clap (neighbours a beat apart), and the ceremony shows them in turn (still under reduced motion).
   - Children right of the winner are mirrored to face it.
-  - The animals stand behind their children.
+  - **The animals stand behind their children without hiding their faces** (owner's request): each child stands in front of its animal's back, and the head looks out into the gap beside the child (`animalAt`: where the head goes and which way it looks, placed from the `nose` anchor). The winner's animal is drawn larger, so its head shows between 2nd place and the winner, above their shoulders.
 - **Palace** (`art/palace.ts`, close-up at `?debug=palace`): drawn in the spirit of the owner's logo.
   - Purple and blue (`PALACE_LOOK`) conical roofs with fish-scale shingles, gold rings and finials, and dormers.
   - Eleven spires and turrets, arched blue-glass windows in gold frames, stone courses and battlements.
@@ -123,7 +124,7 @@ When art changes, fix the art until these pass; don't loosen a rule.
 | `race/input.ts` | Keyboard (arrows/WASD/Space, Esc or P to pause), on-screen buttons on `pointerdown`, and swipes on the stage. |
 | `race/race.ts` | One race: a hoof-print loading bar, the 3-2-1 lights and horn, the frame loop, the HUD, sounds, the tutorial hand and the pause screen. `racersFor` gives the opponents: the other four animals, ridden by the other children in random outfits. The repeated child always gets a different helmet. |
 | `app.ts` | Screen routing, the top bar (home except on the home screen and the shop, medals, coins, shop, and the grown-ups gear that needs a 1.5 s hold), the grown-ups panel, settings, and `fresh` (a track the last race opened, celebrated on the map). |
-| `screens.ts` | The home screen (map with the logo), animal and rider choice, shop, race and ceremony. The shop lists each kind cheapest first (`price`, then the order in `HELMETS`…), lowest at the left, and ends with a blue back arrow (`#btn-back`) that goes to the home screen. Buying shows coins flying (`flyCoins`); "not yet" is a wobble with a coin jar (`jar`) in the shop and with medal pips on the map. The ceremony paints both clap frames of `podiumSVG` with the real order, then confetti and claps. The reward bar starts from the old totals: a "+N" chip rises into the coin total while it counts up, a "+1" joins the medals, and a card for a newly opened track appears (it goes to the map). Its buttons are map, shop and share (`navigator.share` with a file, else a download); there is no "again" (owner's request: the map is one tap away). |
+| `screens.ts` | The home screen (map with the logo), animal and rider choice, shop, race and ceremony. The shop lists each kind cheapest first (`price`, then the order in `HELMETS`…), lowest at the left, and ends with a house button (`#btn-home`) that goes to the home screen. Buying shows coins flying (`flyCoins`); "not yet" is a wobble with a coin jar (`jar`) in the shop and with medal pips on the map. The ceremony paints both clap frames of `podiumSVG` with the real order, then confetti and claps. The reward bar starts from the old totals: a "+N" chip rises into the coin total while it counts up, a "+1" joins the medals, and a card for a newly opened track appears (it goes to the map). Its buttons are map, shop and share (`navigator.share` with a file, else a download); there is no "again" (owner's request: the map is one tap away). |
 | `ui.ts` | Cached painted pictures (`animalPic`, `kidPic`, `trackPic`, `mapPic`), `holdButton`, `flyCoins`, `jar` and `coinTag`. |
 | `tip.ts` | Tooltips for every button (one bubble for the page). |
 | `sfx.ts` | Synthesized effects through a limiter (no error sounds: a stumble is a soft boing). Whooshes use pink noise; hooves and claps use white. No oscillator drives a gain. |
@@ -194,7 +195,8 @@ All made in code (root rule: no audio files). Owner's brief: reverb, a warm pad 
 - **`sim.spec.ts`:** the promises above, on every track, for every kind of player, plus determinism and shared candies (`window.__shared`).
 - **`flow.spec.ts`:**
   - the whole flow with saving (it starts on the home screen);
-  - the shop sorted cheapest first, with the new helmets, and the back button;
+  - one-tap choosing of the animal and the rider;
+  - the shop sorted cheapest first, with the new helmets, and its house button;
   - the home screen opening with the logo, and help mode off unless chosen;
   - medals opening tracks (and coins never doing so), and an early save migrating;
   - buying, wearing, and not enough coins;

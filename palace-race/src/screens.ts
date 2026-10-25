@@ -98,7 +98,6 @@ function chooser(app: App, kind: 'animal' | 'kid') {
   const items: string[] = kind === 'animal' ? ANIMALS : KIDS;
   app.root.innerHTML = `<section class="screen choose ${kind}">${app.topbar()}
     <div class="choices">${items.map((id) => `<button class="choice" data-id="${id}" aria-label="${kind === 'animal' ? ANIMAL_NAME[id as AnimalId] : KID_NAME[id as KidId]}" aria-pressed="false"><div class="slot"></div><span class="badge chosen">${ICONS.check}</span></button>`).join('')}</div>
-    <button class="round-btn big go" id="btn-next" aria-label="${kind === 'animal' ? 'בוחרים רוכב' : 'למרוץ'}">${ICONS.play}</button>
   </section>`;
   const el = app.root.firstElementChild as HTMLElement;
   app.wireTopbar(el);
@@ -115,9 +114,13 @@ function chooser(app: App, kind: 'animal' | 'kid') {
       b.classList.toggle('on', on);
       b.setAttribute('aria-pressed', String(on));
     });
+  // one tap chooses and moves on: the picture cheers for a moment, then the next screen opens
+  let leaving = false;
   el.querySelectorAll<HTMLElement>('.choice').forEach((b) => {
     draw(b, false);
     b.addEventListener('click', () => {
+      if (leaving) return;
+      leaving = true;
       sfx.select();
       const prev = el.querySelector<HTMLElement>('.choice.on');
       if (kind === 'animal') d.animal = b.dataset.id as AnimalId;
@@ -127,14 +130,11 @@ function chooser(app: App, kind: 'animal' | 'kid') {
       if (prev && prev !== b) draw(prev, false);
       draw(b, true);
       wobble(b);
+      window.setTimeout(() => app.go(kind === 'animal' ? 'kid' : 'race'), reduced() ? 150 : 550);
     });
   });
   mark();
   draw(el.querySelector<HTMLElement>('.choice.on')!, true);
-  el.querySelector('#btn-next')!.addEventListener('click', () => {
-    sfx.select();
-    app.go(kind === 'animal' ? 'kid' : 'race');
-  });
   (window as unknown as { __ready: boolean }).__ready = true;
 }
 
@@ -153,7 +153,7 @@ export function shopScreen(app: App) {
       <div class="preview slot"></div>
       <div class="items"></div>
     </div>
-    <button class="round-btn big done" id="btn-back" aria-label="חזרה למסך הבית">${ICONS.back}</button>
+    <button class="round-btn big done" id="btn-home" aria-label="למסך הבית">${ICONS.home}</button>
   </section>`;
   const el = app.root.firstElementChild as HTMLElement;
   app.wireTopbar(el);
@@ -215,7 +215,7 @@ export function shopScreen(app: App) {
       showPreview();
     }),
   );
-  el.querySelector('#btn-back')!.addEventListener('click', () => {
+  el.querySelector('#btn-home')!.addEventListener('click', () => {
     sfx.tap();
     app.go('map');
   });
