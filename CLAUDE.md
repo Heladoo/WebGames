@@ -12,13 +12,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `word-trail/` | Endless English word adventure for young children, in paper-cut SVG art: pick choices, then tap or trace the letters | `word-trail/CLAUDE.md` |
 | `bead-box/` | Calm SVG bracelet-making game that teaches English words; places unlock as bracelets are finished | `bead-box/CLAUDE.md` |
 | `palace-race/` | **המרוץ לארמון**, a stress-free Hebrew racing game playable without reading: royal animals with child riders race to a palace, collect candies and coins, and shop for helmets, hairstyles and saddles | `palace-race/CLAUDE.md` |
+| `drop-the-drop/` | **Drop the Drop**, a calm Hebrew game after a real children's activity: drag drops of coloured water on paper, join them, keep or mix colours, and lead each to its cup (a one-level sample so far) | `drop-the-drop/CLAUDE.md` |
 | `portal/` | "Dorothy Games" (משחקי דורותי): the Hebrew homepage, a toy shelf of all games plus a moderated board of players' game ideas | `portal/CLAUDE.md` |
 
 ## Shared stack and workflow
 
-- Each game (and the `portal/` homepage) is Vite + TypeScript, drawn with Canvas 2D (Otter River) or SVG (Word Trail, Bead Box, Race to the Palace), with no game engine and no runtime libraries (self-hosted font packages are fine). `npm run build` (`tsc --noEmit && vite build`) is the check; there is no linter, and `tsc` runs `strict` with unused-variable errors.
+- Each game (and the `portal/` homepage) is Vite + TypeScript, drawn with Canvas 2D (Otter River, Drop the Drop) or SVG (Word Trail, Bead Box, Race to the Palace), with no game engine and no runtime libraries (self-hosted font packages are fine). `npm run build` (`tsc --noEmit && vite build`) is the check; there is no linter, and `tsc` runs `strict` with unused-variable errors.
 - Work from inside the game's folder (`cd otter-river`): `npm install`, `npm run dev`, `npm run build`, `npm run preview`.
-- **Verify in a real browser.** Playwright/Chromium is installed in the sandbox. Each game exposes `?debug=…` query parameters that force scenes, expose state, or render test sheets; use them for screenshots and scripted checks. Add the same kind of hooks to a new game rather than testing by hand. Automated tests differ per game: Word Trail, Bead Box, Race to the Palace and the portal have Playwright suites (`npm test`), Otter River has none; the game's own `CLAUDE.md` says which.
+- **Verify in a real browser.** Playwright/Chromium is installed in the sandbox. Each game exposes `?debug=…` query parameters that force scenes, expose state, or render test sheets; use them for screenshots and scripted checks. Add the same kind of hooks to a new game rather than testing by hand. Automated tests differ per game: Word Trail, Bead Box, Race to the Palace, Drop the Drop and the portal have Playwright suites (`npm test`), Otter River has none; the game's own `CLAUDE.md` says which.
 - Keep each game's README in sync with player-facing behavior and setup steps.
 - Commits end with the attribution lines given by the session; develop on the branch named by the task.
 - **Preview before any PR.** Push to the branch, then show the work (screenshots at phone and tablet sizes, or the Vercel branch preview). Open or merge a PR only when the owner asks. Postponed or rejected ideas go in `<game>/BACKLOG.md`.
