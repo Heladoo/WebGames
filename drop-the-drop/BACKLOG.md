@@ -1,5 +1,12 @@
 # Backlog (drop-the-drop)
 
+## Owner feedback on the sample (for the next version)
+
+- **The "well done" screen** looks plain in an odd, unnatural way. Redo it as part of the scene (for example the filled cups themselves celebrate, drops dance or splash on the paper) rather than a small card with two dots.
+- **The plain paper background** may be too boring (the owner is not sure). Try options: a sheet on a table (wood or a cutting mat) with the black diamond card from the reference picture, a soft texture, small doodles at the edges.
+- **Home screen with levels:** continue the current level, or pick any level already opened; the next locked level is visible too.
+- **Landscape only** (agreed): one wide layout leaves more room for cups and paths. A web page cannot lock orientation everywhere (iOS ignores `screen.orientation.lock`), so in portrait show a friendly "turn the device" picture over a paused game, and try `screen.orientation.lock('landscape')` after going fullscreen where the browser allows it (Android). Then design levels for one aspect range (about 16:9 to 4:3) instead of spreading them for any shape.
+
 ## Next: the full game (after the sample is approved)
 
 - **Level path**, slow and gentle:
