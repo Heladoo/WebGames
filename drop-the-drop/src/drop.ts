@@ -13,7 +13,7 @@ import { type Pig, type RGB, pigToRgb } from './color';
 
 export const N = 64;
 /** Rest radius of a drop of volume 1, in world units (the short side of the screen is 100). */
-export const R1 = 4.8;
+export const R1 = 5;
 export const COS = new Float32Array(N);
 export const SIN = new Float32Array(N);
 for (let i = 0; i < N; i++) { COS[i] = Math.cos((i / N) * Math.PI * 2); SIN[i] = Math.sin((i / N) * Math.PI * 2); }

@@ -149,7 +149,15 @@ export function drawDrop(ctx: CanvasRenderingContext2D, dr: Drop, S: number, sca
   ctx.restore();
 }
 
-// ---------------------------------------------------------------- paper
+// ---------------------------------------------------------------- table, card and paper
+
+/** The paper sheet, in world units (the world is WORLD_W x WORLD_H). */
+export const PAPER = { x0: 3, y0: 3, x1: 157, y1: 97 };
+
+function rng(seed: number) {
+  let s = seed >>> 0;
+  return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+}
 
 let grain: HTMLCanvasElement | null = null;
 function paperGrain(): HTMLCanvasElement {
@@ -158,14 +166,12 @@ function paperGrain(): HTMLCanvasElement {
   c.width = c.height = 192;
   const g = c.getContext('2d')!;
   const img = g.createImageData(192, 192);
-  let s = 12345;
-  const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  const rnd = rng(12345);
   for (let i = 0; i < img.data.length; i += 4) {
-    const v = 246 + rnd() * 9;
+    const v = 247 + rnd() * 8;
     img.data[i] = v; img.data[i + 1] = v - 1; img.data[i + 2] = v - 4; img.data[i + 3] = 255;
   }
   g.putImageData(img, 0, 0);
-  // a few faint fibres
   g.strokeStyle = 'rgba(160,150,130,0.06)';
   for (let i = 0; i < 40; i++) {
     const x = rnd() * 192, y = rnd() * 192, a = rnd() * Math.PI;
@@ -175,15 +181,136 @@ function paperGrain(): HTMLCanvasElement {
   return c;
 }
 
-/** The paper, in device pixels (identity transform). */
-export function drawPaper(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  const pat = ctx.createPattern(paperGrain(), 'repeat')!;
-  ctx.fillStyle = pat;
-  ctx.fillRect(0, 0, w, h);
-  const v = ctx.createRadialGradient(w * 0.4, h * 0.35, Math.min(w, h) * 0.2, w / 2, h / 2, Math.max(w, h) * 0.8);
+/** Light oak planks, in device pixels. */
+function wood(g: CanvasRenderingContext2D, w: number, h: number, k: number) {
+  g.fillStyle = '#e4cfae';
+  g.fillRect(0, 0, w, h);
+  const rnd = rng(7);
+  const plank = 26 * k;
+  for (let y0 = -plank * 0.4, p = 0; y0 < h; y0 += plank, p++) {
+    const tone = 0.9 + rnd() * 0.18;
+    g.fillStyle = `rgba(${Math.round(228 * tone)},${Math.round(205 * tone)},${Math.round(170 * tone)},0.55)`;
+    g.fillRect(0, y0, w, plank);
+    // grain: long wavy lines
+    for (let i = 0; i < 26; i++) {
+      const yy = y0 + rnd() * plank, amp = (0.5 + rnd() * 2) * k, fr = 0.002 + rnd() * 0.004, ph = rnd() * 9;
+      g.beginPath();
+      for (let x = 0; x <= w; x += 8) g.lineTo(x, yy + Math.sin(x * fr / k * 3 + ph) * amp + Math.sin(x * 0.0007 + ph) * amp * 3);
+      g.strokeStyle = `rgba(150,105,60,${0.05 + rnd() * 0.08})`;
+      g.lineWidth = (0.3 + rnd() * 0.8) * k * 0.4;
+      g.stroke();
+    }
+    // a knot now and then
+    if (rnd() < 0.6) {
+      const kx = rnd() * w, ky = y0 + plank * (0.3 + rnd() * 0.4);
+      for (let r = 1; r < 5; r++) {
+        g.beginPath();
+        g.ellipse(kx, ky, r * 2.2 * k, r * 0.8 * k, 0, 0, Math.PI * 2);
+        g.strokeStyle = `rgba(140,95,50,${0.16 - r * 0.025})`;
+        g.lineWidth = 0.4 * k;
+        g.stroke();
+      }
+    }
+    // seam
+    g.fillStyle = 'rgba(120,85,50,0.22)';
+    g.fillRect(0, y0 + plank - 0.35 * k, w, 0.35 * k);
+    g.fillStyle = 'rgba(255,245,225,0.35)';
+    g.fillRect(0, y0 + plank, w, 0.25 * k);
+  }
+  const v = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.max(w, h) * 0.75);
+  v.addColorStop(0, 'rgba(255,250,240,0.15)');
+  v.addColorStop(1, 'rgba(90,60,30,0.18)');
+  g.fillStyle = v;
+  g.fillRect(0, 0, w, h);
+}
+
+/** A few big leaves of a potted plant reaching onto the table (as in the reference photo). */
+function plant(g: CanvasRenderingContext2D, k: number) {
+  const leaves = [
+    { a: 0.25, l: 34, w: 15 }, { a: 0.75, l: 40, w: 17 }, { a: 1.2, l: 32, w: 14 }, { a: 0.5, l: 22, w: 10 },
+  ];
+  for (const lf of leaves) {
+    g.save();
+    g.translate(-6 * k, -6 * k);
+    g.rotate(lf.a);
+    const L = lf.l * k, W = lf.w * k;
+    g.shadowColor = 'rgba(40,50,20,0.3)';
+    g.shadowBlur = 3 * k;
+    g.shadowOffsetX = 1.5 * k; g.shadowOffsetY = 2 * k;
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.bezierCurveTo(L * 0.3, -W * 0.75, L * 0.85, -W * 0.55, L, 0);
+    g.bezierCurveTo(L * 0.85, W * 0.55, L * 0.3, W * 0.75, 0, 0);
+    const gr = g.createLinearGradient(0, -W / 2, 0, W / 2);
+    gr.addColorStop(0, '#5f9a3e'); gr.addColorStop(0.5, '#4c8a34'); gr.addColorStop(1, '#3a7028');
+    g.fillStyle = gr;
+    g.fill();
+    g.shadowColor = 'transparent';
+    g.strokeStyle = 'rgba(200,230,160,0.55)';
+    g.lineWidth = 0.35 * k;
+    g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(L * 0.5, -W * 0.05, L * 0.95, 0); g.stroke();
+    for (let i = 1; i < 6; i++) {
+      const x = (L * i) / 6.5;
+      g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + L * 0.08, -W * 0.18, x + L * 0.14, -W * 0.3); g.stroke();
+      g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + L * 0.08, W * 0.18, x + L * 0.14, W * 0.3); g.stroke();
+    }
+    g.restore();
+  }
+}
+
+/**
+ * Paint the still scene once: the table, the black card under the paper
+ * (its corners peek out), and the paper sheet. ox, oy and k place the world
+ * in device pixels.
+ */
+export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: number): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d')!;
+  wood(g, w, h, k);
+  const X = (x: number) => ox + x * k, Y = (y: number) => oy + y * k;
+  // the black diamond card
+  g.save();
+  g.translate(X(80), Y(50));
+  g.rotate(Math.PI / 4);
+  const half = 40 * k;
+  g.shadowColor = 'rgba(40,30,20,0.35)';
+  g.shadowBlur = 2.5 * k; g.shadowOffsetY = 0.8 * k;
+  g.fillStyle = '#17181c';
+  g.fillRect(-half, -half, half * 2, half * 2);
+  g.restore();
+  // the plant stays on the table, outside the paper
+  g.save();
+  g.beginPath();
+  g.rect(0, 0, w, h);
+  g.rect(X(PAPER.x0) + 1.5 * k, Y(PAPER.y0) + 1.5 * k, (PAPER.x1 - PAPER.x0 - 3) * k, (PAPER.y1 - PAPER.y0 - 3) * k);
+  g.clip('evenodd');
+  plant(g, k);
+  g.restore();
+  // the paper sheet
+  const px = X(PAPER.x0), py = Y(PAPER.y0), pw = (PAPER.x1 - PAPER.x0) * k, ph = (PAPER.y1 - PAPER.y0) * k;
+  g.save();
+  g.shadowColor = 'rgba(60,40,20,0.28)';
+  g.shadowBlur = 3 * k; g.shadowOffsetY = 1 * k;
+  g.fillStyle = '#fbfaf6';
+  g.fillRect(px, py, pw, ph);
+  g.restore();
+  g.save();
+  g.beginPath(); g.rect(px, py, pw, ph); g.clip();
+  g.fillStyle = g.createPattern(paperGrain(), 'repeat')!;
+  g.fillRect(px, py, pw, ph);
+  const v = g.createRadialGradient(px + pw * 0.4, py + ph * 0.35, Math.min(pw, ph) * 0.2, px + pw / 2, py + ph / 2, Math.max(pw, ph) * 0.75);
   v.addColorStop(0, 'rgba(255,255,255,0.35)');
   v.addColorStop(1, 'rgba(120,110,95,0.10)');
-  ctx.fillStyle = v;
+  g.fillStyle = v;
+  g.fillRect(px, py, pw, ph);
+  g.restore();
+  return c;
+}
+
+/** Plain paper filling a small canvas (for the cards). */
+export function drawPaper(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  ctx.fillStyle = ctx.createPattern(paperGrain(), 'repeat')!;
   ctx.fillRect(0, 0, w, h);
 }
 
@@ -200,6 +327,11 @@ export interface CupView {
   /** hint pulse (0..1): 'size' grows the dashed circle, 'color' throbs the outline */
   pulse: number;
   pulseKind: 'size' | 'color' | '';
+  /** how much it holds in all and how much is in it (dots show the drops when it takes several) */
+  total: number;
+  got: number;
+  /** 0..1: the happy hop at the end of a level */
+  hop: number;
 }
 
 function cupSide(c: CupView, f: number): [number, number] {
@@ -213,6 +345,15 @@ export function drawCup(ctx: CanvasRenderingContext2D, c: CupView, t: number) {
   const bottom = c.top + c.h;
   const ink = tint(c.rgb, INK, 0.12);
   const throb = c.pulseKind === 'color' ? c.pulse : 0;
+  ctx.save();
+  if (c.hop > 0) {
+    // jump and squash around the cup's foot
+    ctx.translate(c.x, bottom);
+    ctx.translate(0, -c.hop * c.h * 0.35);
+    const sq = 1 + Math.sin(c.hop * Math.PI) * 0.06;
+    ctx.scale(1 / sq, sq);
+    ctx.translate(-c.x, -bottom);
+  }
 
   // glass, very faint
   ctx.beginPath();
@@ -285,6 +426,101 @@ export function drawCup(ctx: CanvasRenderingContext2D, c: CupView, t: number) {
     ctx.stroke();
     ctx.restore();
   }
+
+  // a cup that takes several drops shows them as dots on the glass, filled as they come
+  const count = Math.round(c.total / c.need);
+  if (count > 1) {
+    const done = Math.round(c.got / c.need);
+    const gap = 3.2, y = c.top + c.h * 0.32;
+    for (let i = 0; i < count; i++) {
+      const x = c.x + (i - (count - 1) / 2) * gap;
+      ctx.beginPath();
+      ctx.arc(x, y, 1.1, 0, Math.PI * 2);
+      ctx.fillStyle = i < done ? css(c.rgb, 0.95) : 'rgba(255,255,255,0.8)';
+      ctx.fill();
+      ctx.strokeStyle = css(ink, 0.7);
+      ctx.lineWidth = 0.35;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- the celebration
+
+const easeBack = (q: number) => { const c = 2.2; q = Math.max(0, Math.min(1, q)); return 1 + (c + 1) * Math.pow(q - 1, 3) + c * Math.pow(q - 1, 2); };
+
+function sticker(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, rot: number, s: number) {
+  if (s <= 0) return;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.scale(s, s);
+  const star = (rr: number) => {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const q = i % 2 ? rr * 0.5 : rr;
+      ctx.lineTo(Math.cos(a) * q, Math.sin(a) * q);
+    }
+    ctx.closePath();
+  };
+  ctx.lineJoin = 'round';
+  // white sticker edge with a soft shadow
+  star(r);
+  ctx.shadowColor = 'rgba(80,60,20,0.3)';
+  ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = r * 0.32;
+  ctx.stroke();
+  ctx.shadowColor = 'transparent';
+  star(r);
+  const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, 0, 0, 0, r * 1.1);
+  g.addColorStop(0, '#fff3a6'); g.addColorStop(0.45, '#ffcf33'); g.addColorStop(1, '#f2a20c');
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(200,120,0,0.5)';
+  ctx.lineWidth = r * 0.05;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.22, -r * 0.3, r * 0.22, r * 0.1, -0.6, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * Drawn over the paper after the last cup fills: three star stickers pop on,
+ * then "כל הכבוד!" is written in marker from right to left, in the cups' colours.
+ */
+export function drawParty(ctx: CanvasRenderingContext2D, t: number, colors: RGB[]) {
+  const cx = 80;
+  sticker(ctx, cx + 18, 17, 5.5, 0.2, easeBack((t - 0.9) / 0.35));
+  sticker(ctx, cx, 13, 7, 0, easeBack((t - 1.15) / 0.35));
+  sticker(ctx, cx - 18, 17, 5.5, -0.2, easeBack((t - 1.4) / 0.35));
+  const p = Math.max(0, Math.min(1, (t - 1.5) / 1.1));
+  if (p <= 0) return;
+  const text = 'כל הכבוד!';
+  ctx.save();
+  ctx.font = '700 15px Fredoka, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.direction = 'rtl';
+  const w = ctx.measureText(text).width + 4;
+  ctx.beginPath();
+  ctx.rect(cx + w / 2 - w * p, 20, w * p, 22);
+  ctx.clip();
+  const gr = ctx.createLinearGradient(cx + w / 2, 0, cx - w / 2, 0);
+  const cols = colors.length ? colors : [[0.2, 0.4, 0.9] as RGB];
+  cols.forEach((c, i) => gr.addColorStop(cols.length === 1 ? 0 : i / (cols.length - 1), css(c)));
+  if (cols.length === 1) gr.addColorStop(1, css(tint(cols[0], INK, 0.2)));
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+  ctx.lineWidth = 2.2;
+  ctx.strokeText(text, cx, 31.5);
+  ctx.fillStyle = gr;
+  ctx.fillText(text, cx, 31.5);
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------- particles and hints

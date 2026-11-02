@@ -58,34 +58,94 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) void ac.suspend(); else void ac.resume();
 });
 
-function out(g: GainNode, wet = 0.6) {
-  g.connect(master!);
+function out(g: AudioNode, wet = 0.6, pan = 0) {
+  let node: AudioNode = g;
+  if (pan) {
+    const p = ac!.createStereoPanner();
+    p.pan.value = pan;
+    node = g.connect(p);
+  }
+  node.connect(master!);
   const s = ac!.createGain();
   s.gain.value = wet;
-  g.connect(s).connect(send!);
+  node.connect(s).connect(send!);
+}
+
+const rand = (a: number, b: number) => a + Math.random() * (b - a);
+
+let noiseBuf: AudioBuffer | null = null;
+/** Pink-ish noise, made once (softer than white noise). */
+function noise(a: AudioContext): AudioBuffer {
+  if (noiseBuf) return noiseBuf;
+  const len = a.sampleRate * 2;
+  noiseBuf = a.createBuffer(1, len, a.sampleRate);
+  const d = noiseBuf.getChannelData(0);
+  let b0 = 0, b1 = 0, b2 = 0;
+  for (let i = 0; i < len; i++) {
+    const w = Math.random() * 2 - 1;
+    b0 = 0.99765 * b0 + w * 0.099; b1 = 0.963 * b1 + w * 0.2965; b2 = 0.57 * b2 + w * 1.0527;
+    d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.2;
+  }
+  return noiseBuf;
+}
+
+/** A short wet tick: a band of noise, like a fingertip touching water. */
+function tick(freq: number, gain: number, dur: number, pan: number) {
+  const a = ready(); if (!a) return;
+  const t = a.currentTime;
+  const src = a.createBufferSource();
+  src.buffer = noise(a);
+  const bp = a.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = 2.5;
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain, t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(bp).connect(g);
+  out(g, 0.3, pan);
+  src.start(t, Math.random() * 1.5); src.stop(t + dur + 0.02);
+}
+
+// the sound of a drop sliding on paper: a noise bed whose loudness and
+// brightness follow the drop's speed (it runs silent between drags)
+let slideGain: GainNode | null = null, slideBp: BiquadFilterNode | null = null;
+function slideNodes(a: AudioContext) {
+  if (slideGain) return;
+  const src = a.createBufferSource();
+  src.buffer = noise(a);
+  src.loop = true;
+  slideBp = a.createBiquadFilter();
+  slideBp.type = 'bandpass'; slideBp.Q.value = 1.2; slideBp.frequency.value = 500;
+  const lp = a.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 1800;
+  slideGain = a.createGain();
+  slideGain.gain.value = 0;
+  src.connect(slideBp).connect(lp).connect(slideGain);
+  out(slideGain, 0.15);
+  src.start();
 }
 
 function ready(): AudioContext | null {
   return ac && ac.state === 'running' && !muted ? ac : null;
 }
 
-function plop(f0: number, gain: number, when = 0, rise = 2.3) {
+function plop(f0: number, gain: number, when = 0, rise = 2.3, dur = 0.17, pan = 0) {
   const a = ready(); if (!a) return;
   const t = a.currentTime + when;
   const o = a.createOscillator();
   o.type = 'sine';
   o.frequency.setValueAtTime(f0, t);
-  o.frequency.exponentialRampToValueAtTime(f0 * rise, t + 0.07);
+  o.frequency.exponentialRampToValueAtTime(f0 * rise, t + dur * 0.4);
   const g = a.createGain();
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(gain, t + 0.006);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g);
-  out(g, 0.5);
-  o.start(t); o.stop(t + 0.2);
+  out(g, 0.5, pan);
+  o.start(t); o.stop(t + dur + 0.03);
 }
 
-function bell(freq: number, gain: number, when = 0, dur = 1.8) {
+function bell(freq: number, gain: number, when = 0, dur = 1.8, pan = 0) {
   const a = ready(); if (!a) return;
   const t = a.currentTime + when;
   const car = a.createOscillator();
@@ -101,7 +161,7 @@ function bell(freq: number, gain: number, when = 0, dur = 1.8) {
   g.gain.exponentialRampToValueAtTime(gain, t + 0.008);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   car.connect(g);
-  out(g, 0.9);
+  out(g, 0.9, pan);
   car.start(t); mod.start(t); car.stop(t + dur + 0.05); mod.stop(t + dur + 0.05);
 }
 
@@ -134,33 +194,79 @@ function nextNote(): number {
   return f;
 }
 
+// touching drops: never the same sound twice in a row
+let lastPick = 0, pickStep = 0, pickDir = 1;
+const COLOR_TUNE = (p: [number, number, number]) => {
+  const s = p[0] + p[1] + p[2] || 1;
+  return 1 + (p[1] / s) * 0.12 - (p[2] / s) * 0.08; // yellow a bit brighter, blue a bit deeper
+};
+
 export const sfx = {
   /** a drop drips onto the paper */
   drip(i: number) { plop(780 + (i % 4) * 90, 0.09, 0, 2.0); },
-  /** touching a drop to move it */
-  pick() { plop(950, 0.035, 0, 1.6); },
-  /** two drops of one colour join */
-  merge(vol: number) {
-    plop(560 / Math.sqrt(vol), 0.2);
-    bell(nextNote(), 0.05, 0.03, 1.4);
+  /** touching a drop to move it: pitch from its size and colour, walking a scale, with a wet tick */
+  pick(vol: number, pig: [number, number, number]) {
+    const a = ready(); if (!a) return;
+    const now = a.currentTime;
+    // quick touches walk up and down the scale; a pause starts somewhere new
+    if (now - lastPick > 1.2) pickStep = Math.floor(rand(0, 4));
+    else {
+      pickStep += pickDir * (Math.random() < 0.3 ? 2 : 1);
+      if (pickStep >= 5 || pickStep <= 0) { pickDir = -pickDir; pickStep = Math.max(0, Math.min(5, pickStep)); }
+    }
+    lastPick = now;
+    const base = (820 / Math.pow(vol, 0.35)) * COLOR_TUNE(pig);
+    const f = base * Math.pow(2, [0, 2, 4, 7, 9, 12][pickStep] / 12) * rand(0.985, 1.015);
+    const pan = rand(-0.35, 0.35);
+    plop(f, rand(0.045, 0.07), 0, rand(1.3, 1.9), rand(0.09, 0.15), pan);
+    if (Math.random() < 0.5) plop(f * 1.5, rand(0.012, 0.025), rand(0.03, 0.06), 1.4, 0.08, -pan);
+    tick(rand(1800, 3400), rand(0.02, 0.04), rand(0.02, 0.04), pan);
   },
-  /** a drop goes into the right cup */
-  cup(i: number) {
+  /** a drop let go settles on the paper */
+  settle(vol: number) { plop((300 / Math.sqrt(vol)) * rand(0.92, 1.08), 0.035, 0, rand(1.25, 1.5), 0.14, rand(-0.2, 0.2)); },
+  /** sliding: call every frame with the drop's speed (world units per second), 0 to stop */
+  slide(speed: number, vol = 1) {
+    const a = ready();
+    if (!a) return;
+    slideNodes(a);
+    const t = a.currentTime;
+    const v = Math.min(1, speed / 90);
+    slideGain!.gain.setTargetAtTime(v * v * 0.05 * Math.min(1.4, Math.sqrt(vol)), t, 0.06);
+    slideBp!.frequency.setTargetAtTime(380 + v * 900 / Math.sqrt(vol), t, 0.08);
+  },
+  /** two drops join; when two colours mix, a second bell adds a little magic */
+  merge(vol: number, mixed = false) {
+    plop((560 / Math.sqrt(vol)) * rand(0.95, 1.05), 0.2, 0, rand(2, 2.6));
+    const f = nextNote();
+    bell(f, 0.05, 0.03, 1.4, rand(-0.3, 0.3));
+    if (mixed) { bell(f * 1.5, 0.04, 0.12, 1.6, 0.3); bell(f * 2, 0.03, 0.22, 1.8, -0.3); }
+  },
+  /** a drop goes into the right cup; a full cup rings a chord */
+  cup(i: number, full: boolean) {
     plop(300, 0.2, 0, 2.6);
     const base = [0, 4, 7][i % 3];
     bell(note(base), 0.08, 0.05, 2.2);
-    bell(note(base + 7), 0.06, 0.16, 2.2);
-    bell(note(base + 12), 0.05, 0.28, 2.4);
+    if (full) {
+      bell(note(base + 7), 0.06, 0.16, 2.2);
+      bell(note(base + 12), 0.05, 0.28, 2.4);
+    }
   },
   /** a cup gently says "not this one" */
   refuse() {
     soft(392, 0.07, 0, 0.22);
     soft(330, 0.07, 0.2, 0.3);
   },
-  /** two colours touched where they should not: a soft "oh" */
+  /** a mix that no cup wants: a soft "oh" */
   oops() {
     plop(420, 0.14, 0, 2);
     soft(440, 0.06, 0.15, 0.7, 330);
+  },
+  /** a cup hops in the celebration */
+  hop(i: number) { plop(500 + i * 120, 0.1, 0, 2.4, 0.15, [-0.4, 0, 0.4][i % 3]); },
+  /** a star sticker pops on */
+  sticker(i: number) {
+    plop(700, 0.08, 0, 1.8, 0.1, [0.4, 0, -0.4][i]);
+    bell(note([12, 16, 19][i]), 0.06, 0.02, 1.6, [0.4, 0, -0.4][i]);
   },
   /** the level is done */
   win() {
