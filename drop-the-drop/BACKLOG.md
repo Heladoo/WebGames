@@ -4,7 +4,7 @@
 
 - In-scene celebration instead of a card (hopping cups, star stickers, marker writing).
 - A table background: oak planks, the black diamond card, plant leaves.
-- Home screen with levels: continue, pick any open level, see the next one locked.
+- Two ways to choose a level: the next level (Play / "next"), or the Levels screen with every open level and the next one locked.
 - Landscape only, with a "turn the device" picture in portrait.
 - A more varied sound when touching a drop, plus a slide sound while dragging.
 

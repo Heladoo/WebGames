@@ -96,10 +96,14 @@ h1 { margin: 0; font-size: 38px; font-weight: 700; letter-spacing: 0.5px; line-h
 /* ▶ means "forward"; in a right-to-left page forward is to the left */
 #btn-next .home-ic svg { transform: scaleX(-1); }
 .portal-link img { display: block; width: 110px; height: auto; }
-.levels-side { display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .fine { margin: 0; font-size: 12px; color: var(--soft); max-width: 300px; }
 
-.levels { display: grid; grid-template-columns: repeat(4, 64px); gap: 10px; align-content: center; justify-content: center; }
+.pick-card { max-width: min(560px, 100%); gap: 16px; }
+.pick-head { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 12px; }
+.pick-head h2 { margin: 0; font-size: 30px; color: #2d3a6b; }
+.pick-head .round { background: var(--alt); box-shadow: none; }
+.round-space { width: 48px; }
+.levels { display: grid; grid-template-columns: repeat(6, 64px); gap: 10px; align-content: center; justify-content: center; }
 .level-tile {
   position: relative; width: 64px; height: 64px; border-radius: 18px;
   border: none; background: #f2f4fa; color: #2d3a6b;
@@ -162,7 +166,8 @@ h1 { margin: 0; font-size: 38px; font-weight: 700; letter-spacing: 0.5px; line-h
   .title-side { gap: 8px; }
   .home-btn { min-height: 50px; font-size: 19px; }
   .portal-link img { width: 80px; }
-  .levels { grid-template-columns: repeat(4, 56px); gap: 8px; }
+  .levels { grid-template-columns: repeat(6, 56px); gap: 8px; }
+  .pick-head h2 { font-size: 24px; }
   .level-tile { width: 56px; height: 56px; }
   .card { gap: 8px; padding: 14px 20px; }
   .card p { font-size: 16px; }
@@ -170,7 +175,7 @@ h1 { margin: 0; font-size: 38px; font-weight: 700; letter-spacing: 0.5px; line-h
 }
 @media (max-height: 380px) {
   .sub { display: none; }
-  .levels { grid-template-columns: repeat(4, 52px); }
+  .levels { grid-template-columns: repeat(6, 52px); }
   .level-tile { width: 52px; height: 52px; border-radius: 14px; }
   .level-tile .num { font-size: 20px; }
   .home-btn { min-width: 160px; }

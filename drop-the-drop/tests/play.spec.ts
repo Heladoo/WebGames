@@ -68,7 +68,11 @@ test('level 6: joining three drops of a colour and taking them to their cup wins
   }
   // the celebration plays on the paper, then the buttons come
   await expect(page.locator('#win')).toBeVisible({ timeout: 6000 });
-  await page.click('#btn-next');
+  // the levels screen is one way on; "next" is the other
+  await page.click('#btn-win-levels');
+  await expect(page.locator('.level-tile.done')).toHaveCount(1);
+  await page.click('#btn-pick-back');
+  await page.click('#btn-play');
   await expect(page.locator('#level-pill')).toHaveText('7');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('drop-the-drop:v1')!).done)).toContain('l6');
 });

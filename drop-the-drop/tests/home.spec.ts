@@ -26,7 +26,7 @@ async function open(page: Page, done: string[]) {
 const measure = (page: Page) => page.evaluate(() => {
   const box = (e: Element) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
   const card = document.querySelector('.title-card')!;
-  const parts = [...document.querySelectorAll<HTMLElement>('.title-card .home-btn, .title-card .portal-link, .title-card .level-tile, .title-logo')].filter((e) => e.offsetParent);
+  const parts = [...document.querySelectorAll<HTMLElement>('.title-card .home-btn, .title-card .portal-link, .title-logo')].filter((e) => e.offsetParent);
   return {
     view: { x: 0, y: 0, w: innerWidth, h: innerHeight },
     card: box(card),
@@ -37,7 +37,6 @@ const measure = (page: Page) => page.evaluate(() => {
       h: b.getBoundingClientRect().height,
       spill: b.scrollWidth - b.clientWidth,
     })),
-    tiles: [...document.querySelectorAll<HTMLButtonElement>('.level-tile')].map((t) => ({ label: t.getAttribute('aria-label'), locked: t.disabled, h: t.getBoundingClientRect().height })),
     portal: (document.querySelector('.portal-link') as HTMLAnchorElement).href,
     portalImg: (document.querySelector('.portal-link img') as HTMLImageElement).naturalWidth,
   };
@@ -52,19 +51,34 @@ for (const [name, viewport] of Object.entries(SIZES)) {
       const what = `${name}, ${done.length} done`;
       expect(inside(m.card, m.view), `${what}: the card fits on screen`).toBe(true);
       for (const p of m.parts) expect(inside(p, m.card), `${what}: ${p.id} is inside the card`).toBe(true);
-      expect(m.buttons.map((b) => b.label)).toEqual(done.length ? ['להמשיך', 'מההתחלה'] : ['לשחק']);
+      expect(m.buttons.map((b) => b.label)).toEqual(done.length ? ['להמשיך', 'שלבים', 'מההתחלה'] : ['לשחק', 'שלבים']);
       for (const b of m.buttons) {
         expect(b.icon, `${what}: "${b.label}" has a picture`).toBe(true);
         expect(b.h, `${what}: "${b.label}" is easy to tap`).toBeGreaterThanOrEqual(48);
         expect(b.spill, `${what}: "${b.label}" fits its button`).toBeLessThanOrEqual(1);
       }
-      // the open levels plus the next one, locked
-      expect(m.tiles.length).toBe(done.length + 2);
-      expect(m.tiles.filter((t) => t.locked).length).toBe(1);
-      expect(m.tiles[m.tiles.length - 1].locked).toBe(true);
-      for (const t of m.tiles) expect(t.h).toBeGreaterThanOrEqual(48);
       expect(m.portal).toBe('https://dorothy-games.vercel.app/');
       expect(m.portalImg).toBeGreaterThan(0);
+
+      // the levels screen: the open levels plus the next one, locked
+      await page.click('#btn-levels');
+      const p = await page.evaluate(() => {
+        const box = (e: Element) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+        return {
+          card: box(document.querySelector('.pick-card')!),
+          tiles: [...document.querySelectorAll<HTMLButtonElement>('.level-tile')].map((t) => ({ locked: t.disabled, ...box(t) })),
+        };
+      });
+      expect(inside(p.card, m.view), `${what}: the levels card fits on screen`).toBe(true);
+      expect(p.tiles.length).toBe(done.length + 2);
+      expect(p.tiles.filter((t) => t.locked).length).toBe(1);
+      expect(p.tiles[p.tiles.length - 1].locked).toBe(true);
+      for (const t of p.tiles) {
+        expect(t.h).toBeGreaterThanOrEqual(48);
+        expect(inside(t, p.card), `${what}: every tile is inside the card`).toBe(true);
+      }
+      await page.click('#btn-pick-back');
+      await expect(page.locator('#home')).toBeVisible();
     }
   });
 }
@@ -84,15 +98,19 @@ test('"from the start" asks first; "no" keeps the progress', async ({ page }) =>
   await expect(page.locator('#ask')).toBeVisible();
   await page.click('#btn-no');
   await expect(page.locator('#home')).toBeVisible();
-  expect(await page.locator('.level-tile.done').count()).toBe(2);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('drop-the-drop:v1')!).done)).toEqual(['l1', 'l2']);
   await page.click('#btn-new');
   await page.click('#btn-yes');
   await expect(page.locator('#level-pill')).toHaveText('1');
 });
 
-test('a level tile opens that level, and the house button comes back at once', async ({ page }) => {
+test('"play" opens the next level; a tile on the levels screen opens any open level', async ({ page }) => {
   await page.setViewportSize(SIZES.tablet);
   await open(page, ['l1', 'l2', 'l3']);
+  await page.click('#btn-play');
+  await expect(page.locator('#level-pill')).toHaveText('4');
+  await page.click('#btn-home');
+  await page.click('#btn-levels');
   await page.click('.level-tile >> nth=1');
   await expect(page.locator('#level-pill')).toHaveText('2');
   await page.click('#btn-home');

@@ -15,7 +15,7 @@
 The first sample was approved. The owner's feedback since then is done:
 - an in-scene celebration;
 - the table background;
-- the level picker;
+- choosing a level two ways (the next level, or the levels screen);
 - landscape only;
 - a more varied touch sound.
 
@@ -46,7 +46,10 @@ Ideas still open are in `BACKLOG.md`.
   - **Backdrop** (`drawBackdrop`): light oak planks, the black diamond card from the reference photo (its corners peek out above and below the paper), plant leaves on the table (clipped so they stay off the paper), and the paper sheet. It is painted once per resize.
   - **Cups:** marker drawings with scalloped water.
 - **Celebration** (`updateParty` / `drawParty`): when the last cup fills, the cups hop one by one with little fountains, three star stickers pop onto the paper, and "כל הכבוד!" is written in marker from right to left in the cups' colours. Then the buttons (next, again, home) float over the paper (`#win`, no card).
-- **Home** (`main.ts`): logo, Play/Continue, "from the start" (only with progress; it asks first and clears progress), the Dorothy Games logo, and the level tiles. The tiles show the open levels, each with its cups' colours and a star when done, plus the next locked level. A level opens when the one before it is done.
+- **Choosing a level, two ways** (owner's request; `main.ts`):
+  - **The next level:** Play/Continue on the home screen resumes a level under way, or, after a finished level, opens the next one. The "next" button at the end of a level does the same.
+  - **The levels screen** (`#pick`): opened from the home screen's "Levels" button or the "Levels" button at the end of a level. It shows a tile for every open level (its cups' colours, and a star when done), plus the next one, locked. A level opens when the one before it is done. The house button goes back to the home screen. Leaving a level under way asks first.
+- **Home:** logo, Play/Continue, Levels, "from the start" (only with progress; it asks first and clears progress), and the Dorothy Games logo.
 - **Hints:** after 7 quiet seconds, a see-through fingertip shows a useful move (`suggest()`): a drop a cup takes now, else the closest pair whose join still fits a cup.
 - **Sound** (`sfx.ts`):
   - **Touching a drop:** never the same twice. The pitch comes from the drop's size and colour and walks a pentatonic scale on quick touches. Each touch also gets a random pan, a random envelope, sometimes a soft fifth, and a short noise "tick".
@@ -66,6 +69,6 @@ Ideas still open are in `BACKLOG.md`.
 ## Tests
 
 `npm test` (Playwright):
-- **Home screen:** fits four landscape sizes (640 × 360 up to a laptop), with icons, 48 px buttons and tiles, the open levels plus one locked tile, and the portal link. An upright screen shows the turn prompt. "From the start" asks first. A level tile opens its level, and the house button comes back.
+- **Home and levels screens:** both fit four landscape sizes (640 × 360 up to a laptop). The home screen has icons, 48 px buttons and the portal link. The levels screen shows the open levels plus one locked tile. An upright screen shows the turn prompt. "From the start" asks first. Play opens the next level, a tile opens its level, and the house button comes back.
 - **Every level:** solvable (the drops' pigment equals what the cups want), starts with drops apart and above the cups, and has a hint.
 - **Play:** level 6 is won by joining and pouring, and "next" opens level 7. Level 2's cup fills drop by drop. A small drop is refused. Red touching blue explains purple. Level 9 mixes orange into its cup. Level 10's two blue drops end with the "no cup" card.

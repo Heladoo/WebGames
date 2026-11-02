@@ -34,22 +34,31 @@ app.innerHTML = `
 
   <div id="home" class="screen">
     <div class="title-card">
+      <div class="title-logo">
+        <canvas id="logo-drops" width="300" height="130" aria-hidden="true"></canvas>
+        <h1 lang="en" dir="ltr">Drop the Drop</h1>
+        <p class="sub">טיפות צבע לכוסות</p>
+      </div>
       <div class="title-side">
-        <div class="title-logo">
-          <canvas id="logo-drops" width="300" height="130" aria-hidden="true"></canvas>
-          <h1 lang="en" dir="ltr">Drop the Drop</h1>
-          <p class="sub">טיפות צבע לכוסות</p>
-        </div>
         <div class="home-buttons">
           <button class="home-btn" id="btn-play"><span class="home-ic">${ICON.play}</span><span class="home-label">לשחק</span></button>
+          <button class="home-btn alt" id="btn-levels"><span class="home-ic">${ICON.levels}</span><span class="home-label">שלבים</span></button>
           <button class="home-btn alt" id="btn-new" hidden><span class="home-ic">${ICON.again}</span><span class="home-label">מההתחלה</span></button>
         </div>
         <a class="portal-link" href="https://dorothy-games.vercel.app/" aria-label="Dorothy Games: more games"><img src="/dorothy-logo.webp" alt="" width="180" height="90"></a>
-      </div>
-      <div class="levels-side">
-        <div class="levels" id="levels" role="list" aria-label="שלבים"></div>
         <p class="fine">בלי פרסומות, בלי חשבונות ובלי עוגיות. שום דבר לא נספר ולא נשלח.</p>
       </div>
+    </div>
+  </div>
+
+  <div id="pick" class="screen hidden" role="dialog" aria-modal="true" aria-labelledby="pick-title">
+    <div class="card pick-card">
+      <div class="pick-head">
+        <button class="round" id="btn-pick-back" aria-label="מסך הבית">${ICON.home}</button>
+        <h2 id="pick-title">שלבים</h2>
+        <span class="round-space"></span>
+      </div>
+      <div class="levels" id="levels" role="list" aria-label="שלבים"></div>
     </div>
   </div>
 
@@ -65,7 +74,7 @@ app.innerHTML = `
     <div class="row">
       <button class="home-btn big" id="btn-next"><span class="home-ic">${ICON.play}</span><span class="home-label">לשלב הבא</span></button>
       <button class="home-btn alt" id="btn-again"><span class="home-ic">${ICON.again}</span><span class="home-label">שוב</span></button>
-      <button class="home-btn alt" id="btn-win-home"><span class="home-ic">${ICON.home}</span><span class="home-label">הביתה</span></button>
+      <button class="home-btn alt" id="btn-win-levels"><span class="home-ic">${ICON.levels}</span><span class="home-label">שלבים</span></button>
     </div>
   </div>
 
@@ -114,15 +123,14 @@ function openHome() {
   const any = going() || store.done.length > 0;
   $('btn-play').querySelector('.home-label')!.textContent = any ? 'להמשיך' : 'לשחק';
   $('btn-new').hidden = !any;
-  buildLevels();
-  for (const id of ['win', 'fail', 'ask']) show(id, false);
+  for (const id of ['win', 'fail', 'ask', 'pick']) show(id, false);
   show('home', true);
   show('topbar', false);
 }
 
 function enterLevel(i: number, drip = true) {
   index = i;
-  for (const id of ['fail', 'win', 'ask', 'home']) show(id, false);
+  for (const id of ['fail', 'win', 'ask', 'home', 'pick']) show(id, false);
   show('topbar', true);
   $('level-pill').textContent = String(i + 1);
   $('level-pill').setAttribute('aria-label', `שלב ${i + 1}`);
@@ -142,7 +150,8 @@ function resume() {
 
 function play() {
   if (going()) resume();
-  else enterLevel(game.won ? firstOpen() : index);
+  // after a finished level, the next one; otherwise the level on the paper
+  else enterLevel(game.won ? Math.min(LEVELS.length - 1, index + 1) : index);
 }
 
 function ask(text: string, yes: () => void) {
@@ -150,7 +159,10 @@ function ask(text: string, yes: () => void) {
   $('ask-text').textContent = text;
   show('ask', true);
   $('btn-yes').onclick = () => { show('ask', false); yes(); };
-  $('btn-no').onclick = () => { show('ask', false); game.paused = !$('home').classList.contains('hidden'); };
+  $('btn-no').onclick = () => {
+    show('ask', false);
+    game.paused = !$('home').classList.contains('hidden') || !$('pick').classList.contains('hidden');
+  };
   $('btn-no').focus();
 }
 
@@ -182,6 +194,18 @@ function showWin() {
 }
 
 // ---------------------------------------------------------------- level picker
+
+/** The screen with every open level (from home or from the end of a level). */
+function openPicker() {
+  game.paused = true;
+  game.cancelDrag();
+  buildLevels();
+  show('home', false);
+  show('win', false);
+  show('pick', true);
+  (document.querySelector('.level-tile.current') as HTMLElement | null)?.focus();
+}
+
 
 function cupColors(l: Level): string[] {
   return l.cups.map((c) => css(pigToRgb(PIG[c.color])));
@@ -282,7 +306,9 @@ $('btn-restart').onclick = () => (game.touched && !game.over ? ask('להתחיל
 $('btn-retry').onclick = () => enterLevel(index);
 $('btn-again').onclick = () => enterLevel(index);
 $('btn-next').onclick = () => enterLevel(Math.min(LEVELS.length - 1, index + 1));
-$('btn-win-home').onclick = openHome;
+$('btn-win-levels').onclick = openPicker;
+$('btn-levels').onclick = openPicker;
+$('btn-pick-back').onclick = openHome;
 $('btn-sound').onclick = () => {
   store.muted = !store.muted;
   save(store);

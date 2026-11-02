@@ -7,6 +7,7 @@ export const ICON = {
   home: svg('<path d="M4 11.2 12 4.5l8 6.7"/><path d="M6.5 9.5V19.5h11V9.5"/><path d="M10.2 19.5v-5h3.6v5"/>'),
   soundOn: svg('<path d="M4.5 9.5h3.5l5-4v13l-5-4H4.5z" fill="currentColor"/><path d="M16.5 9a4.2 4.2 0 0 1 0 6"/><path d="M19 6.5a7.8 7.8 0 0 1 0 11"/>'),
   soundOff: svg('<path d="M4.5 9.5h3.5l5-4v13l-5-4H4.5z" fill="currentColor"/><path d="m16.5 9.5 5 5m0-5-5 5"/>'),
+  levels: svg('<rect x="4" y="4" width="6.5" height="6.5" rx="1.6" fill="currentColor" stroke="none"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6" fill="currentColor" stroke="none"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6" fill="currentColor" stroke="none"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6" fill="currentColor" stroke="none"/>'),
   yes: svg('<path d="m5 12.5 4.5 4.5L19 7.5"/>'),
   no: svg('<path d="m6.5 6.5 11 11m0-11-11 11"/>'),
 };

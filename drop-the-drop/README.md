@@ -6,7 +6,7 @@ A calm browser game for young children, based on a real activity: drops of colou
 - **Join** drops to make a bigger drop. A cup shows its colour and a dashed circle the size of the drop it wants; dots on a cup count the drops it still takes.
 - **Keep colours apart** in the early levels: a drop of another colour trembles when you come close, and if two colours touch they mix. The game shows what happened (red + blue = purple) and you play the level again.
 - **Mix colours** in the later levels: red + yellow make orange, blue + yellow make green, red + blue make purple.
-- **12 levels** that open one by one; the home screen lists the open ones and shows the next one, locked.
+- **12 levels** that open one by one. Play (or "next" at the end of a level) goes on to the next level; the Levels screen shows every open level, plus the next one, locked.
 - When the last cup fills, the cups hop, star stickers pop onto the paper and "כל הכבוד!" is written on it.
 - If you wait a while, a see-through finger shows a move to try.
 
