@@ -67,14 +67,21 @@ button:focus-visible, a:focus-visible { outline: 3px solid #f2b705; outline-offs
   animation: rise 0.45s cubic-bezier(.2, 1.4, .4, 1);
 }
 @keyframes rise { from { transform: translateY(18px) scale(0.96); opacity: 0; } }
+
+/* home: the logo and buttons on one side, the levels on the other */
+.title-card {
+  flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: center;
+  max-width: min(820px, 100%); gap: 14px 30px; overflow: auto;
+}
+.title-side { display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 0 1 280px; }
 .title-logo { display: flex; flex-direction: column; align-items: center; }
 #logo-drops { width: 150px; height: 65px; }
-h1 { margin: 0; font-size: 40px; font-weight: 700; letter-spacing: 0.5px; line-height: 1.1; color: #2d3a6b; }
+h1 { margin: 0; font-size: 38px; font-weight: 700; letter-spacing: 0.5px; line-height: 1.1; color: #2d3a6b; }
 .sub { margin: 4px 0 0; color: var(--soft); font-size: 18px; }
 .home-buttons { display: flex; flex-direction: column; gap: 10px; width: 100%; align-items: stretch; }
 .home-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 12px;
-  min-height: 58px; min-width: 190px; padding: 8px 24px;
+  min-height: 56px; min-width: 180px; padding: 8px 24px;
   border: none; border-radius: 999px;
   background: var(--btn); color: #fff;
   font-size: 22px; font-weight: 700;
@@ -86,32 +93,88 @@ h1 { margin: 0; font-size: 40px; font-weight: 700; letter-spacing: 0.5px; line-h
 .home-btn.yes { background: #3aa864; box-shadow: 0 4px 0 #2a8049; }
 .home-ic { width: 28px; height: 28px; display: grid; }
 .home-ic svg { width: 100%; height: 100%; }
-.portal-link img { display: block; width: 120px; height: auto; }
+/* ▶ means "forward"; in a right-to-left page forward is to the left */
+#btn-next .home-ic svg { transform: scaleX(-1); }
+.portal-link img { display: block; width: 110px; height: auto; }
+.levels-side { display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .fine { margin: 0; font-size: 12px; color: var(--soft); max-width: 300px; }
 
+.levels { display: grid; grid-template-columns: repeat(4, 64px); gap: 10px; align-content: center; justify-content: center; }
+.level-tile {
+  position: relative; width: 64px; height: 64px; border-radius: 18px;
+  border: none; background: #f2f4fa; color: #2d3a6b;
+  box-shadow: 0 3px 0 #d6dbe8;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  font-weight: 700; padding: 0;
+}
+.level-tile .num { font-size: 24px; line-height: 1; }
+.level-tile .dots { display: flex; gap: 3px; }
+.level-tile .dots i {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff 0 12%, var(--c) 45%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+.level-tile.current { background: #fff; box-shadow: 0 0 0 3px var(--btn), 0 3px 0 #d6dbe8; animation: glow 1.8s ease-in-out infinite; }
+@keyframes glow { 50% { box-shadow: 0 0 0 5px rgba(63, 127, 224, 0.45), 0 3px 0 #d6dbe8; } }
+.level-tile.locked { opacity: 0.6; cursor: default; background: #e9ebf1; color: var(--soft); }
+.level-tile .lock { width: 24px; height: 24px; display: grid; }
+.level-tile .badge { position: absolute; top: -8px; inset-inline-end: -8px; width: 26px; height: 26px; }
+.level-tile:not(:disabled):active { transform: translateY(2px); }
+
+.level-pill {
+  pointer-events: none; min-width: 40px; height: 40px; border-radius: 20px; padding: 0 12px;
+  display: grid; place-items: center; background: rgba(255, 255, 255, 0.85); font-weight: 700; font-size: 20px; color: #2d3a6b;
+  box-shadow: 0 2px 8px rgba(40, 50, 80, 0.15);
+}
+
 .card p { margin: 0; font-size: 19px; line-height: 1.45; max-width: 400px; }
-.card h2 { margin: 0; font-size: 38px; color: #2d3a6b; }
 .card .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .card .row .home-btn { min-width: 140px; }
 #fail-pic { width: 280px; height: 85px; }
-#win-pic { width: 260px; height: 85px; }
 
-/* short landscape screens: the logo beside the buttons */
-@media (max-height: 520px) and (orientation: landscape) {
-  .title-card { flex-direction: row; flex-wrap: wrap; justify-content: center; max-width: min(640px, 100%); gap: 10px 24px; padding: 14px 20px; }
-  .title-logo { flex: 1 1 220px; }
-  .home-buttons { width: auto; flex: 1 1 200px; }
-  .portal-link img { width: 96px; }
-  .fine { flex-basis: 100%; max-width: none; }
-  h1 { font-size: 32px; }
-  .card { gap: 8px; padding: 14px 20px; }
-  .card h2 { font-size: 30px; }
-  .card p { font-size: 16px; }
+/* the celebration plays on the paper; only its buttons float there */
+#win { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; padding-top: 12vh; }
+#win .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; pointer-events: auto; animation: rise 0.5s cubic-bezier(.2, 1.4, .4, 1); }
+#win .home-btn.alt { min-width: 0; padding: 8px 18px; }
+.home-btn.big { min-height: 64px; font-size: 24px; padding: 8px 30px; }
+
+/* landscape only: upright screens are asked to turn */
+#rotate {
+  position: fixed; inset: 0; z-index: 10; display: none;
+  flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  background: #f7f3ea; color: var(--ink); font-size: 20px; text-align: center; padding: 24px;
 }
-@media (max-width: 380px) {
-  h1 { font-size: 34px; }
-  .home-btn { font-size: 20px; min-width: 160px; }
+#rotate p { margin: 0; }
+.rot-pic { width: 140px; height: 140px; }
+.rot-pic svg { width: 100%; height: 100%; overflow: visible; }
+.rot-phone { transform-origin: 60px 60px; animation: turn 2.6s ease-in-out infinite; }
+@keyframes turn { 0%, 25% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+@media (orientation: portrait) {
+  #rotate { display: flex; }
+}
+
+/* short landscape screens */
+@media (max-height: 520px) {
+  .title-card { gap: 8px 22px; padding: 12px 18px; }
+  #logo-drops { width: 110px; height: 48px; }
+  h1 { font-size: 28px; }
+  .sub { font-size: 15px; margin: 0; }
+  .title-side { gap: 8px; }
+  .home-btn { min-height: 50px; font-size: 19px; }
+  .portal-link img { width: 80px; }
+  .levels { grid-template-columns: repeat(4, 56px); gap: 8px; }
+  .level-tile { width: 56px; height: 56px; }
+  .card { gap: 8px; padding: 14px 20px; }
+  .card p { font-size: 16px; }
+  .home-btn.big { min-height: 56px; font-size: 21px; }
+}
+@media (max-height: 380px) {
+  .sub { display: none; }
+  .levels { grid-template-columns: repeat(4, 52px); }
+  .level-tile { width: 52px; height: 52px; border-radius: 14px; }
+  .level-tile .num { font-size: 20px; }
+  .home-btn { min-width: 160px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .screen, .title-card, .card { animation: none; }
+  .screen, .title-card, .card, #win .row, .level-tile.current, .rot-phone { animation: none; }
 }

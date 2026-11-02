@@ -1,29 +1,32 @@
 import './styles.css';
-import { colorName, PIG, type Pig } from './color';
+import { colorName, css, PIG, type Pig, pigToRgb, sameColor, share } from './color';
 import { Drop } from './drop';
 import { type FailInfo, Game } from './game';
-import { ICON } from './icons';
-import { LEVELS } from './levels';
-import { drawDrop, drawPaper } from './render';
+import { ICON, ICON_LOCK, ICON_ROTATE, ICON_STAR } from './icons';
+import { LAB, LEVELS, type Level } from './levels';
+import { drawDrop } from './render';
 import { setMuted, unlock } from './sfx';
 import { load, save } from './state';
 
 const params = new URLSearchParams(location.search);
 const debug = params.get('debug') ?? '';
-const level = LEVELS[params.get('level') ?? ''] ?? LEVELS.sample;
 const store = load();
 setMuted(store.muted);
 
-// the feminine form, since a drop (טיפה) is feminine in Hebrew
-const DROP_HE: Record<string, string> = {
+// a drop (טיפה) is feminine in Hebrew: one drop, and several drops
+const ONE: Record<string, string> = {
   red: 'אדומה', yellow: 'צהובה', blue: 'כחולה', orange: 'כתומה', purple: 'סגולה', green: 'ירוקה', brown: 'חומה',
+};
+const MANY: Record<string, string> = {
+  red: 'אדומות', yellow: 'צהובות', blue: 'כחולות', orange: 'כתומות', purple: 'סגולות', green: 'ירוקות', brown: 'חומות',
 };
 
 const app = document.getElementById('app')!;
 app.innerHTML = `
   <canvas id="stage" aria-label="דף נייר עם טיפות צבע וכוסות. גוררים טיפה באצבע."></canvas>
-  <div id="topbar">
+  <div id="topbar" class="hidden">
     <button class="round" id="btn-home" aria-label="מסך הבית">${ICON.home}</button>
+    <span class="level-pill" id="level-pill" aria-live="polite"></span>
     <span class="grow"></span>
     <button class="round" id="btn-restart" aria-label="להתחיל את השלב מחדש">${ICON.again}</button>
     <button class="round" id="btn-sound" aria-label="צלילים"></button>
@@ -31,17 +34,22 @@ app.innerHTML = `
 
   <div id="home" class="screen">
     <div class="title-card">
-      <div class="title-logo">
-        <canvas id="logo-drops" width="300" height="130" aria-hidden="true"></canvas>
-        <h1 lang="en" dir="ltr">Drop the Drop</h1>
-        <p class="sub">טיפות צבע לכוסות</p>
+      <div class="title-side">
+        <div class="title-logo">
+          <canvas id="logo-drops" width="300" height="130" aria-hidden="true"></canvas>
+          <h1 lang="en" dir="ltr">Drop the Drop</h1>
+          <p class="sub">טיפות צבע לכוסות</p>
+        </div>
+        <div class="home-buttons">
+          <button class="home-btn" id="btn-play"><span class="home-ic">${ICON.play}</span><span class="home-label">לשחק</span></button>
+          <button class="home-btn alt" id="btn-new" hidden><span class="home-ic">${ICON.again}</span><span class="home-label">מההתחלה</span></button>
+        </div>
+        <a class="portal-link" href="https://dorothy-games.vercel.app/" aria-label="Dorothy Games: more games"><img src="/dorothy-logo.webp" alt="" width="180" height="90"></a>
       </div>
-      <div class="home-buttons">
-        <button class="home-btn" id="btn-play"><span class="home-ic">${ICON.play}</span><span class="home-label">לשחק</span></button>
-        <button class="home-btn alt" id="btn-new" hidden><span class="home-ic">${ICON.again}</span><span class="home-label">מההתחלה</span></button>
+      <div class="levels-side">
+        <div class="levels" id="levels" role="list" aria-label="שלבים"></div>
+        <p class="fine">בלי פרסומות, בלי חשבונות ובלי עוגיות. שום דבר לא נספר ולא נשלח.</p>
       </div>
-      <a class="portal-link" href="https://dorothy-games.vercel.app/" aria-label="Dorothy Games: more games"><img src="/dorothy-logo.webp" alt="" width="180" height="90"></a>
-      <p class="fine">בלי פרסומות, בלי חשבונות ובלי עוגיות. שום דבר לא נספר ולא נשלח.</p>
     </div>
   </div>
 
@@ -53,32 +61,48 @@ app.innerHTML = `
     </div>
   </div>
 
-  <div id="win" class="screen hidden" role="dialog" aria-modal="true" aria-labelledby="win-title">
-    <div class="card">
-      <h2 id="win-title">כל הכבוד!</h2>
-      <canvas id="win-pic" width="520" height="170" aria-hidden="true"></canvas>
-      <div class="row">
-        <button class="home-btn" id="btn-again"><span class="home-ic">${ICON.again}</span><span class="home-label">שוב</span></button>
-        <button class="home-btn alt" id="btn-win-home"><span class="home-ic">${ICON.home}</span><span class="home-label">הביתה</span></button>
-      </div>
+  <div id="win" class="hidden" role="dialog" aria-label="כל הכבוד! השלב הושלם">
+    <div class="row">
+      <button class="home-btn big" id="btn-next"><span class="home-ic">${ICON.play}</span><span class="home-label">לשלב הבא</span></button>
+      <button class="home-btn alt" id="btn-again"><span class="home-ic">${ICON.again}</span><span class="home-label">שוב</span></button>
+      <button class="home-btn alt" id="btn-win-home"><span class="home-ic">${ICON.home}</span><span class="home-label">הביתה</span></button>
     </div>
   </div>
 
   <div id="ask" class="screen hidden" role="dialog" aria-modal="true" aria-labelledby="ask-text">
     <div class="card">
-      <p id="ask-text">להתחיל את השלב מההתחלה?</p>
+      <p id="ask-text"></p>
       <div class="row">
         <button class="home-btn yes" id="btn-yes"><span class="home-ic">${ICON.yes}</span><span class="home-label">כן</span></button>
         <button class="home-btn alt" id="btn-no"><span class="home-ic">${ICON.no}</span><span class="home-label">לא</span></button>
       </div>
     </div>
   </div>
+
+  <div id="rotate" role="alert">
+    <div class="rot-pic">${ICON_ROTATE}</div>
+    <p>מסובבים את המכשיר לרוחב</p>
+  </div>
 `;
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const game = new Game($<HTMLCanvasElement>('stage'), { fail: showFail, win: showWin });
-game.start(level, false);
+let index = firstOpen();
+const forced = params.get('level');
+if (forced === 'lab') game.start(LAB, false);
+else {
+  if (forced && /^\d+$/.test(forced)) index = Math.max(0, Math.min(LEVELS.length - 1, Number(forced) - 1));
+  game.start(LEVELS[index], false);
+}
+
+function isDone(i: number) { return store.done.includes(LEVELS[i].id); }
+function isOpen(i: number) { return i === 0 || isDone(i - 1) || isDone(i); }
+/** the first level not finished yet (or the last one) */
+function firstOpen() {
+  const i = LEVELS.findIndex((l) => !store.done.includes(l.id));
+  return i < 0 ? LEVELS.length - 1 : i;
+}
 
 // ---------------------------------------------------------------- screens
 
@@ -86,26 +110,39 @@ function show(id: string, on: boolean) { $(id).classList.toggle('hidden', !on); 
 
 function openHome() {
   game.paused = true;
-  const going = game.touched && !game.over;
-  $('btn-play').querySelector('.home-label')!.textContent = going ? 'להמשיך' : 'לשחק';
-  $('btn-new').hidden = !going;
+  game.cancelDrag();
+  const any = going() || store.done.length > 0;
+  $('btn-play').querySelector('.home-label')!.textContent = any ? 'להמשיך' : 'לשחק';
+  $('btn-new').hidden = !any;
+  buildLevels();
+  for (const id of ['win', 'fail', 'ask']) show(id, false);
   show('home', true);
-  $('topbar').classList.add('hidden');
+  show('topbar', false);
+}
+
+function enterLevel(i: number, drip = true) {
+  index = i;
+  for (const id of ['fail', 'win', 'ask', 'home']) show(id, false);
+  show('topbar', true);
+  $('level-pill').textContent = String(i + 1);
+  $('level-pill').setAttribute('aria-label', `שלב ${i + 1}`);
+  game.start(LEVELS[i], drip);
+  game.paused = false;
+  lockLandscape();
+}
+
+/** Is a level under way (something done, not finished)? */
+function going() { return game.touched && !game.over && game.level === LEVELS[index]; }
+
+function resume() {
+  show('home', false);
+  show('topbar', true);
+  game.paused = false;
 }
 
 function play() {
-  show('home', false);
-  $('topbar').classList.remove('hidden');
-  if (game.over) game.start(level, true);
-  else if (!game.touched) game.dripIn();
-  game.paused = false;
-}
-
-function restart() {
-  for (const id of ['fail', 'win', 'ask', 'home']) show(id, false);
-  $('topbar').classList.remove('hidden');
-  game.start(level, true);
-  game.paused = false;
+  if (going()) resume();
+  else enterLevel(game.won ? firstOpen() : index);
 }
 
 function ask(text: string, yes: () => void) {
@@ -114,74 +151,103 @@ function ask(text: string, yes: () => void) {
   show('ask', true);
   $('btn-yes').onclick = () => { show('ask', false); yes(); };
   $('btn-no').onclick = () => { show('ask', false); game.paused = !$('home').classList.contains('hidden'); };
+  $('btn-no').focus();
+}
+
+function failText(info: FailInfo): string {
+  const a = colorName(info.a), b = colorName(info.b), m = colorName(info.mix);
+  if (info.kind === 'touch') {
+    return `טיפה ${ONE[a]} נגעה בטיפה ${ONE[b]}, והן התערבבו לטיפה ${ONE[m]}. כאן כל צבע הולך לכוס שלו, אז שומרים שטיפות בצבעים שונים לא ייגעו.`;
+  }
+  if (sameColor(info.a, info.b)) {
+    return `שתי טיפות ${MANY[a]} התחברו לטיפה גדולה מדי, ואף כוס כאן לא מחכה לטיפה ${ONE[a]} כל כך גדולה.`;
+  }
+  return `טיפה ${ONE[a]} וטיפה ${ONE[b]} התערבבו לטיפה ${ONE[m]}, אבל אף כוס לא מחכה לטיפה כזאת.`;
 }
 
 function showFail(info: FailInfo) {
   game.paused = true;
-  const a = DROP_HE[colorName(info.a)], b = DROP_HE[colorName(info.b)], m = DROP_HE[colorName(info.mix)];
-  $('fail-text').textContent = `טיפה ${a} נגעה בטיפה ${b}, והן התערבבו לטיפה ${m}. כאן כל צבע הולך לכוס שלו, אז שומרים שטיפות בצבעים שונים לא ייגעו.`;
+  $('fail-text').textContent = failText(info);
   paintEquation($<HTMLCanvasElement>('fail-pic'), info);
   show('fail', true);
   $('btn-retry').focus();
 }
 
 function showWin() {
-  game.paused = true;
-  if (!store.done.includes(level.id)) { store.done.push(level.id); save(store); }
-  paintRow($<HTMLCanvasElement>('win-pic'), game.cups.map((c) => c.pig));
+  if (game.level !== LAB && !store.done.includes(game.level.id)) { store.done.push(game.level.id); save(store); }
+  const last = index >= LEVELS.length - 1;
+  $('btn-next').hidden = last;
   show('win', true);
-  $('btn-again').focus();
+  (last ? $('btn-again') : $('btn-next')).focus();
+}
+
+// ---------------------------------------------------------------- level picker
+
+function cupColors(l: Level): string[] {
+  return l.cups.map((c) => css(pigToRgb(PIG[c.color])));
+}
+
+function buildLevels() {
+  const box = $('levels');
+  box.innerHTML = '';
+  const current = going() ? index : firstOpen();
+  LEVELS.forEach((l, i) => {
+    const open = isOpen(i);
+    if (!open && !isOpen(i - 1)) return; // only the next locked level is shown
+    const b = document.createElement('button');
+    b.className = 'level-tile' + (isDone(i) ? ' done' : '') + (i === current && open ? ' current' : '') + (open ? '' : ' locked');
+    b.setAttribute('role', 'listitem');
+    b.disabled = !open;
+    b.setAttribute('aria-label', open ? `שלב ${i + 1}${isDone(i) ? ', הושלם' : ''}` : `שלב ${i + 1}, נעול`);
+    const dots = cupColors(l).map((c) => `<i style="--c:${c}"></i>`).join('');
+    b.innerHTML = open
+      ? `<span class="num">${i + 1}</span><span class="dots">${dots}</span>${isDone(i) ? `<span class="badge">${ICON_STAR}</span>` : ''}`
+      : `<span class="lock">${ICON_LOCK}</span><span class="dots">${dots}</span>`;
+    if (open) {
+      b.onclick = () => {
+        if (going() && i === index) resume();
+        else if (going()) ask('לעזוב את השלב הזה ולעבור לשלב אחר?', () => enterLevel(i));
+        else enterLevel(i);
+      };
+    }
+    box.appendChild(b);
+  });
 }
 
 // ---------------------------------------------------------------- small pictures
 
 /** Paint still drops into a small canvas (for the cards and the logo). */
-function paintDrops(cv: HTMLCanvasElement, items: { x: number; y: number; vol: number; pig: Pig }[], unit: number, paper = false) {
-  const w = cv.width, h = cv.height;
-  if (cv.dataset.w !== String(w)) {
-    cv.style.width = w / 2 + 'px';
-    cv.dataset.w = String(w);
-  }
+function paintDrops(cv: HTMLCanvasElement, items: { x: number; y: number; vol: number; pig: Pig }[], unit: number) {
   const ctx = cv.getContext('2d')!;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-  if (paper) drawPaper(ctx, w, h);
+  ctx.clearRect(0, 0, cv.width, cv.height);
   ctx.setTransform(unit, 0, 0, unit, 0, 0);
-  for (const it of items) {
-    const d = new Drop(it.x, it.y, it.vol, it.pig);
-    drawDrop(ctx, d, unit);
-  }
+  for (const it of items) drawDrop(ctx, new Drop(it.x, it.y, it.vol, it.pig), unit);
 }
 
 function paintEquation(cv: HTMLCanvasElement, info: FailInfo) {
   const ctx = cv.getContext('2d')!;
-  const unit = cv.height / 26;
+  const unit = cv.height / 28;
   const w = cv.width / unit;
-  const share = (p: Pig) => { const s = p[0] + p[1] + p[2]; return [p[0] / s, p[1] / s, p[2] / s] as Pig; };
+  const vol = (p: Pig) => Math.min(2.2, Math.max(1, (p[0] + p[1] + p[2]) * 0.9));
   paintDrops(cv, [
-    { x: w * 0.86, y: 13, vol: 1.6, pig: share(info.a) },
-    { x: w * 0.56, y: 13, vol: 1.6, pig: share(info.b) },
-    { x: w * 0.16, y: 13, vol: 3.2, pig: share(info.mix) },
+    { x: w * 0.86, y: 14, vol: vol(info.a), pig: share(info.a) },
+    { x: w * 0.56, y: 14, vol: vol(info.b), pig: share(info.b) },
+    { x: w * 0.17, y: 14, vol: Math.min(3.2, vol(info.a) + vol(info.b)), pig: share(info.mix) },
   ], unit);
   ctx.setTransform(unit, 0, 0, unit, 0, 0);
   ctx.fillStyle = '#5b6380';
   ctx.font = '700 9px Fredoka, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('+', w * 0.71, 13.5);
-  ctx.fillText('=', w * 0.37, 13.5);
-}
-
-function paintRow(cv: HTMLCanvasElement, pigs: Pig[]) {
-  const unit = cv.height / 26;
-  const w = cv.width / unit;
-  paintDrops(cv, pigs.map((pig, i) => ({ x: (w * (pigs.length - i - 0.5)) / pigs.length, y: 12, vol: 2.6, pig })), unit);
+  ctx.fillText('+', w * 0.71, 14.5);
+  ctx.fillText('=', w * 0.37, 14.5);
 }
 
 paintDrops($<HTMLCanvasElement>('logo-drops'), [
-  { x: 10, y: 9.5, vol: 1, pig: PIG.red },
-  { x: 22.5, y: 10, vol: 1.7, pig: PIG.yellow },
-  { x: 35, y: 9.5, vol: 1.25, pig: PIG.blue },
+  { x: 10, y: 9.5, vol: 0.92, pig: PIG.red },
+  { x: 22.5, y: 10, vol: 1.6, pig: PIG.yellow },
+  { x: 35, y: 9.5, vol: 1.15, pig: PIG.blue },
 ], 300 / 46);
 
 // ---------------------------------------------------------------- buttons
@@ -194,16 +260,29 @@ function refreshSound() {
 }
 refreshSound();
 
+/** Ask the browser to keep landscape where it can (Android, in full screen or installed). */
+function lockLandscape() {
+  try {
+    const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+    o.lock?.('landscape').catch(() => { /* not allowed here: the turn-the-device picture covers it */ });
+  } catch { /* not supported */ }
+}
+
 addEventListener('pointerdown', unlock, { capture: true });
 addEventListener('keydown', unlock, { capture: true });
 
 $('btn-play').onclick = play;
-$('btn-new').onclick = () => ask('להתחיל את השלב מההתחלה?', restart);
+$('btn-new').onclick = () => ask('למחוק את ההתקדמות ולהתחיל משלב 1?', () => {
+  store.done = [];
+  save(store);
+  enterLevel(0);
+});
 $('btn-home').onclick = openHome;
-$('btn-restart').onclick = () => (game.touched && !game.over ? ask('להתחיל את השלב מההתחלה?', restart) : restart());
-$('btn-retry').onclick = restart;
-$('btn-again').onclick = restart;
-$('btn-win-home').onclick = () => { show('win', false); openHome(); };
+$('btn-restart').onclick = () => (game.touched && !game.over ? ask('להתחיל את השלב מההתחלה?', () => enterLevel(index)) : enterLevel(index));
+$('btn-retry').onclick = () => enterLevel(index);
+$('btn-again').onclick = () => enterLevel(index);
+$('btn-next').onclick = () => enterLevel(Math.min(LEVELS.length - 1, index + 1));
+$('btn-win-home').onclick = openHome;
 $('btn-sound').onclick = () => {
   store.muted = !store.muted;
   save(store);
@@ -214,24 +293,28 @@ $('btn-sound').onclick = () => {
 // ---------------------------------------------------------------- debug hooks
 
 if (debug) (window as unknown as { __dd: Game }).__dd = game;
-if (debug === 'play') play();
-if (debug === 'icon') {
+if (debug === 'play') enterLevel(index, true);
+else if (debug === 'icon') {
   // one big drop on paper, for the app icons (screenshot it square)
   show('home', false);
-  $('topbar').classList.add('hidden');
   game.start({ id: 'icon', mixing: false, cups: [], drops: [] }, false);
-  const d = new Drop(game.W / 2, game.H / 2, 22, PIG.blue);
-  game.drops.push(d);
-}
-if (debug === 'sheet') {
-  // every colour at a few sizes, plus a stretched one, to check the look
+  game.drops.push(new Drop(80, 50, 8, PIG.blue));
+} else if (debug === 'sheet') {
+  // every colour at a few sizes, to check the look
   show('home', false);
-  $('topbar').classList.add('hidden');
   game.start({ id: 'sheet', mixing: true, cups: [], drops: [] }, false);
   const cols: Pig[] = [PIG.red, PIG.yellow, PIG.blue, PIG.orange, PIG.purple, PIG.green, [1, 1, 1]];
-  cols.forEach((pig, i) => {
-    [1, 3, 6].forEach((vol, j) => game.drops.push(new Drop(10 + i * ((game.W - 20) / 6), 22 + j * 24, vol, pig)));
-  });
-}
-if (params.has('debug')) document.documentElement.dataset.debug = debug;
-if (debug === '' || debug === 'state') openHome();
+  cols.forEach((pig, i) => [1, 2.5, 5].forEach((vol, j) => game.drops.push(new Drop(16 + i * 21, 20 + j * 26, vol, pig))));
+} else if (debug === 'party') {
+  // the celebration of the current level, at once
+  enterLevel(index, false);
+  game.drops = [];
+  for (const c of game.cups) { c.got = c.total; c.filled = true; c.goal = 0.68; c.level = 0.68; }
+  game.over = game.won = true;
+  game.party = 0;
+} else if (debug === 'lab') {
+  show('home', false);
+  show('topbar', true);
+  game.start(LAB, true);
+  game.paused = false;
+} else openHome();

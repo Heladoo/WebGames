@@ -10,3 +10,8 @@ export const ICON = {
   yes: svg('<path d="m5 12.5 4.5 4.5L19 7.5"/>'),
   no: svg('<path d="m6.5 6.5 11 11m0-11-11 11"/>'),
 };
+
+export const ICON_LOCK = svg('<rect x="5.5" y="10.5" width="13" height="9.5" rx="2" fill="currentColor"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>');
+export const ICON_STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill="#ffc928" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+/** a phone turning from upright to lying down */
+export const ICON_ROTATE = '<svg viewBox="0 0 120 120" aria-hidden="true"><g class="rot-phone"><rect x="38" y="18" width="44" height="84" rx="8" fill="#fff" stroke="#343a56" stroke-width="5"/><circle cx="60" cy="92" r="3.5" fill="#343a56"/><circle cx="52" cy="50" r="6" fill="#e3283a"/><circle cx="67" cy="62" r="5" fill="#1d63d8"/></g><path d="M100 30a44 44 0 0 1 4 40" fill="none" stroke="#3f7fe0" stroke-width="5" stroke-linecap="round"/><path d="M96 66l8 6 4-9" fill="none" stroke="#3f7fe0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
