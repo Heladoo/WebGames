@@ -10,12 +10,12 @@
 // the picture blends in with no visible square; sampled from the file's edges), or a gradient
 // of the game's colours. `width` is the logo's width as a percentage of the 700 px square tile.
 //
-// A game with no logo just needs a square picture (about 700×700) saved as public/games/<id>.jpg.
+// Pass ids to render only those tiles. A game with no logo just needs a square picture (about 700×700) saved as public/games/<id>.jpg.
 
 import { chromium } from '@playwright/test';
 import { existsSync, readFileSync } from 'node:fs';
 
-const localChromium = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const localChromium = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/opt/pw-browsers/chromium'].find((p) => existsSync(p));
 const OUT = new URL('../public/games/', import.meta.url);
 
 const TILES = [
@@ -23,14 +23,17 @@ const TILES = [
   { id: 'word-trail', logo: '../art/logos/word-trail.webp', bg: '#76cfed', width: 100 },
   { id: 'bead-box', logo: '../art/logos/bead-box.webp', bg: 'linear-gradient(#76d8fd 0%, #9be7fd 50%, #8ce1fb 100%)', width: 100 },
   { id: 'palace-race', logo: '../../palace-race/public/logo.webp', bg: 'radial-gradient(circle at 50% 48%, #3b2d7a 0%, #1b1450 100%)', width: 92 },
+  { id: 'drop-the-drop', logo: '../art/logos/drop-the-drop.webp', bg: '#fefefd', width: 100 },
   { id: 'birdnet-kids', logo: '../art/logos/birdnet-kids.png', bg: '#faf6eb', width: 100 },
 ];
 
 const MIME = { webp: 'image/webp', png: 'image/png', jpg: 'image/jpeg' };
 const dataUri = (rel) => `data:${MIME[rel.split('.').pop()]};base64,${readFileSync(new URL(rel, import.meta.url)).toString('base64')}`;
 
-const browser = await chromium.launch(existsSync(localChromium) ? { executablePath: localChromium } : {});
-for (const t of TILES) {
+const browser = await chromium.launch(localChromium ? { executablePath: localChromium } : {});
+// `node scripts/tile-art.mjs drop-the-drop` renders just that one
+const only = process.argv.slice(2);
+for (const t of TILES.filter((t) => !only.length || only.includes(t.id))) {
   const page = await browser.newPage({ viewport: { width: 700, height: 700 } });
   const src = dataUri(t.logo);
   await page.setContent(`<body style="margin:0;width:700px;height:700px;position:relative;overflow:hidden;background:${t.bg}">

@@ -224,38 +224,97 @@ function wood(g: CanvasRenderingContext2D, w: number, h: number, k: number) {
   g.fillRect(0, 0, w, h);
 }
 
-/** A few big leaves of a potted plant reaching onto the table (as in the reference photo). */
-function plant(g: CanvasRenderingContext2D, k: number) {
-  const leaves = [
-    { a: 0.25, l: 34, w: 15 }, { a: 0.75, l: 40, w: 17 }, { a: 1.2, l: 32, w: 14 }, { a: 0.5, l: 22, w: 10 },
-  ];
-  for (const lf of leaves) {
-    g.save();
-    g.translate(-6 * k, -6 * k);
-    g.rotate(lf.a);
-    const L = lf.l * k, W = lf.w * k;
-    g.shadowColor = 'rgba(40,50,20,0.3)';
-    g.shadowBlur = 3 * k;
-    g.shadowOffsetX = 1.5 * k; g.shadowOffsetY = 2 * k;
-    g.beginPath();
-    g.moveTo(0, 0);
-    g.bezierCurveTo(L * 0.3, -W * 0.75, L * 0.85, -W * 0.55, L, 0);
-    g.bezierCurveTo(L * 0.85, W * 0.55, L * 0.3, W * 0.75, 0, 0);
-    const gr = g.createLinearGradient(0, -W / 2, 0, W / 2);
-    gr.addColorStop(0, '#5f9a3e'); gr.addColorStop(0.5, '#4c8a34'); gr.addColorStop(1, '#3a7028');
-    g.fillStyle = gr;
-    g.fill();
-    g.shadowColor = 'transparent';
-    g.strokeStyle = 'rgba(200,230,160,0.55)';
-    g.lineWidth = 0.35 * k;
-    g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(L * 0.5, -W * 0.05, L * 0.95, 0); g.stroke();
-    for (let i = 1; i < 6; i++) {
-      const x = (L * i) / 6.5;
-      g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + L * 0.08, -W * 0.18, x + L * 0.14, -W * 0.3); g.stroke();
-      g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + L * 0.08, W * 0.18, x + L * 0.14, W * 0.3); g.stroke();
-    }
-    g.restore();
+/**
+ * The plant leaves of each leaf: when it appears (level index), its angle from
+ * the corner and its full length and width. The plant grows over the levels:
+ * new leaves come and grow for a few levels, the leaves turn a little from
+ * level to level (as if following the light), and late in the game a bud
+ * appears and blooms.
+ */
+const LEAVES = [
+  { at: 0, a: 0.25, l: 34, w: 15 }, { at: 0, a: 0.75, l: 40, w: 17 }, { at: 0, a: 1.2, l: 32, w: 14 },
+  { at: 2, a: 0.5, l: 26, w: 12 }, { at: 4, a: 0.02, l: 28, w: 12 }, { at: 6, a: 0.98, l: 30, w: 13 },
+  { at: 8, a: 1.42, l: 24, w: 11 }, { at: 9, a: 0.38, l: 20, w: 9 },
+];
+
+function leaf(g: CanvasRenderingContext2D, k: number, ang: number, L: number, W: number, young: number) {
+  g.save();
+  g.translate(-6 * k, -6 * k);
+  g.rotate(ang);
+  L *= k; W *= k;
+  g.shadowColor = 'rgba(40,50,20,0.3)';
+  g.shadowBlur = 3 * k;
+  g.shadowOffsetX = 1.5 * k; g.shadowOffsetY = 2 * k;
+  g.beginPath();
+  g.moveTo(0, 0);
+  g.bezierCurveTo(L * 0.3, -W * 0.75, L * 0.85, -W * 0.55, L, 0);
+  g.bezierCurveTo(L * 0.85, W * 0.55, L * 0.3, W * 0.75, 0, 0);
+  // young leaves are a lighter green
+  const gr = g.createLinearGradient(0, -W / 2, 0, W / 2);
+  const mix = (a: number[], b: number[]) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * young)).join(',')})`;
+  gr.addColorStop(0, mix([95, 154, 62], [140, 196, 90]));
+  gr.addColorStop(0.5, mix([76, 138, 52], [122, 184, 74]));
+  gr.addColorStop(1, mix([58, 112, 40], [98, 160, 60]));
+  g.fillStyle = gr;
+  g.fill();
+  g.shadowColor = 'transparent';
+  g.strokeStyle = 'rgba(200,230,160,0.55)';
+  g.lineWidth = 0.35 * k;
+  g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(L * 0.5, -W * 0.05, L * 0.95, 0); g.stroke();
+  for (let i = 1; i < 6; i++) {
+    const x = (L * i) / 6.5;
+    g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + L * 0.08, -W * 0.18, x + L * 0.14, -W * 0.3); g.stroke();
+    g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + L * 0.08, W * 0.18, x + L * 0.14, W * 0.3); g.stroke();
   }
+  g.restore();
+}
+
+/** A pink flower on a stem: a closed bud (open = 0) to a full bloom (open = 1). */
+function flower(g: CanvasRenderingContext2D, k: number, open: number) {
+  const ang = 1.28, len = 36 * k;
+  const ex = -6 * k + Math.cos(ang) * len, ey = -6 * k + Math.sin(ang) * len;
+  g.save();
+  g.strokeStyle = '#4f8a36';
+  g.lineWidth = 1.1 * k;
+  g.lineCap = 'round';
+  g.beginPath(); g.moveTo(-6 * k, -6 * k); g.quadraticCurveTo(len * 0.35, len * 0.4, ex, ey); g.stroke();
+  g.translate(ex, ey);
+  g.shadowColor = 'rgba(80,30,40,0.25)';
+  g.shadowBlur = 2 * k; g.shadowOffsetY = 1 * k;
+  if (open < 0.5) {
+    // the bud
+    g.beginPath(); g.ellipse(0, 0, 2.2 * k, 3.4 * k, ang - Math.PI / 2, 0, Math.PI * 2);
+    g.fillStyle = '#f07aa0'; g.fill();
+    g.beginPath(); g.ellipse(-0.8 * k, 0.8 * k, 1.6 * k, 2.4 * k, ang - Math.PI / 2, 0, Math.PI * 2);
+    g.fillStyle = '#5f9a3e'; g.fill();
+  } else {
+    const r = (3.5 + open * 2) * k;
+    for (let i = 0; i < 5; i++) {
+      g.save();
+      g.rotate((i / 5) * Math.PI * 2 + 0.3);
+      g.beginPath(); g.ellipse(r * 0.55, 0, r * 0.6, r * 0.38, 0, 0, Math.PI * 2);
+      const pg = g.createRadialGradient(0, 0, 0, 0, 0, r * 1.1);
+      pg.addColorStop(0, '#ffd1e0'); pg.addColorStop(1, '#ee6f98');
+      g.fillStyle = pg; g.fill();
+      g.restore();
+    }
+    g.shadowColor = 'transparent';
+    g.beginPath(); g.arc(0, 0, r * 0.28, 0, Math.PI * 2);
+    g.fillStyle = '#ffcf3a'; g.fill();
+  }
+  g.restore();
+}
+
+/** The plant as it is at this level (index 0..11). */
+function plant(g: CanvasRenderingContext2D, k: number, stage: number) {
+  LEAVES.forEach((lf, i) => {
+    if (stage < lf.at) return;
+    // the first leaves start well grown; later ones sprout small and grow for a few levels
+    const grown = lf.at === 0 ? Math.min(1, 0.8 + stage * 0.05) : Math.min(1, 0.55 + (stage - lf.at) * 0.18);
+    const sway = Math.sin(stage * 1.7 + i * 2.1) * 0.06;
+    leaf(g, k, lf.a + sway, lf.l * grown * 0.82, lf.w * grown * 0.82, Math.max(0, 1 - (stage - lf.at) * 0.35));
+  });
+  if (stage >= 8) flower(g, k, stage >= 10 ? (stage - 9) / 2 : 0);
 }
 
 /**
@@ -263,7 +322,7 @@ function plant(g: CanvasRenderingContext2D, k: number) {
  * (its corners peek out), and the paper sheet. ox, oy and k place the world
  * in device pixels.
  */
-export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: number): HTMLCanvasElement {
+export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: number, stage = 0): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const g = c.getContext('2d')!;
@@ -278,14 +337,6 @@ export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: nu
   g.shadowBlur = 2.5 * k; g.shadowOffsetY = 0.8 * k;
   g.fillStyle = '#17181c';
   g.fillRect(-half, -half, half * 2, half * 2);
-  g.restore();
-  // the plant stays on the table, outside the paper
-  g.save();
-  g.beginPath();
-  g.rect(0, 0, w, h);
-  g.rect(X(PAPER.x0) + 1.5 * k, Y(PAPER.y0) + 1.5 * k, (PAPER.x1 - PAPER.x0 - 3) * k, (PAPER.y1 - PAPER.y0 - 3) * k);
-  g.clip('evenodd');
-  plant(g, k);
   g.restore();
   // the paper sheet
   const px = X(PAPER.x0), py = Y(PAPER.y0), pw = (PAPER.x1 - PAPER.x0) * k, ph = (PAPER.y1 - PAPER.y0) * k;
@@ -304,6 +355,11 @@ export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: nu
   v.addColorStop(1, 'rgba(120,110,95,0.10)');
   g.fillStyle = v;
   g.fillRect(px, py, pw, ph);
+  g.restore();
+  // the plant leans over the paper's corner, as in the reference photo
+  g.save();
+  g.translate(ox, oy);
+  plant(g, k, stage);
   g.restore();
   return c;
 }
@@ -448,6 +504,9 @@ export function drawCup(ctx: CanvasRenderingContext2D, c: CupView, t: number) {
 
 // ---------------------------------------------------------------- the celebration
 
+/** Celebration timing, in seconds from its start: quick, so it feels immediate (owner's request). */
+export const PARTY = { stars: [0.12, 0.22, 0.32], pop: 0.22, write: 0.3, writeFor: 0.55, buttons: 1.0 };
+
 const easeBack = (q: number) => { const c = 2.2; q = Math.max(0, Math.min(1, q)); return 1 + (c + 1) * Math.pow(q - 1, 3) + c * Math.pow(q - 1, 2); };
 
 function sticker(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, rot: number, s: number) {
@@ -495,10 +554,11 @@ function sticker(ctx: CanvasRenderingContext2D, x: number, y: number, r: number,
  */
 export function drawParty(ctx: CanvasRenderingContext2D, t: number, colors: RGB[]) {
   const cx = 80;
-  sticker(ctx, cx + 18, 17, 5.5, 0.2, easeBack((t - 0.9) / 0.35));
-  sticker(ctx, cx, 13, 7, 0, easeBack((t - 1.15) / 0.35));
-  sticker(ctx, cx - 18, 17, 5.5, -0.2, easeBack((t - 1.4) / 0.35));
-  const p = Math.max(0, Math.min(1, (t - 1.5) / 1.1));
+  const [s0, s1, s2] = PARTY.stars;
+  sticker(ctx, cx + 18, 17, 5.5, 0.2, easeBack((t - s0) / PARTY.pop));
+  sticker(ctx, cx, 13, 7, 0, easeBack((t - s1) / PARTY.pop));
+  sticker(ctx, cx - 18, 17, 5.5, -0.2, easeBack((t - s2) / PARTY.pop));
+  const p = Math.max(0, Math.min(1, (t - PARTY.write) / PARTY.writeFor));
   if (p <= 0) return;
   const text = 'כל הכבוד!';
   ctx.save();

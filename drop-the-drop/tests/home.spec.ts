@@ -39,6 +39,7 @@ const measure = (page: Page) => page.evaluate(() => {
     })),
     portal: (document.querySelector('.portal-link') as HTMLAnchorElement).href,
     portalImg: (document.querySelector('.portal-link img') as HTMLImageElement).naturalWidth,
+    logo: (document.querySelector('.title-logo img') as HTMLImageElement).naturalWidth,
   };
 });
 
@@ -59,6 +60,7 @@ for (const [name, viewport] of Object.entries(SIZES)) {
       }
       expect(m.portal).toBe('https://dorothy-games.vercel.app/');
       expect(m.portalImg).toBeGreaterThan(0);
+      expect(m.logo, `${what}: the game logo loads`).toBeGreaterThan(0);
 
       // the levels screen: the open levels plus the next one, locked
       await page.click('#btn-levels');

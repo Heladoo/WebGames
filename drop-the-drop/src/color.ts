@@ -15,7 +15,10 @@ export const PIG = {
   purple: [1, 0, 1] as Pig,
   green: [0, 1, 1] as Pig,
 };
-export type ColorName = keyof typeof PIG | 'brown';
+/** Every colour a child can make from the three base colours, by its nearest mix. */
+export type ColorName =
+  | keyof typeof PIG
+  | 'redOrange' | 'yellowOrange' | 'lime' | 'turquoise' | 'indigo' | 'magenta' | 'brown';
 
 // Corners of the RYB cube, tuned to look like food colouring in water.
 const W: RGB = [0.97, 0.97, 0.95];
@@ -60,12 +63,18 @@ export function sameColor(a: Pig, b: Pig): boolean {
   return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]) < 0.12;
 }
 
+// The in-between mixes: two parts of one colour and one of its neighbour.
+const MIXES: [ColorName, Pig][] = [
+  ['redOrange', [2, 1, 0]], ['yellowOrange', [1, 2, 0]], ['lime', [0, 2, 1]],
+  ['turquoise', [0, 1, 2]], ['indigo', [1, 0, 2]], ['magenta', [2, 0, 1]], ['brown', [1, 1, 1]],
+];
+
 export function colorName(p: Pig): ColorName {
   const q = share(p);
   const all: [ColorName, Pig][] = [
-    ...(Object.entries(PIG) as [ColorName, Pig][]).map(([n, v]) => [n, share(v)] as [ColorName, Pig]),
-    ['brown', [1 / 3, 1 / 3, 1 / 3]],
-  ];
+    ...(Object.entries(PIG) as [ColorName, Pig][]),
+    ...MIXES,
+  ].map(([n, v]) => [n, share(v)] as [ColorName, Pig]);
   let best: ColorName = 'red', bd = Infinity;
   for (const [n, v] of all) {
     const d = Math.hypot(q[0] - v[0], q[1] - v[1], q[2] - v[2]);
@@ -74,8 +83,11 @@ export function colorName(p: Pig): ColorName {
   return best;
 }
 
+/** Colour names in Hebrew (nouns: "בצבע טורקיז"). */
 export const COLOR_HE: Record<ColorName, string> = {
-  red: 'אדום', yellow: 'צהוב', blue: 'כחול', orange: 'כתום', purple: 'סגול', green: 'ירוק', brown: 'חום',
+  red: 'אדום', yellow: 'צהוב', blue: 'כחול', orange: 'כתום', purple: 'סגול', green: 'ירוק',
+  redOrange: 'אדום-כתום', yellowOrange: 'צהוב-כתום', lime: 'ירוק-ליים', turquoise: 'טורקיז',
+  indigo: 'כחול-סגול', magenta: 'סגול-אדום', brown: 'חום',
 };
 
 export function css(c: RGB, a = 1): string {

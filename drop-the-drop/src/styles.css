@@ -75,8 +75,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid #f2b705; outline-offs
 }
 .title-side { display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 0 1 280px; }
 .title-logo { display: flex; flex-direction: column; align-items: center; }
-#logo-drops { width: 150px; height: 65px; }
-h1 { margin: 0; font-size: 38px; font-weight: 700; letter-spacing: 0.5px; line-height: 1.1; color: #2d3a6b; }
+h1 { margin: 0; line-height: 0; }
+.title-logo img { width: 220px; height: auto; display: block; }
 .sub { margin: 4px 0 0; color: var(--soft); font-size: 18px; }
 .home-buttons { display: flex; flex-direction: column; gap: 10px; width: 100%; align-items: stretch; }
 .home-btn {
@@ -152,7 +152,7 @@ h1 { margin: 0; font-size: 38px; font-weight: 700; letter-spacing: 0.5px; line-h
 .rot-pic { width: 140px; height: 140px; }
 .rot-pic svg { width: 100%; height: 100%; overflow: visible; }
 .rot-phone { transform-origin: 60px 60px; animation: turn 2.6s ease-in-out infinite; }
-@keyframes turn { 0%, 25% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+@keyframes turn { 0%, 25% { transform: rotate(0); } 55%, 85% { transform: rotate(90deg); } 100% { transform: rotate(0); } }
 @media (orientation: portrait) {
   #rotate { display: flex; }
 }
@@ -160,8 +160,7 @@ h1 { margin: 0; font-size: 38px; font-weight: 700; letter-spacing: 0.5px; line-h
 /* short landscape screens */
 @media (max-height: 520px) {
   .title-card { gap: 8px 22px; padding: 12px 18px; }
-  #logo-drops { width: 110px; height: 48px; }
-  h1 { font-size: 28px; }
+  .title-logo img { width: 160px; }
   .sub { font-size: 15px; margin: 0; }
   .title-side { gap: 8px; }
   .home-btn { min-height: 50px; font-size: 19px; }
@@ -174,6 +173,7 @@ h1 { margin: 0; font-size: 38px; font-weight: 700; letter-spacing: 0.5px; line-h
   .home-btn.big { min-height: 56px; font-size: 21px; }
 }
 @media (max-height: 380px) {
+  .title-logo img { width: 140px; }
   .sub { display: none; }
   .levels { grid-template-columns: repeat(6, 52px); }
   .level-tile { width: 52px; height: 52px; border-radius: 14px; }
