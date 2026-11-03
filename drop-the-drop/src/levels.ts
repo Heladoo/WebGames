@@ -26,13 +26,16 @@ export interface CupDef {
   /** centre, in world units (default: spread evenly) */
   x?: number;
 }
-export interface DropDef { color: Base; x: number; y: number; vol?: number }
+/** A drop: usually a base colour, but a level may start with a mixed one (a big green drop). */
+export interface DropDef { color: CupColor; x: number; y: number; vol?: number }
 export interface Level {
   id: string;
   cups: CupDef[];
   drops: DropDef[];
   /** may drops of different colours join? (true in mixing levels) */
   mixing: boolean;
+  /** a level that teaches something shows its hint sooner */
+  teach?: 'split';
 }
 
 export const LEVELS: Level[] = [
@@ -93,6 +96,46 @@ export const LEVELS: Level[] = [
   {
     id: 'l12', mixing: true, cups: [{ color: 'orange', need: 2 }, { color: 'blue', need: 2 }],
     drops: [{ color: 'blue', x: 24, y: 40 }, { color: 'red', x: 60, y: 22 }, { color: 'blue', x: 98, y: 42 }, { color: 'yellow', x: 136, y: 24 }],
+  },
+  // ---- the in-between colours (two parts of one colour, one of another)
+  {
+    id: 'l13', mixing: true, cups: [{ color: 'turquoise', need: 3 }],
+    drops: [{ color: 'blue', x: 32, y: 26 }, { color: 'yellow', x: 80, y: 44 }, { color: 'blue', x: 128, y: 26 }],
+  },
+  {
+    id: 'l14', mixing: true, cups: [{ color: 'lime', need: 3 }, { color: 'blue', need: 1 }],
+    drops: [{ color: 'yellow', x: 26, y: 24 }, { color: 'blue', x: 62, y: 44 }, { color: 'yellow', x: 98, y: 22 }, { color: 'blue', x: 134, y: 44 }],
+  },
+  // ---- splitting: tap a big drop twice and it splits in two
+  {
+    id: 'l15', mixing: false, teach: 'split', cups: [{ color: 'red', need: 1, x: 45 }, { color: 'red', need: 1, x: 115 }],
+    drops: [{ color: 'red', x: 80, y: 32, vol: 2 }],
+  },
+  {
+    id: 'l16', mixing: true, cups: [{ color: 'orange', need: 2 }, { color: 'purple', need: 2 }],
+    drops: [{ color: 'yellow', x: 28, y: 40 }, { color: 'red', x: 80, y: 26, vol: 2 }, { color: 'blue', x: 132, y: 40 }],
+  },
+  {
+    id: 'l17', mixing: true, cups: [{ color: 'redOrange', need: 3 }, { color: 'indigo', need: 3 }],
+    drops: [
+      { color: 'yellow', x: 22, y: 26 }, { color: 'red', x: 52, y: 44 }, { color: 'red', x: 80, y: 20 },
+      { color: 'red', x: 108, y: 44 }, { color: 'blue', x: 138, y: 26 }, { color: 'blue', x: 128, y: 50 },
+    ],
+  },
+  {
+    id: 'l18', mixing: true, cups: [{ color: 'magenta', need: 3 }, { color: 'turquoise', need: 3 }],
+    drops: [
+      { color: 'red', x: 26, y: 30, vol: 2 }, { color: 'blue', x: 60, y: 46 }, { color: 'blue', x: 84, y: 20 },
+      { color: 'yellow', x: 110, y: 44 }, { color: 'blue', x: 138, y: 24 },
+    ],
+  },
+  {
+    id: 'l19', mixing: true, cups: [{ color: 'lime', need: 3 }, { color: 'turquoise', need: 3 }],
+    drops: [{ color: 'yellow', x: 28, y: 40 }, { color: 'green', x: 80, y: 30, vol: 4 }, { color: 'blue', x: 132, y: 40 }],
+  },
+  {
+    id: 'l20', mixing: true, cups: [{ color: 'orange', need: 2 }, { color: 'green', need: 2 }, { color: 'purple', need: 2 }],
+    drops: [{ color: 'red', x: 32, y: 32, vol: 2 }, { color: 'yellow', x: 80, y: 44, vol: 2 }, { color: 'blue', x: 128, y: 32, vol: 2 }],
   },
 ];
 

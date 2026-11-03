@@ -173,6 +173,7 @@ function ask(text: string, yes: () => void) {
 }
 
 function failText(info: FailInfo): string {
+  if (info.kind === 'stuck') return 'הטיפות שנשארו כבר לא יכולות למלא את הכוסות. בואו ננסה שוב, ואולי נחבר או נפצל אחרת.';
   const a = colorName(info.a), b = colorName(info.b), m = colorName(info.mix);
   if (info.kind === 'touch') {
     return `${aDrop(a)} נגעה ב${aDrop(b)}, והן התערבבו ל${aDrop(m)}. כאן כל צבע הולך לכוס שלו, אז שומרים שטיפות בצבעים שונים לא ייגעו.`;
@@ -186,7 +187,8 @@ function failText(info: FailInfo): string {
 function showFail(info: FailInfo) {
   game.paused = true;
   $('fail-text').textContent = failText(info);
-  paintEquation($<HTMLCanvasElement>('fail-pic'), info);
+  if (info.kind === 'stuck') paintLeft($<HTMLCanvasElement>('fail-pic'));
+  else paintEquation($<HTMLCanvasElement>('fail-pic'), info);
   show('fail', true);
   $('btn-retry').focus();
 }
@@ -253,6 +255,14 @@ function paintDrops(cv: HTMLCanvasElement, items: { x: number; y: number; vol: n
   ctx.clearRect(0, 0, cv.width, cv.height);
   ctx.setTransform(unit, 0, 0, unit, 0, 0);
   for (const it of items) drawDrop(ctx, new Drop(it.x, it.y, it.vol, it.pig), unit);
+}
+
+/** The drops still on the paper, in a row (for the dead-end card). */
+function paintLeft(cv: HTMLCanvasElement) {
+  const unit = cv.height / 28;
+  const w = cv.width / unit;
+  const left = game.drops.slice(0, 6);
+  paintDrops(cv, left.map((d, i) => ({ x: (w * (left.length - i - 0.5)) / left.length, y: 14, vol: Math.min(2.4, d.vol), pig: share(d.pig) })), unit);
 }
 
 function paintEquation(cv: HTMLCanvasElement, info: FailInfo) {

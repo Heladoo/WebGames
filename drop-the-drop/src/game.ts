@@ -5,7 +5,7 @@
 // only: in portrait the page asks to turn the device and the game pauses.
 
 import { PIG, type Pig, type RGB, pigToRgb, sameColor, scalePig, share, tint, WHITE } from './color';
-import { Drop, mergeInto, reach, stepDrop } from './drop';
+import { Drop, mergeInto, R1, reach, stepDrop } from './drop';
 import { type Level, LEVELS, WORLD_H, WORLD_W } from './levels';
 import { type CupView, type Particle, drawBackdrop, drawCup, drawDrop, drawHand, drawParticles, drawParty, PAPER, PARTY } from './render';
 import { sfx } from './sfx';
@@ -23,7 +23,7 @@ export interface Cup extends CupView {
 export interface FailInfo {
   a: Pig; b: Pig; mix: Pig;
   /** 'touch': colours touched in a level that keeps them apart; 'nocup': no cup wants the new drop */
-  kind: 'touch' | 'nocup';
+  kind: 'touch' | 'nocup' | 'stuck';
 }
 
 export interface GameEvents {
@@ -65,7 +65,12 @@ export class Game {
   pointerId = -1;
   grab = { x: 0, y: 0 };
   idle = 0;
-  hint: { ax: number; ay: number; bx: number; by: number; t: number } | null = null;
+  /** a move to show: slide from a to b, or (tap2) tap a drop twice to split it */
+  hint: { ax: number; ay: number; bx: number; by: number; t: number; tap2?: boolean } | null = null;
+  /** the last tap on a drop, to catch a double tap (split) */
+  lastTap: { id: number; t: number; x: number; y: number } | null = null;
+  /** seconds with no useful move left (a dead end ends the level gently) */
+  stuckFor = 0;
   timers: { at: number; fn: () => void }[] = [];
   drips: { at: number; drop: Drop; i: number }[] = [];
   /** the celebration, seconds since it began (-1: none) */
@@ -133,9 +138,12 @@ export class Game {
     this.pointerId = -1;
     this.idle = 0;
     this.hint = null;
+    this.lastTap = null;
+    this.stuckFor = 0;
     for (const def of level.drops) {
       const vol = def.vol ?? 1;
-      this.drops.push(new Drop(def.x, def.y, vol, scalePig(PIG[def.color], vol)));
+      // one unit of paint per unit of water, whatever the colour
+      this.drops.push(new Drop(def.x, def.y, vol, scalePig(share(PIG[def.color]), vol)));
     }
     this.spread();
     if (drip) this.dripIn();
@@ -206,6 +214,14 @@ export class Game {
     }
     if (!best) return;
     e.preventDefault();
+    // a second tap on the same drop, quickly and in the same place: split it
+    const lt = this.lastTap;
+    if (lt && lt.id === best.id && this.time - lt.t < 0.4 && Math.hypot(p.x - lt.x, p.y - lt.y) < 6) {
+      this.lastTap = null;
+      this.split(best);
+      return;
+    }
+    this.lastTap = { id: best.id, t: this.time, x: p.x, y: p.y };
     try { this.canvas.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
     this.pointerId = e.pointerId;
     this.dragId = best.id;
@@ -277,7 +293,7 @@ export class Game {
     const c = this.cups[i];
     let why: 'size' | 'color' | '' = '';
     if (c.filled || !sameColor(d.pig, c.pig)) why = 'color';
-    else if (d.vol < c.need - 0.01) why = 'size';
+    else if (d.vol < c.need - 0.01 || d.vol > c.total - c.got + 0.01) why = 'size';
     if (why) {
       c.pulse = 1; c.pulseKind = why;
       d.shake = 1.1;
@@ -311,13 +327,65 @@ export class Game {
 
   // ------------------------------------------------------------ rules
 
-  /** Could this drop still go, whole, into some cup (alone or with more drops)? */
-  fitsACup(p: Pig): boolean {
+  /**
+   * Could this drop still go into some cup, alone or with more drops? A drop
+   * can be split in halves (down to a volume of 1), so a half that fits counts.
+   */
+  fitsACup(p: Pig, vol = p[0] + p[1] + p[2]): boolean {
     return this.cups.some((c) => {
       if (c.filled) return false;
       const room = c.total - c.got;
       const t = share(c.pig);
-      return p.every((v, k) => v <= t[k] * room + 0.02);
+      for (let s = 1; s === 1 || vol * s >= 0.99; s /= 2) {
+        if (p.every((v, k) => v * s <= t[k] * room + 0.02)) return true;
+      }
+      return false;
+    });
+  }
+
+  /** Split a drop in two halves (double tap). Drops smaller than 2 only wobble. */
+  split(d: Drop) {
+    this.touched = true;
+    this.idle = 0;
+    this.hint = null;
+    if (d.vol < 1.99) {
+      d.shake = 0.6;
+      sfx.noSplit();
+      return;
+    }
+    const v = d.vol / 2, Rn = R1 * Math.sqrt(v);
+    // pick the direction with the most room: away from other drops and the paper's edges
+    let best = 0, bestScore = -Infinity;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI, ux = Math.cos(a), uy = Math.sin(a);
+      let score = Infinity;
+      for (const sgn of [-1, 1]) {
+        const x = d.x + sgn * ux * (Rn + 2.5), y = d.y + sgn * uy * (Rn + 2.5);
+        score = Math.min(score, x - PAPER.x0 - Rn, PAPER.x1 - x - Rn, y - PAPER.y0 - Rn, PAPER.y1 - y - Rn);
+        for (const o of this.drops) if (o !== d && o.state !== 'gone') score = Math.min(score, Math.hypot(o.x - x, o.y - y) - o.R - Rn);
+        for (const c of this.cups) score = Math.min(score, c.top - c.tw * 0.11 - (y + Rn) + 2);
+      }
+      if (score > bestScore) { bestScore = score; best = a; }
+    }
+    const ux = Math.cos(best), uy = Math.sin(best);
+    const half: Pig = scalePig(d.pig, 0.5);
+    const b = new Drop(d.x + ux * Rn * 0.5, d.y + uy * Rn * 0.5, v, half);
+    const cx = d.x, cy = d.y;
+    d.vol = v; d.setPig(half);
+    d.x = cx - ux * Rn * 0.5; d.y = cy - uy * Rn * 0.5;
+    d.d.fill(0); d.dv.fill(0);
+    // both start stretched toward each other, then pull apart and round off
+    for (const h of [d, b]) {
+      h.excite(0.32, best);
+      h.state = 'auto';
+    }
+    d.pull = { x: cx - ux * (Rn + 2.5), y: cy - uy * (Rn + 2.5) };
+    b.pull = { x: cx + ux * (Rn + 2.5), y: cy + uy * (Rn + 2.5) };
+    this.drops.push(b);
+    this.splash(cx, cy, d.rgb, 4);
+    sfx.split(v);
+    this.later(0.55, () => {
+      for (const h of [d, b]) if (h.state === 'auto') { h.state = 'rest'; h.pull = null; }
     });
   }
 
@@ -333,7 +401,7 @@ export class Game {
         info.mix = [...d.pig] as Pig;
         this.grab.x *= 0.5; this.grab.y *= 0.5;
         this.splash(d.x, d.y, d.rgb, 5);
-        const ok = (same || this.level.mixing) && this.fitsACup(d.pig);
+        const ok = (same || this.level.mixing) && this.fitsACup(d.pig, d.vol);
         if (ok) {
           sfx.merge(d.vol, !same);
         } else {
@@ -412,6 +480,7 @@ export class Game {
     }
     this.updatePours(dt);
     this.drops = this.drops.filter((d) => d.state !== 'gone');
+    this.checkStuck(dt);
 
     for (const c of this.cups) {
       c.level += (c.goal - c.level) * Math.min(1, dt * 2.2);
@@ -434,11 +503,25 @@ export class Game {
     // a hint after a quiet while
     if (!this.paused && !this.over && !dragged && !portrait.matches) {
       this.idle += dt;
-      if (this.idle > 7 && !this.hint) this.hint = this.suggest();
+      const wait = this.level.teach ? 2.5 : 7;
+      if (this.idle > wait && !this.hint) this.hint = this.suggest();
       if (this.hint) {
         this.hint.t += dt / 2.6;
         if (this.hint.t >= 1) { this.hint.t = 0; if (this.idle > 30) { this.hint = null; this.idle = 7; } }
       }
+    }
+  }
+
+  /** A dead end (no useful move is left): after a moment, the level ends gently and says so. */
+  checkStuck(dt: number) {
+    const busy = this.over || this.paused || this.drips.length > 0 || this.drops.some((d) => d.state !== 'rest' || d.grow < 1);
+    if (busy || !this.cups.length) { this.stuckFor = 0; return; }
+    this.stuckFor = this.suggest() ? 0 : this.stuckFor + dt;
+    if (this.stuckFor > 1.2) {
+      this.over = true;
+      const p = this.drops[0]?.pig ?? [1, 1, 1];
+      sfx.oops();
+      this.events.fail({ a: p, b: p, mix: p, kind: 'stuck' });
     }
   }
 
@@ -507,7 +590,7 @@ export class Game {
     const free = this.drops.filter((d) => d.state === 'rest');
     // a drop that a cup takes now
     for (const d of free) {
-      const c = this.cups.find((k) => !k.filled && sameColor(d.pig, k.pig) && d.vol >= k.need - 0.01);
+      const c = this.cups.find((k) => !k.filled && sameColor(d.pig, k.pig) && d.vol >= k.need - 0.01 && d.vol <= k.total - k.got + 0.01);
       if (c) return { ax: d.x, ay: d.y, bx: c.x, by: c.top + c.h * 0.3, t: 0 };
     }
     // two drops that make something a cup wants (prefer the closest pair)
@@ -516,11 +599,14 @@ export class Game {
       if (a === b || a.vol < b.vol) continue;
       if (!this.level.mixing && !sameColor(a.pig, b.pig)) continue;
       const p: Pig = [a.pig[0] + b.pig[0], a.pig[1] + b.pig[1], a.pig[2] + b.pig[2]];
-      if (!this.fitsACup(p)) continue;
+      if (!this.fitsACup(p, a.vol + b.vol)) continue;
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
       if (!best || dist < best[0]) best = [dist, a, b];
     }
     if (best) return { ax: best[2].x, ay: best[2].y, bx: best[1].x, by: best[1].y, t: 0 };
+    // a big drop whose halves a cup wants: tap it twice
+    const big = free.find((d) => d.vol >= 1.99 && this.fitsACup(scalePig(d.pig, 0.5), d.vol / 2));
+    if (big) return { ax: big.x, ay: big.y, bx: big.x, by: big.y, t: 0, tap2: true };
     return null;
   }
 
@@ -537,7 +623,7 @@ export class Game {
     for (const d of order) drawDrop(ctx, d, k);
     if (this.party >= 0) drawParty(ctx, this.party, this.cups.map((c) => c.rgb));
     drawParticles(ctx, this.particles);
-    if (this.hint) drawHand(ctx, this.hint.ax, this.hint.ay, this.hint.bx, this.hint.by, this.hint.t);
+    if (this.hint) drawHand(ctx, this.hint.ax, this.hint.ay, this.hint.bx, this.hint.by, this.hint.t, this.hint.tap2);
   }
 
   /** How far along the game this level is (0..11), for the plant on the table. */
