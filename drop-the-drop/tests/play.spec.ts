@@ -150,3 +150,18 @@ test('level 10: two blue drops make a drop no cup wants, and the card says so', 
   await expect(page.locator('#fail')).toBeVisible({ timeout: 4000 });
   await expect(page.locator('#fail-text')).toContainText('כחולות');
 });
+
+test('a fast finger pulls the drop along fast', async ({ page }) => {
+  await startLevel(page, 1);
+  const s = await snap(page);
+  const d = s.drops[0];
+  const to = { x: d.x + 500, y: d.y + 40 };
+  await page.mouse.move(d.x, d.y);
+  await page.mouse.down();
+  for (let i = 1; i <= 5; i++) await page.mouse.move(d.x + ((to.x - d.x) * i) / 5, d.y + ((to.y - d.y) * i) / 5);
+  await page.waitForTimeout(300);
+  const now = (await snap(page)).drops[0];
+  await page.mouse.up();
+  // the old calm limit would have covered only about half of this in the same time
+  expect(Math.hypot(now.x - d.x, now.y - d.y)).toBeGreaterThan(0.75 * Math.hypot(to.x - d.x, to.y - d.y));
+});

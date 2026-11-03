@@ -72,7 +72,9 @@ export class Drop {
   }
 }
 
-const VMAX = 95; // world units per second: calm, even when the finger flicks
+// Speed limits, in world units per second: a slow finger gets a calm drop; a
+// fast finger pulls the drop along faster (owner's request), up to VMAX_FAST.
+const VMAX = 95, VMAX_FAST = 280;
 
 /** One small fixed physics step. `t` is the time in seconds (for the shiver). */
 export function stepDrop(dr: Drop, dt: number, t: number) {
@@ -81,11 +83,13 @@ export function stepDrop(dr: Drop, dt: number, t: number) {
   let lx = 0, ly = 0;
   if (dr.pull) {
     lx = dr.pull.x - dr.x; ly = dr.pull.y - dr.y;
-    const k = 150 / v4, c = 2 * Math.sqrt(k) * 0.85; // a little under-damped: it overshoots softly
+    const far = Math.min(1, Math.max(0, (Math.hypot(lx, ly) - R) / (R * 4)));
+    // a little under-damped: it overshoots softly; it pulls harder when the finger is far ahead
+    const k = (150 / v4) * (1 + far * 1.5), c = 2 * Math.sqrt(k) * 0.85;
     dr.vx += (k * lx - c * dr.vx) * dt;
     dr.vy += (k * ly - c * dr.vy) * dt;
-    const sp = Math.hypot(dr.vx, dr.vy);
-    if (sp > VMAX) { dr.vx *= VMAX / sp; dr.vy *= VMAX / sp; }
+    const sp = Math.hypot(dr.vx, dr.vy), cap = VMAX + (VMAX_FAST - VMAX) * far;
+    if (sp > cap) { dr.vx *= cap / sp; dr.vy *= cap / sp; }
   } else {
     // water on smooth paper stops almost at once, with a short glide
     const f = Math.exp(-12 * dt);

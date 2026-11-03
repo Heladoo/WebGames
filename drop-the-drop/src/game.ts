@@ -6,8 +6,8 @@
 
 import { PIG, type Pig, type RGB, pigToRgb, sameColor, scalePig, share, tint, WHITE } from './color';
 import { Drop, mergeInto, reach, stepDrop } from './drop';
-import { type Level, WORLD_H, WORLD_W } from './levels';
-import { type CupView, type Particle, drawBackdrop, drawCup, drawDrop, drawHand, drawParticles, drawParty, PAPER } from './render';
+import { type Level, LEVELS, WORLD_H, WORLD_W } from './levels';
+import { type CupView, type Particle, drawBackdrop, drawCup, drawDrop, drawHand, drawParticles, drawParty, PAPER, PARTY } from './render';
 import { sfx } from './sfx';
 
 export interface Cup extends CupView {
@@ -117,6 +117,7 @@ export class Game {
   }
 
   start(level: Level, drip: boolean) {
+    if (this.level !== level) this.backdrop = null; // the plant grows from level to level
     this.level = level;
     this.layoutCups();
     this.drops = [];
@@ -398,6 +399,8 @@ export class Game {
         stepDrop(d, DT, this.time);
         this.clamp(d);
       }
+      // touches every step, so a fast drop cannot jump over another one
+      if (dragged && dragged.state === 'drag') this.touchCheck(dragged);
     }
     for (const d of this.drops) {
       d.shiver = Math.max(0, d.shiver - dt * 2.5);
@@ -405,7 +408,6 @@ export class Game {
     }
     if (dragged && dragged.state === 'drag') {
       sfx.slide(Math.hypot(dragged.vx, dragged.vy), dragged.vol);
-      this.touchCheck(dragged);
     }
     this.updatePours(dt);
     this.drops = this.drops.filter((d) => d.state !== 'gone');
@@ -463,7 +465,7 @@ export class Game {
         if (this.cups.every((k) => k.filled)) {
           this.over = true;
           this.won = true;
-          this.later(0.9, () => { this.party = 0; this.partyStars = 0; sfx.win(); });
+          this.later(0.35, () => { this.party = 0; this.partyStars = 0; sfx.win(); });
         }
       }
     }
@@ -475,11 +477,11 @@ export class Game {
     this.party += dt;
     const t = this.party;
     this.cups.forEach((c, i) => {
-      const start = 0.15 + i * 0.18;
-      const q = (t - start) / 0.55;
+      const start = 0.05 + i * 0.1;
+      const q = (t - start) / 0.45;
       c.hop = q > 0 && q < 1 ? Math.sin(q * Math.PI) * (1 - q * 0.3) : 0;
       // a little fountain from each cup as it lands
-      if (t0 < start + 0.5 && t >= start + 0.5) {
+      if (t0 < start + 0.38 && t >= start + 0.38) {
         c.wave = 1;
         const n = reduced ? 4 : 12;
         for (let k = 0; k < n; k++) {
@@ -491,9 +493,9 @@ export class Game {
         sfx.hop(i);
       }
     });
-    const starsAt = [0.9, 1.15, 1.4];
+    const starsAt = PARTY.stars;
     while (this.partyStars < 3 && t >= starsAt[this.partyStars]) { sfx.sticker(this.partyStars); this.partyStars++; }
-    if (t0 < 2.6 && t >= 2.6) this.events.win();
+    if (t0 < PARTY.buttons && t >= PARTY.buttons) this.events.win();
   }
 
   /** What should a stuck player try next? */
@@ -522,7 +524,7 @@ export class Game {
     const ctx = this.ctx;
     const k = this.dpr * this.S;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (!this.backdrop) this.backdrop = drawBackdrop(this.canvas.width, this.canvas.height, this.ox * this.dpr, this.oy * this.dpr, k);
+    if (!this.backdrop) this.backdrop = drawBackdrop(this.canvas.width, this.canvas.height, this.ox * this.dpr, this.oy * this.dpr, k, this.stage());
     ctx.drawImage(this.backdrop, 0, 0);
     ctx.setTransform(k, 0, 0, k, this.ox * this.dpr, this.oy * this.dpr);
     for (const c of this.cups) drawCup(ctx, c, this.time);
@@ -532,6 +534,12 @@ export class Game {
     if (this.party >= 0) drawParty(ctx, this.party, this.cups.map((c) => c.rgb));
     drawParticles(ctx, this.particles);
     if (this.hint) drawHand(ctx, this.hint.ax, this.hint.ay, this.hint.bx, this.hint.by, this.hint.t);
+  }
+
+  /** How far along the game this level is (0..11), for the plant on the table. */
+  stage(): number {
+    const i = LEVELS.findIndex((l) => l.id === this.level?.id);
+    return i < 0 ? 5 : i;
   }
 
   /** For tests and debugging: positions in CSS pixels. */

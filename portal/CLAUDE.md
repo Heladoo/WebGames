@@ -12,7 +12,7 @@ Guidance for `portal/` only: the Hebrew homepage "משחקי דורותי" (Doro
 
 | File | Purpose |
 |---|---|
-| `src/games.ts` | **The registry.** Games (Hebrew name, one sentence for the tooltip, url, `isNew`), `COMING_SOON` box count, site texts (`SITE`, including the facts line). Four games are in this repo; Birdnet Kids is not (`github.com/Heladoo/Birdnet_kids`, GitHub Pages, English UI), so it is just an entry with an outside url and its logo is a copy of that repo's `logo-badge.png`. |
+| `src/games.ts` | **The registry.** Games (Hebrew name, one sentence for the tooltip, url, `isNew`), `COMING_SOON` box count, site texts (`SITE`, including the facts line). Five games are in this repo; Birdnet Kids is not (`github.com/Heladoo/Birdnet_kids`, GitHub Pages, English UI), so it is just an entry with an outside url and its logo is a copy of that repo's `logo-badge.png`. |
 | `vite.config.ts` | Writes the shelf (with each game's (?) button and tooltip) and the JSON-LD (`WebSite` + `ItemList` of `VideoGame`) into `index.html` **at build time** from `games.ts`, so the page works and is indexed without JavaScript. Also `%SITE_URL%`, `robots.txt`, `sitemap.xml`. |
 | `src/main.ts` | Rounds each shelf row's plank ends (`markRows`, the grid wraps by itself), board open/closed by width, install button (`beforeinstallprompt`, an instructions dialog on iOS), service worker, stats. |
 | `src/ideas.ts` | Ideas board: notes from `/api/ideas`, hearts (optimistic, remembered in `localStorage` `dorothy-games-hearts`). |
@@ -24,7 +24,7 @@ Guidance for `portal/` only: the Hebrew homepage "משחקי דורותי" (Doro
 | `public/stats.html`, `public/stats.js` | The owner's page (static, outside the bundle, `noindex`, behind `STATS_KEY`): **the ideas waiting for approval come first** (Approve, Reject, and Remove for approved ones), then visits, visitors and which games were tapped. Player text is shown with `textContent`; the sender name sits in a `<bdi>` so Hebrew doesn't scramble the line. |
 | `public/sw.js` | Network-first service worker (offline fallback only, never caches `/api/`). Bump `VERSION` to drop old caches. |
 | `src/debug.ts` | `?debug=og` (the logo plus the shelf pictures), screenshotted by `scripts/render-art.mjs`. |
-| `scripts/tile-art.mjs` | Renders `public/games/<id>.jpg` (square, 700×700) for all five games from their logos (`TILES`): the logos in `art/logos/` (Otter River, Word Trail, Bead Box, Birdnet Kids) sit on the logo's own background colour, so no square shows; Race to the Palace's logo is read from its game folder and sits on a gradient of the game's colours. |
+| `scripts/tile-art.mjs` | Renders `public/games/<id>.jpg` (square, 700×700) for all six games from their logos (`TILES`; pass ids to render only those): the logos in `art/logos/` (Otter River, Word Trail, Bead Box, Drop the Drop, Birdnet Kids) sit on the logo's own background colour, so no square shows; Race to the Palace's logo is read from its game folder and sits on a gradient of the game's colours. |
 | `scripts/logo-assets.py`, `art/dorothy-logo.jpg` | The owner's logo and the Pillow script that makes `public/logo.webp` / `logo-small.webp` (background flood-filled to transparent), the icons (cream background, since iOS turns transparent corners black) and `favicon.png` (a round crop of the girl). |
 
 ## Ideas: safety rules (keep them if anything changes)

@@ -102,7 +102,7 @@ test('under the shelf there is one quiet line and nothing else', async ({ page }
 test('only the newest game has the "new" tag', async ({ page }) => {
   await fakeApi(page);
   await page.goto('/');
-  expect(GAMES.filter((g) => g.isNew).map((g) => g.id)).toEqual(['palace-race']);
+  expect(GAMES.filter((g) => g.isNew).map((g) => g.id)).toEqual(['drop-the-drop']);
   await expect(page.locator('.badge')).toHaveCount(1);
 });
 

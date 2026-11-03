@@ -1,5 +1,5 @@
 import './styles.css';
-import { colorName, css, PIG, type Pig, pigToRgb, sameColor, share } from './color';
+import { COLOR_HE, colorName, type ColorName, css, PIG, type Pig, pigToRgb, sameColor, share } from './color';
 import { Drop } from './drop';
 import { type FailInfo, Game } from './game';
 import { ICON, ICON_LOCK, ICON_ROTATE, ICON_STAR } from './icons';
@@ -13,13 +13,17 @@ const debug = params.get('debug') ?? '';
 const store = load();
 setMuted(store.muted);
 
-// a drop (טיפה) is feminine in Hebrew: one drop, and several drops
-const ONE: Record<string, string> = {
+// A drop (טיפה) is feminine in Hebrew: one drop, several drops. The in-between
+// colours have no everyday adjective, so they read "a drop in turquoise".
+const ONE: Partial<Record<ColorName, string>> = {
   red: 'אדומה', yellow: 'צהובה', blue: 'כחולה', orange: 'כתומה', purple: 'סגולה', green: 'ירוקה', brown: 'חומה',
 };
-const MANY: Record<string, string> = {
+const MANY: Partial<Record<ColorName, string>> = {
   red: 'אדומות', yellow: 'צהובות', blue: 'כחולות', orange: 'כתומות', purple: 'סגולות', green: 'ירוקות', brown: 'חומות',
 };
+/** "טיפה ירוקה" or "טיפה בצבע טורקיז" */
+const aDrop = (n: ColorName) => `טיפה ${ONE[n] ?? `בצבע ${COLOR_HE[n]}`}`;
+const drops = (n: ColorName) => `טיפות ${MANY[n] ?? `בצבע ${COLOR_HE[n]}`}`;
 
 const app = document.getElementById('app')!;
 app.innerHTML = `
@@ -35,15 +39,12 @@ app.innerHTML = `
   <div id="home" class="screen">
     <div class="title-card">
       <div class="title-logo">
-        <canvas id="logo-drops" width="300" height="130" aria-hidden="true"></canvas>
-        <h1 lang="en" dir="ltr">Drop the Drop</h1>
-        <p class="sub">טיפות צבע לכוסות</p>
+        <h1><img src="/logo.webp" alt="Drop the Drop" lang="en" width="600" height="600"></h1>
       </div>
       <div class="title-side">
         <div class="home-buttons">
           <button class="home-btn" id="btn-play"><span class="home-ic">${ICON.play}</span><span class="home-label">לשחק</span></button>
           <button class="home-btn alt" id="btn-levels"><span class="home-ic">${ICON.levels}</span><span class="home-label">שלבים</span></button>
-          <button class="home-btn alt" id="btn-new" hidden><span class="home-ic">${ICON.again}</span><span class="home-label">מההתחלה</span></button>
         </div>
         <a class="portal-link" href="https://dorothy-games.vercel.app/" aria-label="Dorothy Games: more games"><img src="/dorothy-logo.webp" alt="" width="180" height="90"></a>
         <p class="fine">בלי פרסומות, בלי חשבונות ובלי עוגיות. שום דבר לא נספר ולא נשלח.</p>
@@ -90,7 +91,7 @@ app.innerHTML = `
 
   <div id="rotate" role="alert">
     <div class="rot-pic">${ICON_ROTATE}</div>
-    <p>מסובבים את המכשיר לרוחב</p>
+    <p>סובבו את המכשיר לרוחב</p>
   </div>
 `;
 
@@ -122,7 +123,6 @@ function openHome() {
   game.cancelDrag();
   const any = going() || store.done.length > 0;
   $('btn-play').querySelector('.home-label')!.textContent = any ? 'להמשיך' : 'לשחק';
-  $('btn-new').hidden = !any;
   for (const id of ['win', 'fail', 'ask', 'pick']) show(id, false);
   show('home', true);
   show('topbar', false);
@@ -169,12 +169,12 @@ function ask(text: string, yes: () => void) {
 function failText(info: FailInfo): string {
   const a = colorName(info.a), b = colorName(info.b), m = colorName(info.mix);
   if (info.kind === 'touch') {
-    return `טיפה ${ONE[a]} נגעה בטיפה ${ONE[b]}, והן התערבבו לטיפה ${ONE[m]}. כאן כל צבע הולך לכוס שלו, אז שומרים שטיפות בצבעים שונים לא ייגעו.`;
+    return `${aDrop(a)} נגעה ב${aDrop(b)}, והן התערבבו ל${aDrop(m)}. כאן כל צבע הולך לכוס שלו, אז שומרים שטיפות בצבעים שונים לא ייגעו.`;
   }
   if (sameColor(info.a, info.b)) {
-    return `שתי טיפות ${MANY[a]} התחברו לטיפה גדולה מדי, ואף כוס כאן לא מחכה לטיפה ${ONE[a]} כל כך גדולה.`;
+    return `שתי ${drops(a)} התחברו לטיפה גדולה מדי, ואף כוס כאן לא מחכה ל${aDrop(a)} כל כך גדולה.`;
   }
-  return `טיפה ${ONE[a]} וטיפה ${ONE[b]} התערבבו לטיפה ${ONE[m]}, אבל אף כוס לא מחכה לטיפה כזאת.`;
+  return `${aDrop(a)} ו${aDrop(b)} התערבבו ל${aDrop(m)}, אבל אף כוס לא מחכה לטיפה כזאת.`;
 }
 
 function showFail(info: FailInfo) {
@@ -268,11 +268,6 @@ function paintEquation(cv: HTMLCanvasElement, info: FailInfo) {
   ctx.fillText('=', w * 0.37, 14.5);
 }
 
-paintDrops($<HTMLCanvasElement>('logo-drops'), [
-  { x: 10, y: 9.5, vol: 0.92, pig: PIG.red },
-  { x: 22.5, y: 10, vol: 1.6, pig: PIG.yellow },
-  { x: 35, y: 9.5, vol: 1.15, pig: PIG.blue },
-], 300 / 46);
 
 // ---------------------------------------------------------------- buttons
 
@@ -296,11 +291,6 @@ addEventListener('pointerdown', unlock, { capture: true });
 addEventListener('keydown', unlock, { capture: true });
 
 $('btn-play').onclick = play;
-$('btn-new').onclick = () => ask('למחוק את ההתקדמות ולהתחיל משלב 1?', () => {
-  store.done = [];
-  save(store);
-  enterLevel(0);
-});
 $('btn-home').onclick = openHome;
 $('btn-restart').onclick = () => (game.touched && !game.over ? ask('להתחיל את השלב מההתחלה?', () => enterLevel(index)) : enterLevel(index));
 $('btn-retry').onclick = () => enterLevel(index);

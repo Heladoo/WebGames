@@ -17,14 +17,15 @@ The first sample was approved. The owner's feedback since then is done:
 - the table background;
 - choosing a level two ways (the next level, or the levels screen);
 - landscape only;
-- a more varied touch sound.
+- a more varied touch sound;
+- names for every mixable colour, the plant growing from level to level, faster drops for fast fingers, a quicker celebration, the owner's logo.
 
 Ideas still open are in `BACKLOG.md`.
 
 ## Principles (the owner asked for these)
 
 - **The drops are the game.** The motion, joining, gloss and see-through look of the drops get the most care; everything else is simple.
-- **Slow and stress free.** No timer, no score. The drag speed is capped (`VMAX`); refusals are a gentle sway and two soft notes.
+- **Calm, but quick when the child is quick.** No timer, no score. A slow drag is capped at a calm `VMAX`, but when the finger runs far ahead the spring pulls harder and the cap rises to `VMAX_FAST` (owner's request). Touches are checked on every physics step, so a fast drop cannot jump over another one. Refusals are a gentle sway and two soft notes.
 - **A mistake shows its reason, and the level can be replayed.** This is the owner's choice, an exception to the root "no fail state" rule. A level ends early only when a join makes a drop that no cup can take (`fitsACup`):
   - In levels that keep colours apart (`mixing: false`), touching another colour is that mistake. A drop of another colour trembles when you come near.
   - In mixing levels, it happens when a join holds more of a colour than any cup wants. For example, two blue drops when the green and purple cups each want one blue.
@@ -41,15 +42,18 @@ Ideas still open are in `BACKLOG.md`.
   - **Joining** (`mergeInto`): the new outline starts as both old outlines seen from the joint centre (a peanut with a neck), and the springs pull it round. Pigment and volume add up.
   - **Touch** (`reach`): the dragged drop's outline reaching into another drop, so a stretched tip can touch first.
 - **Colour** (`color.ts`): drops carry red, yellow and blue pigment amounts; the colour comes from an RYB cube (paint-like mixing). `sameColor` compares proportions.
+  - **Names:** every colour a child can mix has a Hebrew name (`colorName`, `COLOR_HE`). These are the three base colours, the three secondary ones, and the in-between ones: אדום-כתום, צהוב-כתום, ירוק-ליים, טורקיז (blue + green), כחול-סגול, סגול-אדום, and חום. A colour without an everyday adjective reads "טיפה בצבע טורקיז" (`aDrop` in `main.ts`).
 - **Rendering** (`render.ts`, Canvas 2D):
   - **Drops:** a shadow and a coloured light pool (canvas shadows of an off-screen copy of the path), a see-through body whose gradient stretches with the drop, a dark inner rim, a caustic on the far side, a reflected rim line and a window highlight on the light side (top left). Big drops are flatter: the rim width is capped, so their middle is clearer and their gloss smaller.
-  - **Backdrop** (`drawBackdrop`): light oak planks, the black diamond card from the reference photo (its corners peek out above and below the paper), plant leaves on the table (clipped so they stay off the paper), and the paper sheet. It is painted once per resize.
+  - **Backdrop** (`drawBackdrop`): light oak planks, the black diamond card from the reference photo (its corners peek out above and below the paper), the paper sheet, and a plant whose leaves lean over the paper's top-left corner. It is painted once per resize and per level.
+  - **The plant grows over the levels** (`LEAVES`, `plant()`): each leaf has the level it appears at. New leaves sprout small and light green and grow over the next levels, and every leaf turns a little from level to level. A bud appears at level 9 and blooms by level 12 (`flower()`).
   - **Cups:** marker drawings with scalloped water.
-- **Celebration** (`updateParty` / `drawParty`): when the last cup fills, the cups hop one by one with little fountains, three star stickers pop onto the paper, and "כל הכבוד!" is written in marker from right to left in the cups' colours. Then the buttons (next, again, home) float over the paper (`#win`, no card).
+- **Celebration** (`updateParty` / `drawParty`, timing in `PARTY`, quick on the owner's request; the buttons come after about a second): when the last cup fills, the cups hop one by one with little fountains, three star stickers pop onto the paper, and "כל הכבוד!" is written in marker from right to left in the cups' colours. Then the buttons (next, again, home) float over the paper (`#win`, no card).
 - **Choosing a level, two ways** (owner's request; `main.ts`):
   - **The next level:** Play/Continue on the home screen resumes a level under way, or, after a finished level, opens the next one. The "next" button at the end of a level does the same.
   - **The levels screen** (`#pick`): opened from the home screen's "Levels" button or the "Levels" button at the end of a level. It shows a tile for every open level (its cups' colours, and a star when done), plus the next one, locked. A level opens when the one before it is done. The house button goes back to the home screen. Leaving a level under way asks first.
-- **Home:** logo, Play/Continue, Levels, "from the start" (only with progress; it asks first and clears progress), and the Dorothy Games logo.
+- **Buttons are liquid jelly** (owner's request, to match the logo; the "liquid buttons" block in `styles.css`): a glossy gradient body with a darker rim, a white shine, a slightly uneven blob shape, and a small drop hanging from the main buttons; a press squashes it. Blue is the main way on, pale aqua the others, green "yes", and orange the big "next". The top-bar buttons are bubbles and the level tiles are jelly squares.
+- **Home:** on every screen, the owner's logo (`public/logo.webp`, 600 px; its size follows the screen height) on top, then Play/Continue and Levels, then the Dorothy Games logo. The menu buttons share one width, with their icons in one column and their words starting at one line (owner's request). The owner removed the "from the start" button and the subtitle.
 - **Hints:** after 7 quiet seconds, a see-through fingertip shows a useful move (`suggest()`): a drop a cup takes now, else the closest pair whose join still fits a cup.
 - **Sound** (`sfx.ts`):
   - **Touching a drop:** never the same twice. The pitch comes from the drop's size and colour and walks a pentatonic scale on quick touches. Each touch also gets a random pan, a random envelope, sometimes a soft fifth, and a short noise "tick".
@@ -63,12 +67,13 @@ Ideas still open are in `BACKLOG.md`.
 
 - `?debug=state` exposes the game as `window.__dd` (`snapshot()` gives positions in CSS pixels); the tests use it. `?level=N` (1–12) picks the level.
 - `?debug=play` skips the home screen. `?debug=party&level=N` plays that level's celebration at once. `?debug=lab` is a sandbox with three drops of each base colour, mixing on. `?debug=sheet` shows every colour at three sizes.
-- `?debug=icon`: one drop for the icons. Screenshot a 480 × 400 window at device scale 4 and crop 420 px around the centre (750, 590, 1170, 1010) for `public/icon-*.png`, `favicon.png` and `apple-touch-icon.png`.
-- `og-image.png` is a 1200 × 630 screenshot of `?debug=party&level=7`, with `#win` and `#topbar` hidden.
+- The icons (`public/icon-*.png`, `favicon.png`, `apple-touch-icon.png`) are the owner's logo, resized; so are `logo.webp` and the portal's `art/logos/drop-the-drop.webp`. `?debug=icon` still shows one big drop.
+- `og-image.png` is a 1200 × 630 screenshot of the home screen.
 
 ## Tests
 
 `npm test` (Playwright):
-- **Home and levels screens:** both fit four landscape sizes (640 × 360 up to a laptop). The home screen has icons, 48 px buttons and the portal link. The levels screen shows the open levels plus one locked tile. An upright screen shows the turn prompt. "From the start" asks first. Play opens the next level, a tile opens its level, and the house button comes back.
+- **Home and levels screens:** both fit four landscape sizes (640 × 360 up to a laptop). The home screen has icons, 48 px buttons and the portal link. The levels screen shows the open levels plus one locked tile. An upright screen shows the turn prompt. The logo sits above the buttons, which are centred, share one width and line up their icons and words. Play opens the next level, a tile opens its level, and the house button comes back.
 - **Every level:** solvable (the drops' pigment equals what the cups want), starts with drops apart and above the cups, and has a hint.
-- **Play:** level 6 is won by joining and pouring, and "next" opens level 7. Level 2's cup fills drop by drop. A small drop is refused. Red touching blue explains purple. Level 9 mixes orange into its cup. Level 10's two blue drops end with the "no cup" card.
+- **Play:** level 6 is won by joining and pouring, and "next" opens level 7. Level 2's cup fills drop by drop. A small drop is refused. Red touching blue explains purple. Level 9 mixes orange into its cup. Level 10's two blue drops end with the "no cup" card. A fast finger pulls a drop along fast.
+- **Colours:** every mix of up to three parts of each base colour has a Hebrew name, and blue + green is turquoise.

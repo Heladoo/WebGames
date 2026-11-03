@@ -50,8 +50,16 @@ export const GAMES: Game[] = [
     name: 'המרוץ לארמון',
     about: 'דוהרים לארמון על חיות מלכותיות ואוספים ממתקים בדרך!',
     url: 'https://web-games-palace-race.vercel.app/',
-    isNew: true,
     genre: ['Casual', 'Racing'],
+    inLanguage: 'he',
+  },
+  {
+    id: 'drop-the-drop',
+    name: 'Drop the Drop',
+    about: 'גוררים טיפות צבע על הדף, מחברים, מערבבים ומובילים לכוס!',
+    url: 'https://drop-the-drop.vercel.app/',
+    isNew: true,
+    genre: ['Puzzle', 'Casual'],
     inLanguage: 'he',
   },
   {

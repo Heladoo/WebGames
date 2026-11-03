@@ -10,7 +10,6 @@
 
 ## Next
 
-- Add the game to the portal shelf (`portal/src/games.ts`, with a tile picture) once it has a Vercel URL.
 - Anonymous play stats (the shared `stats.ts` / `api/stats.js` pattern, prefix `dd:`), plus a note in the UI.
 - More levels: obstacles on the paper (a ruler, a tape strip) to go around; mixing with amounts (two yellow + one red); a drop that has to be split.
 

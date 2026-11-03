@@ -31,3 +31,20 @@ test('every level is solvable and starts tidy', async ({ page }) => {
     expect(r.hint, `${r.id}: the hint has a first move`).toBe(true);
   }
 });
+
+test('every colour a child can mix has a name, and blue + green is turquoise', async ({ page }) => {
+  await page.goto('/?debug=state');
+  const names = await page.evaluate(async () => {
+    const { colorName, COLOR_HE } = await import('/src/color.ts');
+    const mixes: [number, number, number][] = [];
+    for (let r = 0; r <= 3; r++) for (let y = 0; y <= 3; y++) for (let b = 0; b <= 3; b++) if (r + y + b) mixes.push([r, y, b]);
+    return {
+      all: mixes.map((p) => COLOR_HE[colorName(p)]),
+      turquoise: colorName([0, 1, 2]),
+      red: colorName([1, 0, 0]), green: colorName([0, 1, 1]), brown: colorName([1, 1, 1]),
+    };
+  });
+  for (const n of names.all) expect(n, 'a Hebrew name').toBeTruthy();
+  expect(names.turquoise).toBe('turquoise');
+  expect([names.red, names.green, names.brown]).toEqual(['red', 'green', 'brown']);
+});
