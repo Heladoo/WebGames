@@ -138,8 +138,8 @@ h1 { margin: 0; line-height: 0; }
 
 /* ------------------------------------------------------------------ liquid buttons
    Glossy jelly, like the logo's letters: a coloured body with a darker rim,
-   a white shine across the top, a deep edge below, a slightly uneven blob
-   shape, and a small drop hanging from the main buttons. A press squashes it. */
+   a white shine across the top, a deep edge below and a slightly uneven blob
+   shape. A press squashes it. */
 .home-btn, .round, .level-tile, .level-pill {
   --j1: #7fd6ff; --j2: #2f9cf0; --j3: #1668c9; --rim: #0f4c97; --ink-on: #fff;
   position: relative; isolation: isolate; overflow: visible;
@@ -160,14 +160,6 @@ h1 { margin: 0; line-height: 0; }
   left: 12%; right: 30%; top: 9%; height: 30%;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.1));
-}
-/* a little drop hanging from the main buttons */
-.home-btn:not(.alt)::after {
-  content: ''; position: absolute; pointer-events: none;
-  inset-inline-start: 22%; bottom: -12px; width: 13px; height: 16px;
-  border-radius: 50% 50% 50% 50% / 38% 38% 62% 62%;
-  background: radial-gradient(circle at 40% 35%, #fff 0 12%, var(--j2) 40%, var(--j3) 100%);
-  border: 2.5px solid var(--rim); border-top: none;
 }
 .home-btn .home-ic svg { filter: drop-shadow(0 2px 0 var(--rim)); }
 .home-btn:active, .round:active, .level-tile:not(:disabled):active {
@@ -224,6 +216,12 @@ h1 { margin: 0; line-height: 0; }
   .card { gap: 8px; padding: 14px 20px; }
   .card p { font-size: 16px; }
   .home-btn.big { min-height: 56px; font-size: 21px; }
+}
+/* phones held sideways: the logo on the left, the menu on the right, so the
+   card fits without scrolling (row-reverse, since the page is right-to-left) */
+@media (max-height: 560px) {
+  .title-card { flex-direction: row-reverse; max-width: min(680px, 100%); gap: 10px 28px; padding: 14px 24px; }
+  .title-logo img { width: min(62vh, 230px); }
 }
 @media (max-height: 380px) {
   .fine { display: none; }

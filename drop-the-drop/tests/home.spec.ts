@@ -7,6 +7,7 @@ import { expect, test, type Page } from '@playwright/test';
 const SIZES = {
   'small phone landscape': { width: 640, height: 360 },
   'phone landscape': { width: 844, height: 390 },
+  'phone landscape with browser bars': { width: 800, height: 330 },
   tablet: { width: 1180, height: 820 },
   laptop: { width: 1366, height: 768 },
 };
@@ -30,6 +31,7 @@ const measure = (page: Page) => page.evaluate(() => {
   return {
     view: { x: 0, y: 0, w: innerWidth, h: innerHeight },
     card: box(card),
+    scrolls: card.scrollHeight > card.clientHeight + 1 || card.scrollWidth > card.clientWidth + 1,
     parts: parts.map((e) => ({ id: e.id || e.className, ...box(e) })),
     buttons: [...document.querySelectorAll<HTMLElement>('.title-card .home-btn')].filter((e) => e.offsetParent).map((b) => ({
       label: b.querySelector('.home-label')!.textContent,
@@ -69,8 +71,14 @@ for (const [name, viewport] of Object.entries(SIZES)) {
       }
       const logo = m.parts.find((p) => p.id === 'title-logo')!;
       const first = m.parts.find((p) => p.id === 'btn-play')!;
-      expect(logo.y + logo.h, `${what}: the logo is above the buttons`).toBeLessThanOrEqual(first.y + 1);
-      expect(Math.abs(first.x + first.w / 2 - (logo.x + logo.w / 2)), `${what}: the buttons are centred under the logo`).toBeLessThan(2);
+      expect(m.scrolls, `${what}: the home card does not scroll`).toBe(false);
+      if (viewport.height > 560) {
+        expect(logo.y + logo.h, `${what}: the logo is above the buttons`).toBeLessThanOrEqual(first.y + 1);
+        expect(Math.abs(first.x + first.w / 2 - (logo.x + logo.w / 2)), `${what}: the buttons are centred under the logo`).toBeLessThan(2);
+      } else {
+        // phones held sideways: the logo on the left, the menu on the right
+        expect(logo.x + logo.w, `${what}: the logo is left of the buttons`).toBeLessThanOrEqual(first.x + 1);
+      }
       expect(m.portal).toBe('https://dorothy-games.vercel.app/');
       expect(m.portalImg).toBeGreaterThan(0);
       expect(m.logo, `${what}: the game logo loads`).toBeGreaterThan(0);
