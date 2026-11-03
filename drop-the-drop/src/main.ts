@@ -40,13 +40,11 @@ app.innerHTML = `
     <div class="title-card">
       <div class="title-logo">
         <h1><img src="/logo.webp" alt="Drop the Drop" lang="en" width="600" height="600"></h1>
-        <p class="sub">גררו, חברו, ערבבו!</p>
       </div>
       <div class="title-side">
         <div class="home-buttons">
           <button class="home-btn" id="btn-play"><span class="home-ic">${ICON.play}</span><span class="home-label">לשחק</span></button>
           <button class="home-btn alt" id="btn-levels"><span class="home-ic">${ICON.levels}</span><span class="home-label">שלבים</span></button>
-          <button class="home-btn alt" id="btn-new" hidden><span class="home-ic">${ICON.again}</span><span class="home-label">מההתחלה</span></button>
         </div>
         <a class="portal-link" href="https://dorothy-games.vercel.app/" aria-label="Dorothy Games: more games"><img src="/dorothy-logo.webp" alt="" width="180" height="90"></a>
         <p class="fine">בלי פרסומות, בלי חשבונות ובלי עוגיות. שום דבר לא נספר ולא נשלח.</p>
@@ -125,7 +123,6 @@ function openHome() {
   game.cancelDrag();
   const any = going() || store.done.length > 0;
   $('btn-play').querySelector('.home-label')!.textContent = any ? 'להמשיך' : 'לשחק';
-  $('btn-new').hidden = !any;
   for (const id of ['win', 'fail', 'ask', 'pick']) show(id, false);
   show('home', true);
   show('topbar', false);
@@ -294,11 +291,6 @@ addEventListener('pointerdown', unlock, { capture: true });
 addEventListener('keydown', unlock, { capture: true });
 
 $('btn-play').onclick = play;
-$('btn-new').onclick = () => ask('למחוק את ההתקדמות ולהתחיל משלב 1?', () => {
-  store.done = [];
-  save(store);
-  enterLevel(0);
-});
 $('btn-home').onclick = openHome;
 $('btn-restart').onclick = () => (game.touched && !game.over ? ask('להתחיל את השלב מההתחלה?', () => enterLevel(index)) : enterLevel(index));
 $('btn-retry').onclick = () => enterLevel(index);
