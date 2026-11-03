@@ -12,6 +12,7 @@ A calm browser game for young children, based on a real activity: drops of colou
 - **20 levels** that open one by one. Play (or "next" at the end of a level) goes on to the next level; the Levels screen shows every open level, plus the next one, locked.
 - When the last cup fills, the cups hop, star stickers pop onto the paper and "כל הכבוד!" is written on it.
 - If you wait a while, a see-through finger shows a move to try.
+- Buttons are drops of jelly: pressing one splashes it, then the next screen opens.
 
 No ads, no accounts, no cookies. Only plays and play time are counted, anonymously (no personal data). Sound can be muted with the speaker button.
 

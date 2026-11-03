@@ -85,6 +85,8 @@ for (const [name, viewport] of Object.entries(SIZES)) {
 
       // the levels screen: the open levels plus the next one, locked
       await page.click('#btn-levels');
+      await page.waitForSelector('#pick:not(.hidden) .level-tile');
+      await page.waitForTimeout(450); // the card's rise animation
       const p = await page.evaluate(() => {
         const box = (e: Element) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
         return {
@@ -125,4 +127,22 @@ test('"play" opens the next level; a tile on the levels screen opens any open le
   await expect(page.locator('#level-pill')).toHaveText('2');
   await page.click('#btn-home');
   await expect(page.locator('#home')).toBeVisible();
+});
+
+test('pressing a button splashes it, then the next screen opens', async ({ page }) => {
+  await page.setViewportSize(SIZES.tablet);
+  await open(page, []);
+  await page.click('#btn-levels');
+  // the button bursts first: the splash layer holds droplets and the levels screen is not open yet
+  await expect(page.locator('#btn-levels')).toHaveClass(/pop/);
+  expect(await page.locator('#pick').isHidden()).toBe(true);
+  const drawn = await page.evaluate(() => {
+    const c = document.getElementById('splash') as HTMLCanvasElement;
+    const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4 * 7) if (d[i] > 0) n++;
+    return n;
+  });
+  expect(drawn, 'droplets are drawn').toBeGreaterThan(0);
+  await expect(page.locator('#pick')).toBeVisible();
 });

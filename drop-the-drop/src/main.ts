@@ -8,6 +8,7 @@ import { drawDrop } from './render';
 import { setMuted, unlock } from './sfx';
 import { load, save } from './state';
 import { stats } from './stats';
+import { initSplash } from './splash';
 
 const params = new URLSearchParams(location.search);
 const debug = params.get('debug') ?? '';
@@ -304,6 +305,7 @@ function lockLandscape() {
 }
 
 addEventListener('pointerdown', unlock, { capture: true });
+initSplash();
 addEventListener('keydown', unlock, { capture: true });
 
 $('btn-play').onclick = play;
