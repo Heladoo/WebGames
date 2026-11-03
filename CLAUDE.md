@@ -34,7 +34,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Anonymous play statistics (reusable)
 
-Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstash Redis REST, with a private dashboard at `public/stats.html`. Copy all four into a new game and change the Redis key prefix so games sharing one database don't collide. Prefixes in use: `or:` (Otter River), `wt:` (Word Trail), `bb:` (Bead Box), `pr:` (Race to the Palace) and `pt:` (the portal, which also keeps players' game ideas there).
+Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstash Redis REST, with a private dashboard at `public/stats.html`. Copy all four into a new game and change the Redis key prefix so games sharing one database don't collide. Prefixes in use: `or:` (Otter River), `wt:` (Word Trail), `bb:` (Bead Box), `pr:` (Race to the Palace), `dd:` (Drop the Drop) and `pt:` (the portal, which also keeps players' game ideas there).
 
 - Counts plays, estimated unique players (HyperLogLog of a random id kept in localStorage) and play time (heartbeat every 2 minutes plus `sendBeacon` on page hide).
 - **Env vars** (set in Vercel → Settings → Environment Variables for all environments, then **redeploy**; variables only apply to new deployments): `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (or the Marketplace names `KV_REST_API_URL/TOKEN`) and `STATS_KEY` (dashboard password).

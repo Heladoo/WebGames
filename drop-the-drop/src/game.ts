@@ -9,6 +9,7 @@ import { Drop, mergeInto, reach, stepDrop } from './drop';
 import { type Level, LEVELS, WORLD_H, WORLD_W } from './levels';
 import { type CupView, type Particle, drawBackdrop, drawCup, drawDrop, drawHand, drawParticles, drawParty, PAPER, PARTY } from './render';
 import { sfx } from './sfx';
+import { stats } from './stats';
 
 export interface Cup extends CupView {
   pig: Pig;
@@ -426,6 +427,9 @@ export class Game {
       p.rot += dt * 2;
     }
     this.particles = this.particles.filter((p) => p.life > 0);
+
+    // play time counts only while a level is really on screen
+    if (!this.paused && !portrait.matches && !document.hidden) stats.tick(dt);
 
     // a hint after a quiet while
     if (!this.paused && !this.over && !dragged && !portrait.matches) {

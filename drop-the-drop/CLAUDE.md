@@ -61,7 +61,8 @@ Ideas still open are in `BACKLOG.md`.
   - **Joins:** a plop and a bell, with two more bells when colours mix. Each cup gets a note (a chord when full).
   - **Celebration:** hop plops, sticker pops and the win arpeggio.
   - All of it goes through a room reverb and a compressor.
-- **Save** (`state.ts`): `drop-the-drop:v1` keeps the mute setting and the finished level ids. No stats are collected yet.
+- **Save** (`state.ts`): `drop-the-drop:v1` keeps the mute setting and the finished level ids.
+- **Anonymous stats** (the shared pattern from the root `CLAUDE.md`, prefix `dd:`): `src/stats.ts` → `api/stats.js` → Upstash, with the dashboard at `public/stats.html`. A play is counted once per visit, when the first level starts. Play time ticks only while a level is on screen (not paused, not upright, not hidden), with a report every 2 minutes and a beacon on page hide. Nothing is counted on localhost or `?debug` URLs. The home screen's small line says what is counted.
 
 ## Debug hooks
 
@@ -76,4 +77,5 @@ Ideas still open are in `BACKLOG.md`.
 - **Home and levels screens:** both fit four landscape sizes (640 × 360 up to a laptop). The home screen has icons, 48 px buttons and the portal link. The levels screen shows the open levels plus one locked tile. An upright screen shows the turn prompt. The logo sits above the buttons, which are centred, share one width and line up their icons and words. Play opens the next level, a tile opens its level, and the house button comes back.
 - **Every level:** solvable (the drops' pigment equals what the cups want), starts with drops apart and above the cups, and has a hint.
 - **Play:** level 6 is won by joining and pouring, and "next" opens level 7. Level 2's cup fills drop by drop. A small drop is refused. Red touching blue explains purple. Level 9 mixes orange into its cup. Level 10's two blue drops end with the "no cup" card. A fast finger pulls a drop along fast.
+- **Stats:** `api/stats.js` uses the `dd:` prefix and 4 commands per play, and stays a silent no-op without Redis. The game sends nothing on localhost.
 - **Colours:** every mix of up to three parts of each base colour has a Hebrew name, and blue + green is turquoise.

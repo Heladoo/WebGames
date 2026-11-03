@@ -7,6 +7,7 @@ import { LAB, LEVELS, type Level } from './levels';
 import { drawDrop } from './render';
 import { setMuted, unlock } from './sfx';
 import { load, save } from './state';
+import { stats } from './stats';
 
 const params = new URLSearchParams(location.search);
 const debug = params.get('debug') ?? '';
@@ -47,7 +48,7 @@ app.innerHTML = `
           <button class="home-btn alt" id="btn-levels"><span class="home-ic">${ICON.levels}</span><span class="home-label">שלבים</span></button>
         </div>
         <a class="portal-link" href="https://dorothy-games.vercel.app/" aria-label="Dorothy Games: more games"><img src="/dorothy-logo.webp" alt="" width="180" height="90"></a>
-        <p class="fine">בלי פרסומות, בלי חשבונות ובלי עוגיות. שום דבר לא נספר ולא נשלח.</p>
+        <p class="fine">בלי פרסומות, חשבונות או עוגיות. נספרים רק משחקים וזמן משחק, בלי מידע אישי.</p>
       </div>
     </div>
   </div>
@@ -137,7 +138,12 @@ function enterLevel(i: number, drip = true) {
   game.start(LEVELS[i], drip);
   game.paused = false;
   lockLandscape();
+  if (!counted) { counted = true; stats.start(); }
 }
+/** one play per visit, counted when the first level starts */
+let counted = false;
+addEventListener('pagehide', () => stats.flush(true));
+document.addEventListener('visibilitychange', () => { if (document.hidden) stats.flush(true); });
 
 /** Is a level under way (something done, not finished)? */
 function going() { return game.touched && !game.over && game.level === LEVELS[index]; }

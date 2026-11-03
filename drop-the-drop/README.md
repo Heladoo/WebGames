@@ -12,7 +12,7 @@ A calm browser game for young children, based on a real activity: drops of colou
 - When the last cup fills, the cups hop, star stickers pop onto the paper and "כל הכבוד!" is written on it.
 - If you wait a while, a see-through finger shows a move to try.
 
-No ads, no accounts, no cookies, nothing counted or sent. Sound can be muted with the speaker button.
+No ads, no accounts, no cookies. Only plays and play time are counted, anonymously (no personal data). Sound can be muted with the speaker button.
 
 ## Development
 
@@ -28,3 +28,12 @@ Debug pages: `?debug=play`, `?level=N`, `?debug=party&level=N`, `?debug=lab`, `?
 ## Deploying
 
 A Vercel project with Root Directory `drop-the-drop` (framework Vite). `vercel.json` carries the strict CSP and other headers. Set `SITE_URL` once there is a custom domain.
+
+### Play statistics (optional)
+
+Anonymous counts of plays, players and play time, shown at `/stats.html`. In Vercel → Settings → Environment Variables (all environments), set:
+
+- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: from a free database at upstash.com. The URL is `https://<name>.upstash.io`, with no port. One database can serve all the games, since each game uses its own key prefix; this one is `dd:`.
+- `STATS_KEY`: the password for the dashboard.
+
+Then redeploy. Without these variables the game works exactly the same and counts nothing.
