@@ -52,6 +52,7 @@ Ideas still open are in `BACKLOG.md`.
 - **Choosing a level, two ways** (owner's request; `main.ts`):
   - **The next level:** Play/Continue on the home screen resumes a level under way, or, after a finished level, opens the next one. The "next" button at the end of a level does the same.
   - **The levels screen** (`#pick`): opened from the home screen's "Levels" button or the "Levels" button at the end of a level. It shows a tile for every open level (its cups' colours, and a star when done), plus the next one, locked. A level opens when the one before it is done. The house button goes back to the home screen. Leaving a level under way asks first.
+- **Buttons are liquid jelly** (owner's request, to match the logo; the "liquid buttons" block in `styles.css`): a glossy gradient body with a darker rim, a white shine, a slightly uneven blob shape, and a small drop hanging from the main buttons; a press squashes it. Blue is the main way on, pale aqua the others, green "yes", and orange the big "next". The top-bar buttons are bubbles and the level tiles are jelly squares.
 - **Home:** the owner's logo (`public/logo.webp`, 600 px), Play/Continue, Levels, "from the start" (only with progress; it asks first and clears progress), and the Dorothy Games logo.
 - **Hints:** after 7 quiet seconds, a see-through fingertip shows a useful move (`suggest()`): a drop a cup takes now, else the closest pair whose join still fits a cup.
 - **Sound** (`sfx.ts`):

@@ -93,7 +93,7 @@ app.innerHTML = `
 
   <div id="rotate" role="alert">
     <div class="rot-pic">${ICON_ROTATE}</div>
-    <p>מסובבים את המכשיר לרוחב</p>
+    <p>סובבו את המכשיר לרוחב</p>
   </div>
 `;
 

@@ -42,7 +42,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid #f2b705; outline-offs
   display: grid; place-items: center; padding: 11px; color: var(--ink);
 }
 .round svg { width: 100%; height: 100%; }
-.round:active { transform: scale(0.94); }
 
 .screen {
   position: fixed; inset: 0;
@@ -88,9 +87,6 @@ h1 { margin: 0; line-height: 0; }
   box-shadow: 0 4px 0 var(--btn-dark), 0 6px 14px rgba(40, 80, 160, 0.25);
   white-space: nowrap;
 }
-.home-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--btn-dark); }
-.home-btn.alt { background: var(--alt); color: var(--ink); box-shadow: 0 4px 0 #cdd3e2; }
-.home-btn.yes { background: #3aa864; box-shadow: 0 4px 0 #2a8049; }
 .home-ic { width: 28px; height: 28px; display: grid; }
 .home-ic svg { width: 100%; height: 100%; }
 /* ▶ means "forward"; in a right-to-left page forward is to the left */
@@ -101,7 +97,6 @@ h1 { margin: 0; line-height: 0; }
 .pick-card { max-width: min(560px, 100%); gap: 16px; }
 .pick-head { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 12px; }
 .pick-head h2 { margin: 0; font-size: 30px; color: #2d3a6b; }
-.pick-head .round { background: var(--alt); box-shadow: none; }
 .round-space { width: 48px; }
 .levels { display: grid; grid-template-columns: repeat(6, 64px); gap: 10px; align-content: center; justify-content: center; }
 .level-tile {
@@ -118,12 +113,9 @@ h1 { margin: 0; line-height: 0; }
   background: radial-gradient(circle at 35% 30%, #fff 0 12%, var(--c) 45%);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
 }
-.level-tile.current { background: #fff; box-shadow: 0 0 0 3px var(--btn), 0 3px 0 #d6dbe8; animation: glow 1.8s ease-in-out infinite; }
-@keyframes glow { 50% { box-shadow: 0 0 0 5px rgba(63, 127, 224, 0.45), 0 3px 0 #d6dbe8; } }
-.level-tile.locked { opacity: 0.6; cursor: default; background: #e9ebf1; color: var(--soft); }
+.level-tile.locked { cursor: default; }
 .level-tile .lock { width: 24px; height: 24px; display: grid; }
 .level-tile .badge { position: absolute; top: -8px; inset-inline-end: -8px; width: 26px; height: 26px; }
-.level-tile:not(:disabled):active { transform: translateY(2px); }
 
 .level-pill {
   pointer-events: none; min-width: 40px; height: 40px; border-radius: 20px; padding: 0 12px;
@@ -141,6 +133,68 @@ h1 { margin: 0; line-height: 0; }
 #win .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; pointer-events: auto; animation: rise 0.5s cubic-bezier(.2, 1.4, .4, 1); }
 #win .home-btn.alt { min-width: 0; padding: 8px 18px; }
 .home-btn.big { min-height: 64px; font-size: 24px; padding: 8px 30px; }
+
+
+/* ------------------------------------------------------------------ liquid buttons
+   Glossy jelly, like the logo's letters: a coloured body with a darker rim,
+   a white shine across the top, a deep edge below, a slightly uneven blob
+   shape, and a small drop hanging from the main buttons. A press squashes it. */
+.home-btn, .round, .level-tile, .level-pill {
+  --j1: #7fd6ff; --j2: #2f9cf0; --j3: #1668c9; --rim: #0f4c97; --ink-on: #fff;
+  position: relative; isolation: isolate; overflow: visible;
+  color: var(--ink-on);
+  background: linear-gradient(180deg, var(--j1) 0%, var(--j2) 55%, var(--j3) 100%);
+  border: 3px solid var(--rim);
+  box-shadow:
+    inset 0 -5px 0 rgba(0, 0, 0, 0.14),
+    inset 0 3px 0 rgba(255, 255, 255, 0.45),
+    0 4px 0 var(--rim),
+    0 8px 16px rgba(20, 60, 130, 0.25);
+  text-shadow: 0 2px 0 var(--rim), 0 0 2px var(--rim);
+}
+.home-btn { border-radius: 34px 40px 32px 42px / 40px 32px 42px 34px; }
+/* the shine */
+.home-btn::before, .round::before, .level-tile::before, .level-pill::before {
+  content: ''; position: absolute; z-index: -1; pointer-events: none;
+  left: 12%; right: 30%; top: 9%; height: 30%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.1));
+}
+/* a little drop hanging from the main buttons */
+.home-btn:not(.alt)::after {
+  content: ''; position: absolute; pointer-events: none;
+  inset-inline-start: 22%; bottom: -12px; width: 13px; height: 16px;
+  border-radius: 50% 50% 50% 50% / 38% 38% 62% 62%;
+  background: radial-gradient(circle at 40% 35%, #fff 0 12%, var(--j2) 40%, var(--j3) 100%);
+  border: 2.5px solid var(--rim); border-top: none;
+}
+.home-btn .home-ic svg { filter: drop-shadow(0 2px 0 var(--rim)); }
+.home-btn:active, .round:active, .level-tile:not(:disabled):active {
+  transform: none; animation: squish 0.28s ease-out;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.14), inset 0 3px 0 rgba(255, 255, 255, 0.45), 0 2px 0 var(--rim);
+}
+@keyframes squish { 0% { transform: scale(1, 1); } 40% { transform: scale(1.06, 0.9); } 70% { transform: scale(0.97, 1.04); } 100% { transform: scale(1, 1); } }
+
+/* colours: blue for the main way on, pale aqua for the others, green for "yes" */
+.home-btn.alt, .round, .level-tile, .level-pill {
+  --j1: #f4fcff; --j2: #d3f0ff; --j3: #a9dcf6; --rim: #3b8fd3; --ink-on: #173f7a;
+  text-shadow: none;
+}
+.home-btn.alt .home-ic svg, .round svg { filter: none; }
+.home-btn.yes { --j1: #9cf0a8; --j2: #3fc463; --j3: #22964a; --rim: #16672f; }
+.home-btn.big { --j1: #ffe27a; --j2: #ffb31f; --j3: #f08a0c; --rim: #a85400; }
+
+/* round bubbles in the top bar */
+.round { border-radius: 50%; padding: 10px; }
+.round::before { left: 18%; right: 34%; top: 10%; height: 28%; }
+.level-pill { color: #173f7a; }
+
+/* level tiles: little jelly squares; the next one to play is blue */
+.level-tile { border-radius: 20px 24px 18px 24px / 24px 18px 24px 20px; }
+.level-tile.current { --j1: #7fd6ff; --j2: #2f9cf0; --j3: #1668c9; --rim: #0f4c97; --ink-on: #fff; text-shadow: 0 2px 0 var(--rim); animation: glow 1.8s ease-in-out infinite; }
+@keyframes glow { 50% { transform: scale(1.05); } }
+.level-tile.locked { --j1: #f2f3f6; --j2: #e2e5ec; --j3: #cfd3dd; --rim: #a3aabb; --ink-on: #8a91a5; opacity: 0.8; }
+.level-tile.locked::before { opacity: 0.5; }
 
 /* landscape only: upright screens are asked to turn */
 #rotate {
@@ -181,5 +235,5 @@ h1 { margin: 0; line-height: 0; }
   .home-btn { min-width: 160px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .screen, .title-card, .card, #win .row, .level-tile.current, .rot-phone { animation: none; }
+  .screen, .title-card, .card, #win .row, .level-tile.current, .rot-phone, .home-btn:active, .round:active, .level-tile:active { animation: none; }
 }

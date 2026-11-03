@@ -23,7 +23,7 @@ const TILES = [
   { id: 'word-trail', logo: '../art/logos/word-trail.webp', bg: '#76cfed', width: 100 },
   { id: 'bead-box', logo: '../art/logos/bead-box.webp', bg: 'linear-gradient(#76d8fd 0%, #9be7fd 50%, #8ce1fb 100%)', width: 100 },
   { id: 'palace-race', logo: '../../palace-race/public/logo.webp', bg: 'radial-gradient(circle at 50% 48%, #3b2d7a 0%, #1b1450 100%)', width: 92 },
-  { id: 'drop-the-drop', logo: '../art/logos/drop-the-drop.webp', bg: '#fefefd', width: 100 },
+  { id: 'drop-the-drop', logo: '../art/logos/drop-the-drop.webp', bg: '#ffffff', width: 100 },
   { id: 'birdnet-kids', logo: '../art/logos/birdnet-kids.png', bg: '#faf6eb', width: 100 },
 ];
 
