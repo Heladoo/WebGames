@@ -40,7 +40,7 @@ app.innerHTML = `
     <div class="title-card">
       <div class="title-logo">
         <h1><img src="/logo.webp" alt="Drop the Drop" lang="en" width="600" height="600"></h1>
-        <p class="sub">טיפות צבע לכוסות</p>
+        <p class="sub">גררו, חברו, ערבבו!</p>
       </div>
       <div class="title-side">
         <div class="home-buttons">
