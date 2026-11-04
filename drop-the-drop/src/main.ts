@@ -29,6 +29,7 @@ const drops = (n: ColorName) => `טיפות ${MANY[n] ?? `בצבע ${COLOR_HE[n]
 
 const app = document.getElementById('app')!;
 app.innerHTML = `
+  <canvas id="bg" aria-hidden="true"></canvas>
   <canvas id="stage" aria-label="דף נייר עם טיפות צבע וכוסות. גוררים טיפה באצבע."></canvas>
   <div id="topbar" class="hidden">
     <button class="round" id="btn-home" aria-label="מסך הבית">${ICON.home}</button>
@@ -99,7 +100,7 @@ app.innerHTML = `
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const game = new Game($<HTMLCanvasElement>('stage'), { fail: showFail, win: showWin });
+const game = new Game($<HTMLCanvasElement>('stage'), $<HTMLCanvasElement>('bg'), { fail: showFail, win: showWin });
 let index = firstOpen();
 const forced = params.get('level');
 if (forced === 'lab') game.start(LAB, false);

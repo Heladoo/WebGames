@@ -7,9 +7,10 @@
 import { PIG, type Pig, type RGB, pigToRgb, sameColor, scalePig, share, tint, WHITE } from './color';
 import { Drop, mergeInto, R1, reach, stepDrop } from './drop';
 import { type Glue, type Level, LEVELS, WORLD_H, WORLD_W } from './levels';
-import { type CupView, type Particle, drawBackdrop, drawCup, drawDrop, drawGlueTwinkle, drawHand, drawParticles, drawParty, PAPER, PARTY } from './render';
+import { type CupView, type Particle, drawBackdrop, drawCup, drawDropCached, drawGlueTwinkle, drawHand, drawParticles, drawParty, PAPER, PARTY } from './render';
 import { sfx } from './sfx';
 import { stats } from './stats';
+import { type Answer, quarters, QUARTER, solve } from './solver';
 
 export interface Cup extends CupView {
   pig: Pig;
@@ -73,6 +74,11 @@ export class Game {
   lastTap: { id: number; t: number; x: number; y: number } | null = null;
   /** seconds with no useful move left (a dead end ends the level gently) */
   stuckFor = 0;
+  /** the solver's answer for the drops as they are now (worked out again after every change) */
+  answer: Answer | null = null;
+  /** the drops the answer's move numbers refer to */
+  answerDrops: Drop[] = [];
+  dirty = true;
   timers: { at: number; fn: () => void }[] = [];
   drips: { at: number; drop: Drop; i: number }[] = [];
   /** the celebration, seconds since it began (-1: none) */
@@ -80,8 +86,16 @@ export class Game {
   partyStars = 0;
   last = 0;
 
-  constructor(canvas: HTMLCanvasElement, events: GameEvents) {
+  /** the still scene (table, card, paper, glue, plant) on its own canvas under the game, painted only when it changes */
+  bg: HTMLCanvasElement;
+  /** the sharpest resolution allowed now; lowered on slow devices (see `frame`) */
+  maxDpr = 2;
+  slowFor = 0;
+  frameMs = 16;
+
+  constructor(canvas: HTMLCanvasElement, bg: HTMLCanvasElement, events: GameEvents) {
     this.canvas = canvas;
+    this.bg = bg;
     this.ctx = canvas.getContext('2d')!;
     this.events = events;
     canvas.addEventListener('pointerdown', (e) => this.down(e));
@@ -98,11 +112,13 @@ export class Game {
 
   resize() {
     const w = innerWidth, h = innerHeight;
-    this.dpr = Math.min(3, devicePixelRatio || 1);
-    this.canvas.width = Math.round(w * this.dpr);
-    this.canvas.height = Math.round(h * this.dpr);
-    this.canvas.style.width = w + 'px';
-    this.canvas.style.height = h + 'px';
+    this.dpr = Math.min(this.maxDpr, devicePixelRatio || 1);
+    for (const c of [this.canvas, this.bg]) {
+      c.width = Math.round(w * this.dpr);
+      c.height = Math.round(h * this.dpr);
+      c.style.width = w + 'px';
+      c.style.height = h + 'px';
+    }
     this.S = Math.min(w / this.W, h / this.H);
     this.ox = (w - this.W * this.S) / 2;
     this.oy = (h - this.H * this.S) / 2;
@@ -142,6 +158,7 @@ export class Game {
     this.hint = null;
     this.lastTap = null;
     this.stuckFor = 0;
+    this.dirty = true;
     for (const def of level.drops) {
       const vol = def.vol ?? 1;
       // one unit of paint per unit of water, whatever the colour
@@ -389,6 +406,7 @@ export class Game {
     d.pull = { x: cx - ux * (Rn + 2.5), y: cy - uy * (Rn + 2.5) };
     b.pull = { x: cx + ux * (Rn + 2.5), y: cy + uy * (Rn + 2.5) };
     this.drops.push(b);
+    this.dirty = true;
     this.splash(cx, cy, d.rgb, 4);
     sfx.split(v);
     this.later(0.55, () => {
@@ -404,6 +422,7 @@ export class Game {
     for (const g of this.glue) {
       if (segDist(d.x, d.y, g) > (g.w ?? 7) / 2 + d.R * 0.3) continue;
       d.glitter = true;
+      this.dirty = true;
       d.jiggle(Math.random() * 3);
       this.splash(d.x, d.y, [1, 0.85, 0.3], 8);
       sfx.glitter();
@@ -441,12 +460,14 @@ export class Game {
   touchCheck(d: Drop) {
     for (const o of this.drops) {
       if (o === d || o.state !== 'rest' || o.grow < 0.9) continue;
-      if (Math.hypot(o.x - d.x, o.y - d.y) > d.R * 2.2 + o.R + 14) continue;
+      // only drops within reach of the dragged one's stretched outline
+      if (Math.hypot(o.x - d.x, o.y - d.y) > d.R * 1.8 + o.R + 10) continue;
       const r = reach(d, o);
       const same = sameColor(d.pig, o.pig);
       if (r > 0) {
         const info: FailInfo = { a: [...d.pig] as Pig, b: [...o.pig] as Pig, mix: [0, 0, 0], kind: 'touch', glitter: d.glitter || o.glitter };
         mergeInto(d, o);
+        this.dirty = true;
         info.mix = [...d.pig] as Pig;
         this.grab.x *= 0.5; this.grab.y *= 0.5;
         this.splash(d.x, d.y, d.rgb, 5);
@@ -482,8 +503,20 @@ export class Game {
   // ------------------------------------------------------------ frame
 
   frame(now: number) {
-    const dt = Math.min(0.05, this.last ? (now - this.last) / 1000 : 0);
+    const raw = this.last ? now - this.last : 16;
+    const dt = Math.min(0.05, raw / 1000);
     this.last = now;
+    // a device that keeps missing frames gets a lower resolution (2 → 1.5 → 1), once and for good
+    this.frameMs += (Math.min(raw, 250) - this.frameMs) * 0.05;
+    if (!document.hidden && this.frameMs > 30 && this.dpr > 1) {
+      this.slowFor += raw / 1000;
+      if (this.slowFor > 2) {
+        this.maxDpr = Math.max(1, this.dpr - 0.5);
+        this.slowFor = 0;
+        this.frameMs = 16;
+        this.resize();
+      }
+    } else this.slowFor = 0;
     this.update(dt);
     this.draw();
     requestAnimationFrame((t) => this.frame(t));
@@ -508,12 +541,16 @@ export class Game {
     }
 
     // physics in small fixed steps
-    this.acc += dt;
+    // a slow device does at most 8 steps a frame (the drops then move a little
+    // slower, rather than each frame taking longer and longer)
+    this.acc = Math.min(this.acc + dt, DT * 8);
     const dragged = this.dragged();
     while (this.acc >= DT) {
       this.acc -= DT;
       for (const d of this.drops) {
         if (d.state === 'gone' || d.state === 'pour') continue;
+        // a drop that has come to rest sleeps until something touches it
+        if (d.still > 0.25) continue;
         stepDrop(d, DT, this.time);
         this.clamp(d);
       }
@@ -523,6 +560,10 @@ export class Game {
     for (const d of this.drops) {
       d.shiver = Math.max(0, d.shiver - dt * 2.5);
       d.shake = Math.max(0, d.shake - dt);
+      // is it perfectly still? (then it is drawn from a cached picture)
+      let moving = d.state !== 'rest' || d.grow < 1 || d.shiver > 0 || d.shake > 0 || Math.hypot(d.vx, d.vy) > 0.05;
+      if (!moving) for (let i = 0; i < d.dv.length; i++) if (Math.abs(d.dv[i]) > d.R * 0.01) { moving = true; break; }
+      d.still = moving ? 0 : d.still + dt;
     }
     if (dragged && dragged.state === 'drag') {
       sfx.slide(Math.hypot(dragged.vx, dragged.vy), dragged.vol);
@@ -561,11 +602,26 @@ export class Game {
     }
   }
 
-  /** A dead end (no useful move is left): after a moment, the level ends gently and says so. */
+  /** Ask the solver again when something changed (a join, split, pour or glitter). */
+  think() {
+    if (!this.dirty || !this.level) return;
+    this.dirty = false;
+    const live = this.drops.filter((d) => d.state !== 'gone' && d.state !== 'pour');
+    const pouring = this.drops.filter((d) => d.state === 'pour');
+    const cups = this.cups.map((c, i) => {
+      const coming = pouring.filter((d) => d.pour?.cup === i).reduce((m, d) => m + d.vol, 0);
+      return { pig: c.pig, need: c.need * QUARTER, room: Math.round((c.total - c.got - coming) * QUARTER), g: c.glitter };
+    });
+    this.answerDrops = live;
+    this.answer = solve(live.map((d) => ({ p: quarters(d.pig), g: d.glitter })), cups, { mixing: this.level.mixing, glue: this.glue.length > 0 });
+  }
+
+  /** A dead end (the solver finds no way left): after a moment, the level ends gently and says so. */
   checkStuck(dt: number) {
+    this.think();
     const busy = this.over || this.paused || this.drips.length > 0 || this.drops.some((d) => d.state !== 'rest' || d.grow < 1);
-    if (busy || !this.cups.length) { this.stuckFor = 0; return; }
-    this.stuckFor = this.suggest() ? 0 : this.stuckFor + dt;
+    if (busy || !this.cups.length || this.answer?.solvable !== 'no') { this.stuckFor = 0; return; }
+    this.stuckFor += dt;
     if (this.stuckFor > 1.2) {
       this.over = true;
       const p = this.drops[0]?.pig ?? [1, 1, 1];
@@ -591,6 +647,7 @@ export class Game {
         d.grow = Math.max(0.05, 1 - q * 0.8);
       } else {
         d.state = 'gone';
+        this.dirty = true;
         c.got += d.vol;
         c.filled = c.got >= c.total - 0.01;
         c.goal = LOW + (HIGH - LOW) * Math.min(1, c.got / c.total);
@@ -634,8 +691,34 @@ export class Game {
     if (t0 < PARTY.buttons && t >= PARTY.buttons) this.events.win();
   }
 
-  /** What should a stuck player try next? */
+  /** What should a stuck player try next? The first move of the solver's shortest way, else a rule of thumb. */
   suggest(): Game['hint'] {
+    this.think();
+    const mv = this.answer?.move, L = this.answerDrops;
+    if (mv) {
+      if (mv.kind === 'pour') {
+        const d = L[mv.drop], c = this.cups[mv.cup];
+        const px = c.x, py = c.top + c.h * 0.3;
+        return { ax: d.x, ay: d.y, bx: px, by: py, t: 0, via: d.glitter ? undefined : this.around(d.x, d.y, px, py, d.R) };
+      }
+      if (mv.kind === 'join') {
+        const a = L[mv.a], b = L[mv.b];
+        return { ax: b.x, ay: b.y, bx: a.x, by: a.y, t: 0, via: b.glitter ? undefined : this.around(b.x, b.y, a.x, a.y, b.R) };
+      }
+      if (mv.kind === 'split') { const d = L[mv.drop]; return { ax: d.x, ay: d.y, bx: d.x, by: d.y, t: 0, tap2: true }; }
+      if (mv.kind === 'glitter') {
+        const d = L[mv.drop];
+        const g = this.glue.reduce((m, q) => (segDist(d.x, d.y, q) < segDist(d.x, d.y, m) ? q : m));
+        const p = nearest(d.x, d.y, g);
+        return { ax: d.x, ay: d.y, bx: p.x, by: p.y, t: 0 };
+      }
+    }
+    if (this.answer?.solvable === 'no') return null;
+    return this.suggestRough();
+  }
+
+  /** Rules of thumb, for when the solver gave up (a very big search). */
+  suggestRough(): Game['hint'] {
     const free = this.drops.filter((d) => d.state === 'rest');
     const takes = (k: Cup, d: { pig: Pig; vol: number }, glitter: boolean) =>
       !k.filled && sameColor(d.pig, k.pig) && k.glitter === glitter && d.vol >= k.need - 0.01 && d.vol <= k.total - k.got + 0.01;
@@ -678,15 +761,22 @@ export class Game {
     const ctx = this.ctx;
     const k = this.dpr * this.S;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (!this.backdrop) this.backdrop = drawBackdrop(this.canvas.width, this.canvas.height, this.ox * this.dpr, this.oy * this.dpr, k, this.stage(), this.glue);
-    ctx.drawImage(this.backdrop, 0, 0);
+    if (!this.backdrop) {
+      // paint the still scene once, onto the layer underneath
+      this.backdrop = drawBackdrop(this.canvas.width, this.canvas.height, this.ox * this.dpr, this.oy * this.dpr, k, this.stage(), this.glue);
+      const b = this.bg.getContext('2d')!;
+      b.setTransform(1, 0, 0, 1, 0, 0);
+      b.drawImage(this.backdrop, 0, 0);
+    }
+    // the game layer itself is transparent: clear it and draw only what lives
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(k, 0, 0, k, this.ox * this.dpr, this.oy * this.dpr);
     if (this.glue.length) drawGlueTwinkle(ctx, this.glue, this.time);
     for (const c of this.cups) drawCup(ctx, c, this.time);
     // resting drops first, the moving one on top
     const order = [...this.drops].sort((a, b) => (a.state === 'drag' ? 1 : 0) - (b.state === 'drag' ? 1 : 0));
-    for (const d of order) drawDrop(ctx, d, k);
-    if (this.party >= 0) drawParty(ctx, this.party, this.cups.map((c) => c.rgb));
+    for (const d of order) drawDropCached(ctx, d, k);
+    if (this.party >= 0) drawParty(ctx, this.party, this.cups.map((c) => c.rgb), k);
     drawParticles(ctx, this.particles);
     if (this.hint) drawHand(ctx, this.hint.ax, this.hint.ay, this.hint.bx, this.hint.by, this.hint.t, this.hint.tap2, this.hint.via);
   }

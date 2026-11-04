@@ -41,6 +41,10 @@ export class Drop {
   shake = 0;
   /** where it is being pulled (finger, or an automatic move) */
   pull: { x: number; y: number } | null = null;
+  /** seconds it has been perfectly still (resting drops are drawn from a cached picture) */
+  still = 0;
+  cache: HTMLCanvasElement | null = null;
+  cacheKey = '';
   /** picked up glitter from a glue stripe (kept through joins and splits) */
   glitter = false;
   /** pour animation */
@@ -145,8 +149,17 @@ export function keepArea(dr: Drop) {
     const r0 = Math.max(R * 0.05, R + d[i]), r1 = Math.max(R * 0.05, R + d[(i + 1) % N]);
     a += 0.5 * r0 * r1 * s2;
   }
-  const s = Math.sqrt((Math.PI * R * R) / a);
+  // aim at the area of the 64-sided polygon of radius R (a little less than a
+  // circle's), so a round drop at rest has zero offsets
+  const s = Math.sqrt((0.5 * N * s2 * R * R) / a);
   for (let i = 0; i < N; i++) d[i] = Math.max(R * 0.05, R + d[i]) * s - R;
+  // the area is fixed, so the outline has no uniform (breathing) speed: remove it,
+  // or it settles into a constant drift and the drop never comes to rest
+  const dv = dr.dv;
+  let mean = 0;
+  for (let i = 0; i < N; i++) mean += dv[i];
+  mean /= N;
+  for (let i = 0; i < N; i++) dv[i] -= mean;
 }
 
 const tmpX = new Float32Array(N), tmpY = new Float32Array(N);

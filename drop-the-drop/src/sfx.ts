@@ -22,7 +22,8 @@ function build(): AudioContext | null {
   master.gain.value = muted ? 0 : VOL;
   master.connect(hs).connect(comp).connect(ac.destination);
   // room
-  const len = Math.floor(ac.sampleRate * 2.2);
+  // a short room (1.3 s): a long one costs old tablets a lot, since every sound passes through it
+  const len = Math.floor(ac.sampleRate * 1.3);
   const ir = ac.createBuffer(2, len, ac.sampleRate);
   for (let ch = 0; ch < 2; ch++) {
     const d = ir.getChannelData(ch);
@@ -31,7 +32,7 @@ function build(): AudioContext | null {
       const t = i / ac.sampleRate;
       const k = 0.25 + 0.7 * Math.min(1, t / 1.5); // darker as it fades
       lp += (Math.random() * 2 - 1 - lp) * (1 - k);
-      d[i] = lp * Math.exp(-t * 2.8);
+      d[i] = lp * Math.exp(-t * 3.8);
     }
   }
   const conv = ac.createConvolver();
@@ -109,20 +110,26 @@ function tick(freq: number, gain: number, dur: number, pan: number) {
 // the sound of a drop sliding on paper: a noise bed whose loudness and
 // brightness follow the drop's speed (it runs silent between drags)
 let slideGain: GainNode | null = null, slideBp: BiquadFilterNode | null = null;
+let slideSrc: AudioBufferSourceNode | null = null;
 function slideNodes(a: AudioContext) {
-  if (slideGain) return;
-  const src = a.createBufferSource();
-  src.buffer = noise(a);
-  src.loop = true;
-  slideBp = a.createBiquadFilter();
-  slideBp.type = 'bandpass'; slideBp.Q.value = 1.2; slideBp.frequency.value = 500;
-  const lp = a.createBiquadFilter();
-  lp.type = 'lowpass'; lp.frequency.value = 1800;
-  slideGain = a.createGain();
-  slideGain.gain.value = 0;
-  src.connect(slideBp).connect(lp).connect(slideGain);
-  out(slideGain, 0.15);
-  src.start();
+  if (!slideGain) {
+    slideBp = a.createBiquadFilter();
+    slideBp.type = 'bandpass'; slideBp.Q.value = 1.2; slideBp.frequency.value = 500;
+    const lp = a.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 1800;
+    slideGain = a.createGain();
+    slideGain.gain.value = 0;
+    slideBp.connect(lp).connect(slideGain);
+    out(slideGain, 0.15);
+  }
+  // the noise only plays while a drop is dragged (a loop running all the time costs old tablets)
+  if (!slideSrc) {
+    slideSrc = a.createBufferSource();
+    slideSrc.buffer = noise(a);
+    slideSrc.loop = true;
+    slideSrc.connect(slideBp!);
+    slideSrc.start();
+  }
 }
 
 function ready(): AudioContext | null {
@@ -228,8 +235,16 @@ export const sfx = {
   slide(speed: number, vol = 1) {
     const a = ready();
     if (!a) return;
-    slideNodes(a);
     const t = a.currentTime;
+    if (speed <= 0) {
+      if (slideSrc && slideGain) {
+        slideGain.gain.setTargetAtTime(0, t, 0.05);
+        slideSrc.stop(t + 0.3);
+        slideSrc = null;
+      }
+      return;
+    }
+    slideNodes(a);
     const v = Math.min(1, speed / 90);
     slideGain!.gain.setTargetAtTime(v * v * 0.05 * Math.min(1.4, Math.sqrt(vol)), t, 0.06);
     slideBp!.frequency.setTargetAtTime(380 + v * 900 / Math.sqrt(vol), t, 0.08);
@@ -285,25 +300,25 @@ export const sfx = {
   hop(i: number) { plop(500 + i * 120, 0.1, 0, 2.4, 0.15, [-0.4, 0, 0.4][i % 3]); },
   /** a star sticker pops on */
   sticker(i: number) {
-    plop(700, 0.08, 0, 1.8, 0.1, [0.4, 0, -0.4][i]);
-    bell(note([12, 16, 19][i]), 0.06, 0.02, 1.6, [0.4, 0, -0.4][i]);
+    plop(700 + i * 120, 0.09, 0, 1.8, 0.1, [0.4, 0, -0.4][i]);
   },
   /** the level is done */
   win() {
-    [0, 4, 7, 12, 16, 19, 24].forEach((st, i) => bell(note(st), 0.07, i * 0.12, 2.4));
+    // kept light for old tablets: five bells and a three-note pad (it was seven bells and eight saws)
+    [0, 4, 7, 12, 16].forEach((st, i) => bell(note(st), 0.075, i * 0.13, 2.0));
     const a = ready(); if (!a) return;
     const t = a.currentTime;
-    for (const st of [-12, -5, 0, 4]) {
-      for (const det of [-6, 6]) {
+    for (const st of [-12, 0, 4]) {
+      for (const det of [0]) {
         const o = a.createOscillator();
-        o.type = 'sawtooth';
+        o.type = 'triangle';
         o.frequency.value = note(st) / 2;
         o.detune.value = det;
         const lp = a.createBiquadFilter();
         lp.type = 'lowpass'; lp.frequency.value = 900;
         const g = a.createGain();
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(0.012, t + 0.5);
+        g.gain.exponentialRampToValueAtTime(0.026, t + 0.5);
         g.gain.exponentialRampToValueAtTime(0.0001, t + 3.2);
         o.connect(lp).connect(g);
         out(g, 1);

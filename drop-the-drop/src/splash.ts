@@ -26,6 +26,24 @@ function ensureCanvas(): HTMLCanvasElement {
   return canvas;
 }
 
+// one little drop picture per colour, painted once (gradients every frame were heavy on old tablets)
+const images = new Map<string, HTMLCanvasElement>();
+function dropImage(c: string): HTMLCanvasElement {
+  let img = images.get(c);
+  if (img) return img;
+  img = document.createElement('canvas');
+  img.width = img.height = 32;
+  const g = img.getContext('2d')!;
+  const gr = g.createRadialGradient(11, 10, 0, 16, 16, 16);
+  gr.addColorStop(0, '#ffffff');
+  gr.addColorStop(0.35, c);
+  gr.addColorStop(1, c);
+  g.fillStyle = gr;
+  g.beginPath(); g.arc(16, 16, 16, 0, Math.PI * 2); g.fill();
+  images.set(c, img);
+  return img;
+}
+
 function frame(now: number) {
   const cv = ensureCanvas();
   const dt = Math.min(0.05, last ? (now - last) / 1000 : 0.016);
@@ -63,14 +81,7 @@ function frame(now: number) {
     g.rotate(ang);
     g.scale(1 + Math.min(0.8, sp / 900), 1 - Math.min(0.3, sp / 2500));
     g.globalAlpha = a;
-    const gr = g.createRadialGradient(-b.r * 0.3, -b.r * 0.35, 0, 0, 0, b.r);
-    gr.addColorStop(0, '#ffffff');
-    gr.addColorStop(0.35, b.c);
-    gr.addColorStop(1, b.c);
-    g.beginPath();
-    g.arc(0, 0, b.r, 0, Math.PI * 2);
-    g.fillStyle = gr;
-    g.fill();
+    g.drawImage(dropImage(b.c), -b.r, -b.r, b.r * 2, b.r * 2);
     g.restore();
   }
   if (bits.length) requestAnimationFrame(frame);

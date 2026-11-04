@@ -76,6 +76,48 @@ function trace(ctx: CanvasRenderingContext2D, px: Float32Array, py: Float32Array
   ctx.closePath();
 }
 
+// Soft round blobs, one per colour, painted once: shadows and light pools.
+const blobs = new Map<string, HTMLCanvasElement>();
+function softBlob(color: string): HTMLCanvasElement {
+  let c = blobs.get(color);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, color);
+  gr.addColorStop(0.62, color);
+  gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 64, 64);
+  blobs.set(color, c);
+  return c;
+}
+
+/**
+ * A drop that has stopped moving is painted once into its own small picture
+ * and reused, so a level with many resting drops costs little. Glittery drops
+ * refresh their picture a few times a second so their glitter still twinkles.
+ */
+export function drawDropCached(ctx: CanvasRenderingContext2D, dr: Drop, S: number) {
+  if (dr.still < 0.25) { dr.cache = null; drawDrop(ctx, dr, S); return; }
+  const tick = dr.glitter ? Math.floor(performance.now() / 300) : 0;
+  const key = `${S.toFixed(3)}|${dr.vol}|${dr.x.toFixed(2)}|${dr.y.toFixed(2)}|${dr.rgb.join()}|${dr.glitter}|${tick}`;
+  const half = Math.ceil((dr.R * 1.7 + 2) * S);
+  if (!dr.cache || dr.cacheKey !== key) {
+    const c = dr.cache && dr.cache.width === half * 2 ? dr.cache : document.createElement('canvas');
+    c.width = c.height = half * 2;
+    const g = c.getContext('2d')!;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, c.width, c.height);
+    g.setTransform(S, 0, 0, S, half - dr.x * S, half - dr.y * S);
+    drawDrop(g, dr, S);
+    dr.cache = c;
+    dr.cacheKey = key;
+  }
+  ctx.drawImage(dr.cache, dr.x - half / S, dr.y - half / S, (half * 2) / S, (half * 2) / S);
+}
+
 /**
  * Draw one drop in world coordinates. `S` is device pixels per world unit
  * (shadow offsets and blurs ignore the canvas transform, so they need it).
@@ -109,22 +151,22 @@ export function drawDrop(ctx: CanvasRenderingContext2D, dr: Drop, S: number, sca
   const flat = 1 - rim / R; // 0.5 for a small drop, more for big ones
 
   // 1. shadow on the paper (down and right of the light), then the coloured
-  //    light that passed through the drop and lands just beside it
-  const OFF = 4000;
-  ctx.fillStyle = '#000';
-  trace(ctx, xs, ys, -OFF, 0);
-  ctx.shadowColor = css(tint(col, INK, 0.75), 0.16 * alpha);
-  ctx.shadowBlur = rim * 0.9 * S;
-  ctx.shadowOffsetX = (OFF + rim * 0.35) * S;
-  ctx.shadowOffsetY = rim * 0.5 * S;
-  ctx.fill();
-  ctx.shadowColor = css(col, 0.22 * alpha);
-  ctx.shadowBlur = rim * 0.45 * S;
-  ctx.shadowOffsetX = (OFF + rim * 0.22) * S;
-  ctx.shadowOffsetY = rim * 0.3 * S;
-  ctx.fill();
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+  //    light that passed through the drop and lands just beside it. Both are
+  //    soft blobs painted once (a live canvas blur is far too slow on old
+  //    tablets), stretched like the drop.
+  const sx = 1 + m, sy = Math.max(0.4, 1 - m * 0.8);
+  const blob = (c: string, a: number, ox: number, oy: number, r: number) => {
+    ctx.save();
+    ctx.globalAlpha = alpha * a;
+    ctx.translate(gx + ox, gy + oy);
+    ctx.rotate(psi);
+    ctx.scale(sx, sy);
+    ctx.drawImage(softBlob(c), -r, -r, r * 2, r * 2);
+    ctx.restore();
+  };
+  blob(css(tint(col, INK, 0.75)), 0.2, rim * 0.35, rim * 0.5, R + rim * 0.55);
+  blob(css(col), 0.28, rim * 0.22, rim * 0.3, R + rim * 0.25);
+  void S;
 
   // 2. the body: clear water with dye, see-through in the middle (the paper
   //    shows), deeper colour toward the rim; the gradient stretches with the drop
@@ -697,17 +739,43 @@ export function drawCup(ctx: CanvasRenderingContext2D, c: CupView, t: number) {
 
 // ---------------------------------------------------------------- the celebration
 
+// Pictures painted once and reused: stickers, the writing, falling droplets.
+// (Blurred shadows, gradients and text redrawn every frame were too heavy for old tablets.)
+const sprites = new Map<string, HTMLCanvasElement>();
+function sprite(key: string, w: number, h: number, paint: (g: CanvasRenderingContext2D) => void): HTMLCanvasElement {
+  let c = sprites.get(key);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = Math.max(1, Math.ceil(w));
+  c.height = Math.max(1, Math.ceil(h));
+  paint(c.getContext('2d')!);
+  if (sprites.size > 60) sprites.clear();
+  sprites.set(key, c);
+  return c;
+}
+
 /** Celebration timing, in seconds from its start: quick, so it feels immediate (owner's request). */
 export const PARTY = { stars: [0.12, 0.22, 0.32], pop: 0.22, write: 0.3, writeFor: 0.55, buttons: 1.0 };
 
 const easeBack = (q: number) => { const c = 2.2; q = Math.max(0, Math.min(1, q)); return 1 + (c + 1) * Math.pow(q - 1, 3) + c * Math.pow(q - 1, 2); };
 
-function sticker(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, rot: number, s: number) {
+function sticker(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, rot: number, s: number, k: number) {
   if (s <= 0) return;
+  const half = r * 1.45;
+  const img = sprite(`sticker|${r}|${k.toFixed(2)}`, half * 2 * k, half * 2 * k, (g) => {
+    g.setTransform(k, 0, 0, k, half * k, half * k);
+    stickerShape(g, r);
+  });
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rot);
   ctx.scale(s, s);
+  ctx.drawImage(img, -half, -half, half * 2, half * 2);
+  ctx.restore();
+}
+
+function stickerShape(ctx: CanvasRenderingContext2D, r: number) {
+  ctx.save();
   const star = (rr: number) => {
     ctx.beginPath();
     for (let i = 0; i < 10; i++) {
@@ -745,35 +813,37 @@ function sticker(ctx: CanvasRenderingContext2D, x: number, y: number, r: number,
  * Drawn over the paper after the last cup fills: three star stickers pop on,
  * then "כל הכבוד!" is written in marker from right to left, in the cups' colours.
  */
-export function drawParty(ctx: CanvasRenderingContext2D, t: number, colors: RGB[]) {
+export function drawParty(ctx: CanvasRenderingContext2D, t: number, colors: RGB[], k = 4) {
   const cx = 80;
   const [s0, s1, s2] = PARTY.stars;
-  sticker(ctx, cx + 18, 17, 5.5, 0.2, easeBack((t - s0) / PARTY.pop));
-  sticker(ctx, cx, 13, 7, 0, easeBack((t - s1) / PARTY.pop));
-  sticker(ctx, cx - 18, 17, 5.5, -0.2, easeBack((t - s2) / PARTY.pop));
+  sticker(ctx, cx + 18, 17, 5.5, 0.2, easeBack((t - s0) / PARTY.pop), k);
+  sticker(ctx, cx, 13, 7, 0, easeBack((t - s1) / PARTY.pop), k);
+  sticker(ctx, cx - 18, 17, 5.5, -0.2, easeBack((t - s2) / PARTY.pop), k);
   const p = Math.max(0, Math.min(1, (t - PARTY.write) / PARTY.writeFor));
   if (p <= 0) return;
-  const text = 'כל הכבוד!';
-  ctx.save();
-  ctx.font = '700 15px Fredoka, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.direction = 'rtl';
-  const w = ctx.measureText(text).width + 4;
-  ctx.beginPath();
-  ctx.rect(cx + w / 2 - w * p, 20, w * p, 22);
-  ctx.clip();
-  const gr = ctx.createLinearGradient(cx + w / 2, 0, cx - w / 2, 0);
+  // the writing is painted once; it is revealed from right to left by showing more of the picture
+  const W = 64, H = 22; // world units around the text
   const cols = colors.length ? colors : [[0.2, 0.4, 0.9] as RGB];
-  cols.forEach((c, i) => gr.addColorStop(cols.length === 1 ? 0 : i / (cols.length - 1), css(c)));
-  if (cols.length === 1) gr.addColorStop(1, css(tint(cols[0], INK, 0.2)));
-  ctx.lineJoin = 'round';
-  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-  ctx.lineWidth = 2.2;
-  ctx.strokeText(text, cx, 31.5);
-  ctx.fillStyle = gr;
-  ctx.fillText(text, cx, 31.5);
-  ctx.restore();
+  const img = sprite(`write|${k.toFixed(2)}|${cols.map((c) => c.join()).join('/')}`, W * k, H * k, (g) => {
+    g.setTransform(k, 0, 0, k, (W / 2) * k, (H / 2) * k);
+    const text = 'כל הכבוד!';
+    g.font = '700 15px Fredoka, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.direction = 'rtl';
+    const w = g.measureText(text).width;
+    const gr = g.createLinearGradient(w / 2, 0, -w / 2, 0);
+    cols.forEach((c, i) => gr.addColorStop(cols.length === 1 ? 0 : i / (cols.length - 1), css(c)));
+    if (cols.length === 1) gr.addColorStop(1, css(tint(cols[0], INK, 0.2)));
+    g.lineJoin = 'round';
+    g.strokeStyle = 'rgba(255,255,255,0.95)';
+    g.lineWidth = 2.2;
+    g.strokeText(text, 0, 0.5);
+    g.fillStyle = gr;
+    g.fillText(text, 0, 0.5);
+  });
+  const shown = img.width * p;
+  ctx.drawImage(img, img.width - shown, 0, shown, img.height, cx + W / 2 - W * p, 31.5 - H / 2, W * p, H);
 }
 
 // ---------------------------------------------------------------- particles and hints
@@ -811,15 +881,18 @@ export function drawParticles(ctx: CanvasRenderingContext2D, ps: Particle[]) {
       ctx.lineWidth = 0.5;
       ctx.stroke();
     } else {
-      // a small falling droplet, with its own little shine
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      const g = ctx.createRadialGradient(p.x - p.size * 0.3, p.y - p.size * 0.35, 0, p.x, p.y, p.size);
-      g.addColorStop(0, css(tint(p.rgb, WHITE, 0.75), a));
-      g.addColorStop(0.45, css(p.rgb, a * 0.9));
-      g.addColorStop(1, css(tint(p.rgb, INK, 0.35), a));
-      ctx.fillStyle = g;
-      ctx.fill();
+      // a small falling droplet, with its own little shine (one picture per colour)
+      const img = sprite(`pdrop|${p.rgb.map((v) => v.toFixed(2)).join()}`, 32, 32, (g) => {
+        const gr = g.createRadialGradient(11, 10, 0, 16, 16, 16);
+        gr.addColorStop(0, css(tint(p.rgb, WHITE, 0.75)));
+        gr.addColorStop(0.45, css(p.rgb, 0.9));
+        gr.addColorStop(1, css(tint(p.rgb, INK, 0.35)));
+        g.fillStyle = gr;
+        g.beginPath(); g.arc(16, 16, 16, 0, Math.PI * 2); g.fill();
+      });
+      ctx.globalAlpha = a;
+      ctx.drawImage(img, p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
+      ctx.globalAlpha = 1;
     }
   }
 }

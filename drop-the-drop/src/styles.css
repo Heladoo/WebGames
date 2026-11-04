@@ -21,7 +21,8 @@ html, body {
   user-select: none; -webkit-user-select: none;
   overscroll-behavior: none;
 }
-#stage { position: fixed; inset: 0; display: block; touch-action: none; }
+#bg, #stage { position: fixed; inset: 0; display: block; touch-action: none; }
+#bg { pointer-events: none; }
 .hidden, [hidden] { display: none !important; }
 
 button { font: inherit; color: inherit; cursor: pointer; }

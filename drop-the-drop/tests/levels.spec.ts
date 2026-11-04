@@ -28,7 +28,8 @@ test('every level is solvable and starts tidy', async ({ page }) => {
         const t = Math.max(0, Math.min(1, ((d.x - q.x0) * dx + (d.y - q.y0) * dy) / (dx * dx + dy * dy)));
         if (Math.hypot(d.x - q.x0 - dx * t, d.y - q.y0 - dy * t) < (q.w ?? 7) / 2 + d.R + 2) onGlue = true;
       }
-      return { id: l.id, have, want, closest, lowest, onGlue, cupTop: g.cups[0].top, hint: !!g.suggest() };
+      g.dirty = true; g.think();
+      return { id: l.id, have, want, closest, lowest, onGlue, cupTop: g.cups[0].top, hint: !!g.suggest(), solvable: g.answer.solvable };
     });
   });
   for (const r of report) {
@@ -37,6 +38,7 @@ test('every level is solvable and starts tidy', async ({ page }) => {
     expect(r.lowest, `${r.id}: drops start above the cups`).toBeLessThan(r.cupTop - 5);
     expect(r.hint, `${r.id}: the hint has a first move`).toBe(true);
     expect(r.onGlue, `${r.id}: no drop starts on glue`).toBe(false);
+    expect(r.solvable, `${r.id}: the solver finds a way`).toBe('yes');
   }
 });
 

@@ -260,3 +260,22 @@ test('level 22: going round the end of the glue keeps a drop plain; the hint sho
   const after = await snap(page);
   expect(after.cups.find((c) => !c.glitter)!.filled).toBe(true);
 });
+
+test('level 19: four green halves can never make lime and turquoise, so the level ends with the try-again card', async ({ page }) => {
+  await startLevel(page, 19);
+  // the state from the owner's screenshot: the yellow and blue drops are gone, four green halves are left
+  await page.evaluate(() => {
+    const g = (window as any).__dd;
+    const Drop = g.drops[0].constructor;
+    g.drops = [0, 1, 2, 3].map((i: number) => { const d = new Drop(40 + i * 25, 40, 1, [0, 0.5, 0.5]); d.still = 1; return d; });
+    g.dirty = true;
+  });
+  await expect(page.locator('#fail')).toBeVisible({ timeout: 4000 });
+  await expect(page.locator('#fail-text')).toContainText('ננסה שוב');
+});
+
+test('level 16: the hint splits the big red drop first (joining first would be a dead end)', async ({ page }) => {
+  await startLevel(page, 16);
+  const h = await page.evaluate(() => (window as any).__dd.suggest());
+  expect(h.tap2, 'the first hint is a double tap (split)').toBe(true);
+});
