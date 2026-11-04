@@ -10,6 +10,7 @@
 //   9-12  mix colours: red + yellow make orange, and so on
 
 import { PIG } from './color';
+import type { TowelDef } from './towel';
 
 export const WORLD_W = 160;
 export const WORLD_H = 100;
@@ -40,9 +41,13 @@ export interface Level {
   /** may drops of different colours join? (true in mixing levels) */
   mixing: boolean;
   /** a level that teaches something shows its hint sooner */
-  teach?: 'split' | 'glitter';
+  teach?: 'split' | 'glitter' | 'towel';
   /** glitter glue stripes */
   glue?: Glue[];
+  /** a paper towel to colour, instead of cups */
+  towel?: TowelDef;
+  /** a level with no way to go wrong: no dead-end check */
+  free?: boolean;
 }
 
 export const LEVELS: Level[] = [
@@ -144,6 +149,16 @@ export const LEVELS: Level[] = [
     id: 'l20', mixing: true, cups: [{ color: 'orange', need: 2 }, { color: 'green', need: 2 }, { color: 'purple', need: 2 }],
     drops: [{ color: 'red', x: 32, y: 32, vol: 2 }, { color: 'yellow', x: 80, y: 44, vol: 2 }, { color: 'blue', x: 128, y: 32, vol: 2 }],
   },
+  // ---- free mixing: many tiny dots of all three colours make one huge brown drop.
+  // Any join is fine (the totals are exactly equal), so nothing can go wrong (owner's request:
+  // children loved mixing, and this lets them mix freely).
+  {
+    id: 'l29', mixing: true, free: true, cups: [{ color: 'brown', need: 6 }],
+    drops: ([
+      [14, 16, 'red'], [34, 26, 'yellow'], [54, 16, 'blue'], [74, 26, 'red'], [94, 16, 'yellow'], [114, 26, 'blue'],
+      [134, 16, 'red'], [148, 32, 'yellow'], [20, 44, 'blue'], [44, 48, 'yellow'], [104, 48, 'red'], [128, 48, 'blue'],
+    ] as const).map(([x, y, c]) => ({ color: c, x, y, vol: 0.5 })),
+  },
   // ---- glitter glue: pass through it for a sparkly cup, go around it for a plain one
   {
     id: 'l21', mixing: false, teach: 'glitter', glue: [{ x0: 80, y0: 3, x1: 80, y1: 97 }],
@@ -183,6 +198,30 @@ export const LEVELS: Level[] = [
     id: 'l28', mixing: true, glue: [{ x0: 80, y0: 3, x1: 80, y1: 52 }],
     cups: [{ color: 'lime', need: 3, x: 36 }, { color: 'magenta', need: 3, x: 124, glitter: true }],
     drops: [{ color: 'red', x: 30, y: 26, vol: 2 }, { color: 'blue', x: 52, y: 46, vol: 2 }, { color: 'yellow', x: 130, y: 30, vol: 2 }],
+  },
+  // ---- the paper towel: drops soak in and colour it. First free colouring, then pictures.
+  {
+    id: 'l30', mixing: true, free: true, teach: 'towel', cups: [], towel: { x0: 8, y0: 36, x1: 152, y1: 94 },
+    drops: [{ color: 'red', x: 36, y: 20 }, { color: 'yellow', x: 80, y: 20 }, { color: 'blue', x: 124, y: 20 }],
+  },
+  {
+    id: 'l31', mixing: true, free: true, cups: [], towel: { x0: 8, y0: 36, x1: 152, y1: 94 },
+    drops: [
+      { color: 'red', x: 18, y: 20 }, { color: 'yellow', x: 44, y: 18, vol: 2 }, { color: 'blue', x: 70, y: 20 },
+      { color: 'red', x: 94, y: 18 }, { color: 'blue', x: 120, y: 20, vol: 2 }, { color: 'yellow', x: 145, y: 18 },
+    ],
+  },
+  {
+    id: 'l32', mixing: true, cups: [], towel: { x0: 44, y0: 6, x1: 154, y1: 94, picture: 'flower', scale: 1.7 },
+    drops: (['red', 'red', 'yellow', 'red', 'blue', 'yellow', 'red', 'red'] as const).map((c, i) => ({ color: c, x: 13 + (i % 2) * 18, y: 14 + (i >> 1) * 23 })),
+  },
+  {
+    id: 'l33', mixing: true, cups: [], towel: { x0: 44, y0: 6, x1: 154, y1: 94, picture: 'sun', scale: 1.5 },
+    drops: (['yellow', 'yellow', 'red', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow'] as const).map((c, i) => ({ color: c, x: 13 + (i % 2) * 18, y: 14 + (i >> 1) * 23 })),
+  },
+  {
+    id: 'l34', mixing: true, cups: [], towel: { x0: 44, y0: 6, x1: 154, y1: 94, picture: 'butterfly', scale: 1.45 },
+    drops: (['red', 'blue', 'red', 'blue', 'red', 'blue', 'red'] as const).map((c, i) => ({ color: c, x: 13 + (i % 2) * 18, y: 14 + (i >> 1) * 23 })),
   },
 ];
 

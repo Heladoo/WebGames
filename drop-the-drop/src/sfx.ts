@@ -314,6 +314,26 @@ export const sfx = {
     [24, 28, 31, 36].forEach((st, i) => bell(note(st), 0.025, i * 0.04 + rand(0, 0.015), 0.9, rand(-0.5, 0.5)));
     tick(rand(5000, 7000), 0.03, 0.12, 0);
   },
+    /** a drop soaks into the paper towel: a soft wet hush and a low plop */
+  soak(vol: number) {
+    const a = ready(); if (!a) return;
+    const t = a.currentTime + shift;
+    const src = a.createBufferSource();
+    src.buffer = noise(a);
+    const lp = a.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(2400, t);
+    lp.frequency.exponentialRampToValueAtTime(500, t + 0.5);
+    const g = a.createGain();
+    const peak = 0.05 * Math.min(1.6, Math.sqrt(vol));
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    src.connect(lp).connect(g);
+    out(g, 0.4, rand(-0.3, 0.3));
+    src.start(t, Math.random() * 1.2); src.stop(t + 0.65);
+    plop((260 / Math.sqrt(vol)) * rand(0.95, 1.05), 0.07, 0.02, 0.7, 0.2);
+  },
     /** a cup hops in the celebration */
   hop(i: number) { plop(500 + i * 120, 0.1, 0, 2.4, 0.15, [-0.4, 0, 0.4][i % 3]); },
   /** a star sticker pops on */

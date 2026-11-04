@@ -146,3 +146,26 @@ test('pressing a button splashes it, then the next screen opens', async ({ page 
   expect(drawn, 'droplets are drawn').toBeGreaterThan(0);
   await expect(page.locator('#pick')).toBeVisible();
 });
+
+test('with every level open, the levels screen still fits a small phone held sideways', async ({ page }) => {
+  for (const viewport of [{ width: 640, height: 360 }, { width: 800, height: 330 }, { width: 1180, height: 820 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/?debug=state');
+    const ids = await page.evaluate(async () => (await import('/src/levels.ts')).LEVELS.map((l: { id: string }) => l.id));
+    await open(page, ids);
+    await page.click('#btn-levels');
+    await page.waitForSelector('#pick:not(.hidden) .level-tile');
+    await page.waitForTimeout(450);
+    const m = await page.evaluate(() => {
+      const r = document.querySelector('.pick-card')!.getBoundingClientRect();
+      const tiles = [...document.querySelectorAll('.level-tile')].map((t) => t.getBoundingClientRect());
+      return { card: { x: r.x, y: r.y, w: r.width, h: r.height }, view: { w: innerWidth, h: innerHeight }, tiles: tiles.map((t) => ({ x: t.x, y: t.y, w: t.width, h: t.height })) };
+    });
+    expect(m.tiles.length).toBe(ids.length);
+    expect(m.card.y + m.card.h, `${viewport.width}x${viewport.height}: the card fits`).toBeLessThanOrEqual(m.view.h + 1);
+    for (const t of m.tiles) {
+      expect(t.h).toBeGreaterThanOrEqual(48);
+      expect(t.y + t.h, `${viewport.width}x${viewport.height}: every tile is on screen`).toBeLessThanOrEqual(m.view.h + 1);
+    }
+  }
+});

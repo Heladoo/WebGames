@@ -9,6 +9,8 @@
 import { css, INK, tint, WHITE, type RGB } from './color';
 import { type Drop, N, R1, COS, SIN } from './drop';
 import type { Glue } from './levels';
+import { PICTURES, type Shape, type TowelDef } from './towel';
+import { PIG, pigToRgb as toRgb } from './color';
 
 /** Glitter colours: gold, silver, pink, cyan, violet. */
 const GLITTER = ['#ffd54a', '#eef3fb', '#ff7ac8', '#6fe3ff', '#b88cff'];
@@ -444,7 +446,7 @@ function plant(g: CanvasRenderingContext2D, k: number, stage: number) {
  * (its corners peek out), and the paper sheet. ox, oy and k place the world
  * in device pixels.
  */
-export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: number, stage = 0, glue: Glue[] = []): HTMLCanvasElement {
+export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: number, stage = 0, glue: Glue[] = [], towel?: TowelDef): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const g = c.getContext('2d')!;
@@ -482,6 +484,7 @@ export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: nu
   g.save();
   g.setTransform(k, 0, 0, k, ox, oy);
   glue.forEach((q, gi) => drawGlue(g, q, gi));
+  if (towel) drawTowel(g, towel);
   g.restore();
   // the plant leans over the paper's corner, as in the reference photo
   g.save();
@@ -525,6 +528,58 @@ function drawGlue(g: CanvasRenderingContext2D, q: Glue, gi: number) {
   g.lineTo(q.x1 + nx * w * 0.25, q.y1 + ny * w * 0.25);
   g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = w * 0.12;
   g.stroke();
+}
+
+/** A sheet of paper towel (world units): soft white, quilted, perforated edges, maybe an embossed picture. */
+function drawTowel(g: CanvasRenderingContext2D, t: TowelDef) {
+  const w = t.x1 - t.x0, h = t.y1 - t.y0;
+  g.save();
+  g.shadowColor = 'rgba(70,60,40,0.22)';
+  g.shadowBlur = 6; g.shadowOffsetY = 1.5;
+  g.fillStyle = '#fefdfb';
+  g.fillRect(t.x0, t.y0, w, h);
+  g.restore();
+  g.save();
+  g.beginPath(); g.rect(t.x0, t.y0, w, h); g.clip();
+  // the quilting: a soft diamond grid of pressed dots
+  const step = 4.2;
+  for (let y = t.y0 + step / 2, row = 0; y < t.y1; y += step * 0.5, row++) {
+    for (let x = t.x0 + (row % 2 ? step / 2 : 0); x < t.x1; x += step) {
+      g.beginPath(); g.arc(x + 0.15, y + 0.2, 0.55, 0, Math.PI * 2);
+      g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
+      g.beginPath(); g.arc(x, y, 0.5, 0, Math.PI * 2);
+      g.fillStyle = 'rgba(170,160,145,0.22)'; g.fill();
+    }
+  }
+  // fibres
+  for (let i = 0; i < w * h * 0.5; i++) {
+    const x = t.x0 + hash(i * 3.1) * w, y = t.y0 + hash(i * 7.7) * h, a = hash(i) * Math.PI;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 0.9, y + Math.sin(a) * 0.9);
+    g.strokeStyle = 'rgba(160,150,135,0.08)'; g.lineWidth = 0.12; g.stroke();
+  }
+  // a picture: a pale hint of each area's colour, and embossed outlines
+  const cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2;
+  const shape = (sh: Shape, dx = 0, dy = 0) => {
+    g.beginPath();
+    g.ellipse(cx + sh.x + dx, cy + sh.y + dy, sh.rx, sh.ry, sh.rot ?? 0, 0, Math.PI * 2);
+  };
+  const sc = t.scale ?? 1;
+  for (const area0 of t.picture ? PICTURES[t.picture] : []) {
+    const area = { ...area0, shapes: area0.shapes.map((sh) => ({ ...sh, x: sh.x * sc, y: sh.y * sc, rx: sh.rx * sc, ry: sh.ry * sc })) };
+    const c = toRgb(PIG[area.color]);
+    for (const sh of area.shapes) { shape(sh); g.fillStyle = css(c, 0.13); g.fill(); }
+    for (const sh of area.shapes) {
+      shape(sh, 0.25, 0.3); g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 0.7; g.stroke();
+      shape(sh); g.strokeStyle = css(tint(c, INK, 0.3), 0.32); g.lineWidth = 0.55; g.stroke();
+    }
+  }
+  g.restore();
+  // perforated edges, left and right
+  g.save();
+  g.setLineDash([0.9, 0.9]);
+  g.strokeStyle = 'rgba(150,140,125,0.45)'; g.lineWidth = 0.35;
+  for (const x of [t.x0 + 1.2, t.x1 - 1.2]) { g.beginPath(); g.moveTo(x, t.y0 + 1); g.lineTo(x, t.y1 - 1); g.stroke(); }
+  g.restore();
 }
 
 /** A few glints twinkling on the glue stripes (drawn every frame, world units). */
@@ -928,10 +983,11 @@ function drawDoubleTap(ctx: CanvasRenderingContext2D, x: number, y: number, p: n
 }
 
 /** A see-through fingertip showing a move: press at a, slide to b, lift. */
-export function drawHand(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, p: number, tap2 = false, via?: { x: number; y: number }) {
+export function drawHand(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, p: number, tap2 = false, via?: { x: number; y: number } | { x: number; y: number }[]) {
   if (tap2) { drawDoubleTap(ctx, ax, ay, p); return; }
   // the path: straight, or round a glue stripe through `via`
-  const pts = via ? [[ax, ay], [via.x, via.y], [bx, by]] : [[ax, ay], [bx, by]];
+  const vias = via ? (Array.isArray(via) ? via : [via]) : [];
+  const pts = [[ax, ay], ...vias.map((v) => [v.x, v.y]), [bx, by]];
   const segs = pts.slice(1).map((q, i) => Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]));
   const total = segs.reduce((m, v) => m + v, 0) || 1;
   const at = (e: number): [number, number] => {

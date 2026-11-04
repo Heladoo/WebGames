@@ -9,6 +9,7 @@ import { setMuted, unlock } from './sfx';
 import { load, save } from './state';
 import { stats } from './stats';
 import { initSplash } from './splash';
+import { PICTURES } from './towel';
 
 const params = new URLSearchParams(location.search);
 const debug = params.get('debug') ?? '';
@@ -179,6 +180,12 @@ function failText(info: FailInfo): string {
   if (info.kind === 'glitter') {
     return `ל${aDrop(colorName(info.mix))} יש עכשיו נצנצים, וזה לא מתאים לאף כוס. נסו לעקוף את פס הדבק.`;
   }
+  if (info.kind === 'towel') {
+    // "בעלי הכותרת", "בשמש": the area's name with ב (an opening ה goes away)
+    const n = info.area ?? '';
+    const where = 'ב' + (n.startsWith('ה') ? n.slice(1) : n);
+    return `${where} יש עכשיו ${COLOR_HE[colorName(info.a)]}, אבל צריך שם ${COLOR_HE[colorName(info.b)]}. ננסה שוב?`;
+  }
   if (info.kind === 'stuck') return 'הטיפות שנשארו כבר לא יכולות למלא את הכוסות. בואו ננסה שוב, ואולי נחבר או נפצל אחרת.';
   const a = colorName(info.a), b = colorName(info.b), m = colorName(info.mix);
   if (info.kind === 'touch') {
@@ -223,6 +230,11 @@ function openPicker() {
 
 
 function cupColors(l: Level): { c: string; glitter: boolean }[] {
+  if (l.towel) {
+    // a towel level: its picture's colours, or the three base colours for free colouring
+    const cols = l.towel.picture ? PICTURES[l.towel.picture].map((a) => a.color) : (['red', 'yellow', 'blue'] as const);
+    return cols.map((c) => ({ c: css(pigToRgb(PIG[c])), glitter: false }));
+  }
   return l.cups.map((c) => ({ c: css(pigToRgb(PIG[c.color])), glitter: !!c.glitter }));
 }
 
@@ -281,6 +293,20 @@ function paintEquation(cv: HTMLCanvasElement, info: FailInfo) {
   const unit = cv.height / 28;
   const w = cv.width / unit;
   const vol = (p: Pig) => Math.min(2.2, Math.max(1, (p[0] + p[1] + p[2]) * 0.9));
+  if (info.kind === 'towel') {
+    // what the area got ≠ what it wants
+    paintDrops(cv, [
+      { x: w * 0.75, y: 14, vol: 1.8, pig: share(info.a) },
+      { x: w * 0.25, y: 14, vol: 1.8, pig: share(info.b) },
+    ], unit);
+    ctx.setTransform(unit, 0, 0, unit, 0, 0);
+    ctx.fillStyle = '#5b6380';
+    ctx.font = '700 9px Fredoka, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('≠', w * 0.5, 14.5);
+    return;
+  }
   if (info.kind === 'glitter') {
     // the drop + glitter = the drop with glitter
     paintDrops(cv, [

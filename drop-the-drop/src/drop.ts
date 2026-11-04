@@ -18,7 +18,7 @@ export const COS = new Float32Array(N);
 export const SIN = new Float32Array(N);
 for (let i = 0; i < N; i++) { COS[i] = Math.cos((i / N) * Math.PI * 2); SIN[i] = Math.sin((i / N) * Math.PI * 2); }
 
-export type DropState = 'rest' | 'drag' | 'auto' | 'pour' | 'gone';
+export type DropState = 'rest' | 'drag' | 'auto' | 'pour' | 'gone' | 'soak';
 
 let nextId = 1;
 

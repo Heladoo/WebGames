@@ -18,6 +18,14 @@ test('every level is solvable and starts tidy', async ({ page }) => {
         const p = PIG[c.color], s = p[0] + p[1] + p[2], tot = c.total ?? c.need;
         p.forEach((v: number, k: number) => (want[k] += (v / s) * tot));
       }
+      // a towel picture: its areas' paint; free colouring wants whatever there is
+      for (const a of g.towel?.areas ?? []) {
+        const p = PIG[a.color], s = p[0] + p[1] + p[2];
+        p.forEach((v: number, k: number) => (want[k] += (v / s) * a.need));
+      }
+      if (l.towel && !l.towel.picture) have.forEach((v: number, k: number) => (want[k] = v));
+      // drops start off the towel
+      const onTowel = l.towel ? g.drops.some((d: any) => d.x + d.R > l.towel.x0 && d.y + d.R > l.towel.y0) : false;
       let closest = Infinity;
       for (const a of g.drops) for (const b of g.drops) if (a !== b) closest = Math.min(closest, Math.hypot(a.x - b.x, a.y - b.y) - a.R - b.R);
       const lowest = Math.max(...g.drops.map((d: any) => d.y + d.R));
@@ -29,7 +37,7 @@ test('every level is solvable and starts tidy', async ({ page }) => {
         if (Math.hypot(d.x - q.x0 - dx * t, d.y - q.y0 - dy * t) < (q.w ?? 7) / 2 + d.R + 2) onGlue = true;
       }
       g.dirty = true; g.think();
-      return { id: l.id, have, want, closest, lowest, onGlue, cupTop: g.cups[0].top, hint: !!g.suggest(), solvable: g.answer.solvable };
+      return { id: l.id, have, want, closest, lowest, onGlue, onTowel, cupTop: g.cups[0]?.top ?? 999, hint: !!g.suggest(), solvable: g.answer?.solvable ?? 'yes', free: !!l.free };
     });
   });
   for (const r of report) {
@@ -39,6 +47,7 @@ test('every level is solvable and starts tidy', async ({ page }) => {
     expect(r.hint, `${r.id}: the hint has a first move`).toBe(true);
     expect(r.onGlue, `${r.id}: no drop starts on glue`).toBe(false);
     expect(r.solvable, `${r.id}: the solver finds a way`).toBe('yes');
+    expect(r.onTowel, `${r.id}: drops start off the towel`).toBe(false);
   }
 });
 

@@ -10,7 +10,9 @@ A calm browser game for young children, based on a real activity: drops of colou
 - The plant on the table grows from level to level and blooms near the end.
 - **Split** a big drop in two with a double tap (or a double click), to share one colour between two mixes.
 - **Glitter glue:** dragging a drop through a glue stripe gives it glitter. Cups with glitter on their rim want glittery drops; plain cups don't, so sometimes you go through the glue and sometimes around it.
-- **28 levels** that open one by one. Play (or "next" at the end of a level) goes on to the next level; the Levels screen shows every open level, plus the next one, locked.
+- **A free mixing level:** lots of tiny dots of every colour to join into one huge brown drop; nothing can go wrong.
+- **The paper towel:** let a drop go over the towel and it soaks in; the colour wicks through the fibres, mixes where stains meet and dries lighter. First free colouring, then pictures to colour (a flower, a sun, a butterfly), mixing colours like green from yellow and blue. A clearly wrong colour shows a try-again card; small bleeds are fine.
+- **34 levels** that open one by one. Play (or "next" at the end of a level) goes on to the next level; the Levels screen shows every open level, plus the next one, locked.
 - When the last cup fills, the cups hop, star stickers pop onto the paper and "כל הכבוד!" is written on it.
 - If you wait a while, a see-through finger shows a move to try.
 - Buttons are drops of jelly: pressing one splashes it, then the next screen opens.

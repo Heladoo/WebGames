@@ -23,6 +23,8 @@ html, body {
 }
 #bg, #stage { position: fixed; inset: 0; display: block; touch-action: none; }
 #bg { pointer-events: none; }
+/* the paper towel's stain: a small picture stretched smoothly over the towel */
+#towel { position: fixed; pointer-events: none; display: none; image-rendering: auto; }
 .hidden, [hidden] { display: none !important; }
 
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -223,7 +225,9 @@ h1 { margin: 0; line-height: 0; }
   .title-side { gap: 8px; }
   .home-btn { min-height: 50px; font-size: 19px; }
   .portal-link img { width: 80px; }
-  .levels { grid-template-columns: repeat(7, 56px); gap: 8px; }
+  .levels { grid-template-columns: repeat(9, 50px); gap: 7px; }
+  .level-tile { width: 50px; height: 50px; }
+  .pick-card { max-width: min(560px, 100%); gap: 10px; padding: 10px 16px; }
   .pick-head h2 { font-size: 24px; }
   .level-tile { width: 56px; height: 56px; }
   .card { gap: 8px; padding: 14px 20px; }
@@ -238,8 +242,8 @@ h1 { margin: 0; line-height: 0; }
 }
 @media (max-height: 380px) {
   .fine { display: none; }
-  .levels { grid-template-columns: repeat(7, 52px); }
-  .level-tile { width: 52px; height: 52px; border-radius: 14px; }
+  .levels { grid-template-columns: repeat(9, 48px); gap: 6px; }
+  .level-tile { width: 48px; height: 48px; border-radius: 14px; }
   .level-tile .num { font-size: 20px; }
   .home-btn { min-width: 160px; }
 }

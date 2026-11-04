@@ -21,9 +21,11 @@ export const PIG = {
   turquoise: [0, 1, 2] as Pig,
   indigo: [1, 0, 2] as Pig,
   magenta: [2, 0, 1] as Pig,
+  // all three, equally
+  brown: [1, 1, 1] as Pig,
 };
 /** Every colour a child can make from the three base colours, by its nearest mix. */
-export type ColorName = keyof typeof PIG | 'brown';
+export type ColorName = keyof typeof PIG;
 
 // Corners of the RYB cube, tuned to look like food colouring in water.
 const W: RGB = [0.97, 0.97, 0.95];
@@ -68,7 +70,7 @@ export function sameColor(a: Pig, b: Pig): boolean {
   return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]) < 0.12;
 }
 
-const MIXES: [ColorName, Pig][] = [['brown', [1, 1, 1]]];
+const MIXES: [ColorName, Pig][] = [];
 
 export function colorName(p: Pig): ColorName {
   const q = share(p);
