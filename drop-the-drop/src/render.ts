@@ -19,6 +19,51 @@ function hash(n: number): number {
   return x - Math.floor(x);
 }
 
+/** A four-pointed glint. */
+function glint(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color = 'rgba(255,255,255,0.95)') {
+  if (r <= 0.05) return;
+  ctx.beginPath();
+  ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.18, y - r * 0.18); ctx.lineTo(x + r, y); ctx.lineTo(x + r * 0.18, y + r * 0.18);
+  ctx.lineTo(x, y + r); ctx.lineTo(x - r * 0.18, y + r * 0.18); ctx.lineTo(x - r, y); ctx.lineTo(x - r * 0.18, y - r * 0.18);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+/** Glitter flecks scattered in a circle of radius r (world units), twinkling with time t. */
+function flecks(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, n: number, seed: number, t: number, size: number, squash = 1) {
+  for (let i = 0; i < n; i++) {
+    const u = hash(seed * 31 + i), v = hash(seed * 57 + i * 3.1);
+    const rr = Math.sqrt(u) * r, an = v * Math.PI * 2;
+    const px = cx + Math.cos(an) * rr, py = cy + Math.sin(an) * rr * squash;
+    const tw = 0.45 + 0.55 * Math.max(0, Math.sin(t * 5 + i * 1.7));
+    const sz = size * (0.6 + hash(i * 13 + seed) * 0.8);
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(hash(i + seed) * 3 + t * 0.6);
+    ctx.globalAlpha = tw;
+    ctx.fillStyle = GLITTER[i % GLITTER.length];
+    ctx.fillRect(-sz, -sz * 0.6, sz * 2, sz * 1.2);
+    ctx.restore();
+  }
+}
+
+/** A little heap of glitter (for the mistake card's picture sum). */
+export function drawGlitterPile(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(x, y + r * 0.35, r * 1.05, r * 0.6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(230,232,245,0.85)';
+  ctx.fill();
+  flecks(ctx, x, y + r * 0.25, r, 120, 7, 0.4, r * 0.08, 0.62);
+  flecks(ctx, x, y - r * 0.1, r * 0.75, 80, 9, 1.1, r * 0.08, 0.6);
+  flecks(ctx, x, y - r * 0.4, r * 0.45, 40, 11, 2.3, r * 0.08, 0.6);
+  glint(ctx, x - r * 0.45, y - r * 0.15, r * 0.35);
+  glint(ctx, x + r * 0.5, y + r * 0.05, r * 0.25);
+  glint(ctx, x + r * 0.05, y - r * 0.55, r * 0.42);
+  ctx.restore();
+}
+
 const xs = new Float32Array(N), ys = new Float32Array(N);
 
 function trace(ctx: CanvasRenderingContext2D, px: Float32Array, py: Float32Array, ox = 0, oy = 0) {
@@ -126,22 +171,21 @@ export function drawDrop(ctx: CanvasRenderingContext2D, dr: Drop, S: number, sca
     ctx.save();
     trace(ctx, xs, ys);
     ctx.clip();
-    const n = Math.round(10 + dr.vol * 6);
-    for (let i = 0; i < n; i++) {
-      const u = hash(dr.id * 31 + i), v = hash(dr.id * 57 + i * 3.1);
-      const rr = Math.sqrt(u) * R * 0.82, an = v * Math.PI * 2 + t * 0.15;
-      const px = gx + Math.cos(an) * rr, py = gy + Math.sin(an) * rr;
-      const tw = 0.35 + 0.65 * Math.max(0, Math.sin(t * 5 + i * 1.7));
-      const sz = (0.22 + hash(i * 13 + dr.id) * 0.3) * Math.min(1.4, k * 1.1);
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.rotate(hash(i + dr.id) * 3 + t * 0.6);
-      ctx.globalAlpha = alpha * tw;
-      ctx.fillStyle = GLITTER[i % GLITTER.length];
-      ctx.fillRect(-sz, -sz * 0.6, sz * 2, sz * 1.2);
-      ctx.restore();
-    }
+    // a pale shimmer, then lots of flecks
+    ctx.fillStyle = `rgba(255,248,220,${0.08 * alpha})`;
+    ctx.fill();
+    ctx.globalAlpha = alpha;
+    flecks(ctx, gx, gy, R * 0.85, Math.round(22 + dr.vol * 12), dr.id, t, R * 0.075);
     ctx.restore();
+    // glints that twinkle over the drop
+    for (let i = 0; i < 3; i++) {
+      const s = Math.max(0, Math.sin(t * (2.2 + i * 0.7) + i * 2.1 + dr.id));
+      if (s < 0.4) continue;
+      const an = hash(dr.id * 5 + i) * Math.PI * 2, rr = R * (0.3 + hash(i * 9 + dr.id) * 0.5);
+      ctx.globalAlpha = alpha;
+      glint(ctx, gx + Math.cos(an) * rr, gy + Math.sin(an) * rr, R * 0.32 * (s - 0.4) / 0.6);
+    }
+    ctx.globalAlpha = alpha;
   }
 
   // 5. reflected rim along the lower right
@@ -552,12 +596,18 @@ export function drawCup(ctx: CanvasRenderingContext2D, c: CupView, t: number) {
     // glitter in the water
     ctx.save();
     ctx.clip();
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 90; i++) {
       const x = c.x + (hash(i * 3 + c.x) - 0.5) * c.tw, y = bottom - hash(i * 7 + c.x) * c.h * lvl;
-      const tw = 0.4 + 0.6 * Math.max(0, Math.sin(t * 4 + i * 1.3));
+      const tw = 0.45 + 0.55 * Math.max(0, Math.sin(t * 4 + i * 1.3));
       ctx.globalAlpha = tw;
       ctx.fillStyle = GLITTER[i % GLITTER.length];
-      ctx.fillRect(x - 0.3, y - 0.2, 0.6, 0.4);
+      ctx.fillRect(x - 0.45, y - 0.3, 0.9, 0.6);
+    }
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < 2; i++) {
+      const s = Math.max(0, Math.sin(t * 2.5 + i * 2.6 + c.x));
+      const x = c.x + (hash(i * 17 + c.x) - 0.5) * c.bw * 0.7, y = bottom - (0.3 + hash(i * 23 + c.x) * 0.6) * c.h * lvl;
+      glint(ctx, x, y, 2.2 * s);
     }
     ctx.restore();
   }
@@ -602,23 +652,27 @@ export function drawCup(ctx: CanvasRenderingContext2D, c: CupView, t: number) {
     ctx.restore();
   }
 
-  // a glitter cup wears a twinkling star on its rim
+  // a glitter cup wears glitter on its rim (not a star): flecks along the mouth, and glints
   if (c.glitter) {
-    const sx = c.x + c.tw * 0.5 + 1.5, sy = c.top - 1.5, r = 3 + Math.sin(t * 3) * 0.5;
     ctx.save();
-    ctx.translate(sx, sy);
-    ctx.rotate(Math.sin(t * 1.5) * 0.2);
-    ctx.beginPath();
-    for (let i = 0; i < 8; i++) {
-      const q = i % 2 ? r * 0.38 : r, an = -Math.PI / 2 + (i * Math.PI) / 4;
-      ctx.lineTo(Math.cos(an) * q, Math.sin(an) * q);
+    for (let i = 0; i < 70; i++) {
+      const an = hash(i * 7 + c.x) * Math.PI * 2;
+      const x = c.x + Math.cos(an) * rx * (0.96 + hash(i * 3) * 0.1), y = c.top + Math.sin(an) * ry * (0.9 + hash(i * 5) * 0.3);
+      const tw = 0.5 + 0.5 * Math.max(0, Math.sin(t * 4 + i * 1.9));
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(hash(i * 11) * 3);
+      ctx.globalAlpha = tw;
+      ctx.fillStyle = GLITTER[i % GLITTER.length];
+      ctx.fillRect(-0.55, -0.35, 1.1, 0.7);
+      ctx.restore();
     }
-    ctx.closePath();
-    ctx.fillStyle = '#ffd54a';
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 0.6;
-    ctx.fill();
-    ctx.stroke();
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < 3; i++) {
+      const s = Math.max(0, Math.sin(t * 2 + i * 2.1 + c.x * 0.3));
+      const an = Math.PI + (i + 0.5) * (Math.PI / 3);
+      glint(ctx, c.x + Math.cos(an) * rx * 0.9, c.top + Math.sin(an) * ry - 1.2, 2.6 * s);
+    }
     ctx.restore();
   }
 

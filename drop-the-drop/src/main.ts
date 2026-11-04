@@ -4,7 +4,7 @@ import { Drop } from './drop';
 import { type FailInfo, Game } from './game';
 import { ICON, ICON_LOCK, ICON_ROTATE, ICON_STAR } from './icons';
 import { LAB, LEVELS, type Level } from './levels';
-import { drawDrop } from './render';
+import { drawDrop, drawGlitterPile } from './render';
 import { setMuted, unlock } from './sfx';
 import { load, save } from './state';
 import { stats } from './stats';
@@ -176,7 +176,7 @@ function ask(text: string, yes: () => void) {
 
 function failText(info: FailInfo): string {
   if (info.kind === 'glitter') {
-    return `ל${aDrop(colorName(info.mix))} יש עכשיו נצנצים, אבל אף כוס כאן לא רוצה אותה עם נצנצים. כוס שרוצה נצנצים מסומנת בכוכב; לכוס בלי כוכב עוקפים את פס הדבק.`;
+    return `ל${aDrop(colorName(info.mix))} יש עכשיו נצנצים, וזה לא מתאים לאף כוס. נסו לעקוף את פס הדבק.`;
   }
   if (info.kind === 'stuck') return 'הטיפות שנשארו כבר לא יכולות למלא את הכוסות. בואו ננסה שוב, ואולי נחבר או נפצל אחרת.';
   const a = colorName(info.a), b = colorName(info.b), m = colorName(info.mix);
@@ -255,12 +255,16 @@ function buildLevels() {
 // ---------------------------------------------------------------- small pictures
 
 /** Paint still drops into a small canvas (for the cards and the logo). */
-function paintDrops(cv: HTMLCanvasElement, items: { x: number; y: number; vol: number; pig: Pig }[], unit: number) {
+function paintDrops(cv: HTMLCanvasElement, items: { x: number; y: number; vol: number; pig: Pig; glitter?: boolean }[], unit: number) {
   const ctx = cv.getContext('2d')!;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, cv.width, cv.height);
   ctx.setTransform(unit, 0, 0, unit, 0, 0);
-  for (const it of items) drawDrop(ctx, new Drop(it.x, it.y, it.vol, it.pig), unit);
+  for (const it of items) {
+    const d = new Drop(it.x, it.y, it.vol, it.pig);
+    d.glitter = !!it.glitter;
+    drawDrop(ctx, d, unit);
+  }
 }
 
 /** The drops still on the paper, in a row (for the dead-end card). */
@@ -276,10 +280,18 @@ function paintEquation(cv: HTMLCanvasElement, info: FailInfo) {
   const unit = cv.height / 28;
   const w = cv.width / unit;
   const vol = (p: Pig) => Math.min(2.2, Math.max(1, (p[0] + p[1] + p[2]) * 0.9));
-  paintDrops(cv, [
+  if (info.kind === 'glitter') {
+    // the drop + glitter = the drop with glitter
+    paintDrops(cv, [
+      { x: w * 0.86, y: 14, vol: 1.6, pig: share(info.a) },
+      { x: w * 0.17, y: 14, vol: 1.9, pig: share(info.a), glitter: true },
+    ], unit);
+    ctx.setTransform(unit, 0, 0, unit, 0, 0);
+    drawGlitterPile(ctx, w * 0.56, 13, 8.5);
+  } else paintDrops(cv, [
     { x: w * 0.86, y: 14, vol: vol(info.a), pig: share(info.a) },
     { x: w * 0.56, y: 14, vol: vol(info.b), pig: share(info.b) },
-    { x: w * 0.17, y: 14, vol: Math.min(3.2, vol(info.a) + vol(info.b)), pig: share(info.mix) },
+    { x: w * 0.17, y: 14, vol: Math.min(3.2, vol(info.a) + vol(info.b)), pig: share(info.mix), glitter: info.glitter },
   ], unit);
   ctx.setTransform(unit, 0, 0, unit, 0, 0);
   ctx.fillStyle = '#5b6380';
