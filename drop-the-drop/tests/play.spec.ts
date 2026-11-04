@@ -320,19 +320,39 @@ test('free towel colouring: every drop soaks in, and the level is done', async (
   await expect(page.locator('#win')).toBeVisible({ timeout: 8000 });
 });
 
-test('the towel flower: following the hints (joining yellow and blue for green) colours every piece', async ({ page }) => {
+test('the red dot: a drop soaks in as soon as it touches the towel, before it is let go', async ({ page }) => {
   await startLevel(page, 32);
-  await followHints(page);
+  const s = await snap(page);
+  const dot = await page.evaluate(() => { const g = (window as any).__dd, c = g.towel.areaCentre(0); return { x: g.ox + c.x * g.S, y: g.oy + c.y * g.S }; });
+  const d = s.drops[0];
+  await page.mouse.move(d.x, d.y); await page.mouse.down();
+  for (let i = 1; i <= 30; i++) { await page.mouse.move(d.x + ((dot.x - d.x) * i) / 30, d.y + ((dot.y - d.y) * i) / 30); await page.waitForTimeout(16); }
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => (window as any).__dd.drops[0].state), 'soaking while the finger is still down').toBe('soak');
+  await page.mouse.up();
   await expect(page.locator('#win')).toBeVisible({ timeout: 8000 });
 });
 
+for (const [n, what] of [[33, 'the flower (joining yellow and blue for green)'], [34, 'the sun (red + yellow for orange)'], [35, 'the balloons (orange, green, purple)']] as const) {
+  test(`towel picture ${n}: following the hints colours ${what}`, async ({ page }) => {
+    await startLevel(page, n);
+    await followHints(page);
+    await expect(page.locator('#win')).toBeVisible({ timeout: 8000 });
+  });
+}
+
 test('the towel flower: red in the yellow centre is a mistake, and the card says where', async ({ page }) => {
-  await startLevel(page, 32);
-  const s = await snap(page);
-  const red = s.drops.find((d) => isRed(d.pig))!;
-  const centre = await page.evaluate(() => { const g = (window as any).__dd, t = g.towel, d = t.def; const sh = t.areas[1].shapes[0]; return { x: g.ox + ((d.x0 + d.x1) / 2 + sh.x) * g.S, y: g.oy + ((d.y0 + d.y1) / 2 + sh.y) * g.S }; });
-  const out = await page.evaluate(([x, y]) => { const g = (window as any).__dd; return { x: g.ox + 44 * g.S, y: g.oy + y * 1 }; }, [0, red.y]);
-  await dragPath(page, [red, { x: red.x, y: red.y + 0 }, out, centre]);
+  await startLevel(page, 33);
+  // the game's own path planner leads the red drop to the centre without touching the petals
+  const pts = await page.evaluate(() => {
+    const g = (window as any).__dd, t = g.towel;
+    const red = g.drops.find((d: any) => d.pig[0] > 0.9);
+    const c = t.areaCentre(1);
+    const via = g.planPath(red, c.x, c.y, t.cellAt(c.x, c.y));
+    const P = (x: number, y: number) => ({ x: g.ox + x * g.S, y: g.oy + y * g.S });
+    return [P(red.x, red.y), ...via.map((q: any) => P(q.x, q.y)), P(c.x, c.y)];
+  });
+  await dragPath(page, pts);
   await expect(page.locator('#fail')).toBeVisible({ timeout: 6000 });
   await expect(page.locator('#fail-text')).toContainText('במרכז הפרח');
 });

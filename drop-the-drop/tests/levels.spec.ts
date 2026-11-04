@@ -25,7 +25,7 @@ test('every level is solvable and starts tidy', async ({ page }) => {
       }
       if (l.towel && !l.towel.picture) have.forEach((v: number, k: number) => (want[k] = v));
       // drops start off the towel
-      const onTowel = l.towel ? g.drops.some((d: any) => d.x + d.R > l.towel.x0 && d.y + d.R > l.towel.y0) : false;
+      const onTowel = l.towel ? g.drops.some((d: any) => d.x + d.R > l.towel.x0 && d.x - d.R < l.towel.x1 && d.y + d.R > l.towel.y0 && d.y - d.R < l.towel.y1) : false;
       let closest = Infinity;
       for (const a of g.drops) for (const b of g.drops) if (a !== b) closest = Math.min(closest, Math.hypot(a.x - b.x, a.y - b.y) - a.R - b.R);
       const lowest = Math.max(...g.drops.map((d: any) => d.y + d.R));

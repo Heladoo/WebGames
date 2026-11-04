@@ -45,6 +45,8 @@ export class Drop {
   still = 0;
   cache: HTMLCanvasElement | null = null;
   cacheKey = '';
+  /** where it touched the paper towel (it soaks in there): a point and the towel cell */
+  soakAt: { x: number; y: number; cell: number } | null = null;
   /** picked up glitter from a glue stripe (kept through joins and splits) */
   glitter = false;
   /** pour animation */

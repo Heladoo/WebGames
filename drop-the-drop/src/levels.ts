@@ -50,6 +50,12 @@ export interface Level {
   free?: boolean;
 }
 
+// Picture levels: the towel pieces lie on the right; the drops wait in a 3 × 3 grid on the
+// left, below the plant's corner, 18 and 23 units apart so a drop can be led out between the others.
+const PIECES = { x0: 62, y0: 4, x1: 156, y1: 96 };
+const SLOTS = [[12, 38], [30, 38], [48, 38], [12, 61], [30, 61], [48, 61], [12, 84], [30, 84], [48, 84]];
+const at = (colors: Base[]): DropDef[] => colors.map((color, i) => ({ color, x: SLOTS[i][0], y: SLOTS[i][1] }));
+
 export const LEVELS: Level[] = [
   { id: 'l1', mixing: false, cups: [{ color: 'red', need: 1, x: 105 }], drops: [{ color: 'red', x: 45, y: 32 }] },
   {
@@ -155,8 +161,8 @@ export const LEVELS: Level[] = [
   {
     id: 'l29', mixing: true, free: true, cups: [{ color: 'brown', need: 6 }],
     drops: ([
-      [14, 16, 'red'], [34, 26, 'yellow'], [54, 16, 'blue'], [74, 26, 'red'], [94, 16, 'yellow'], [114, 26, 'blue'],
-      [134, 16, 'red'], [148, 32, 'yellow'], [20, 44, 'blue'], [44, 48, 'yellow'], [104, 48, 'red'], [128, 48, 'blue'],
+      [50, 14, 'red'], [70, 24, 'yellow'], [90, 14, 'blue'], [110, 24, 'red'], [130, 14, 'yellow'], [148, 28, 'blue'],
+      [14, 42, 'red'], [34, 50, 'yellow'], [56, 40, 'blue'], [78, 50, 'yellow'], [104, 46, 'red'], [128, 48, 'blue'],
     ] as const).map(([x, y, c]) => ({ color: c, x, y, vol: 0.5 })),
   },
   // ---- glitter glue: pass through it for a sparkly cup, go around it for a plain one
@@ -168,7 +174,7 @@ export const LEVELS: Level[] = [
   {
     id: 'l22', mixing: false, glue: [{ x0: 80, y0: 3, x1: 80, y1: 50 }],
     cups: [{ color: 'red', need: 1, x: 108, glitter: true }, { color: 'blue', need: 1, x: 140 }],
-    drops: [{ color: 'red', x: 30, y: 24 }, { color: 'blue', x: 30, y: 46 }],
+    drops: [{ color: 'red', x: 46, y: 30 }, { color: 'blue', x: 30, y: 54 }],
   },
   {
     id: 'l23', mixing: true, glue: [{ x0: 80, y0: 3, x1: 80, y1: 52 }],
@@ -187,7 +193,7 @@ export const LEVELS: Level[] = [
   {
     id: 'l26', mixing: true, glue: [{ x0: 3, y0: 40, x1: 104, y1: 40 }],
     cups: [{ color: 'lime', need: 3, x: 40, glitter: true }, { color: 'turquoise', need: 3, x: 122 }],
-    drops: [{ color: 'yellow', x: 28, y: 22 }, { color: 'green', x: 76, y: 22, vol: 4 }, { color: 'blue', x: 136, y: 52 }],
+    drops: [{ color: 'yellow', x: 46, y: 22 }, { color: 'green', x: 76, y: 22, vol: 4 }, { color: 'blue', x: 136, y: 52 }],
   },
   {
     id: 'l27', mixing: true, glue: [{ x0: 55, y0: 3, x1: 55, y1: 54 }, { x0: 105, y0: 3, x1: 105, y1: 54 }],
@@ -199,29 +205,36 @@ export const LEVELS: Level[] = [
     cups: [{ color: 'lime', need: 3, x: 36 }, { color: 'magenta', need: 3, x: 124, glitter: true }],
     drops: [{ color: 'red', x: 30, y: 26, vol: 2 }, { color: 'blue', x: 52, y: 46, vol: 2 }, { color: 'yellow', x: 130, y: 30, vol: 2 }],
   },
-  // ---- the paper towel: drops soak in and colour it. First free colouring, then pictures.
+  // ---- the paper towel: a drop that touches it soaks in right there, and the colour wicks through.
+  // First free colouring on a towel square (the drops wait around it), then pictures of
+  // cut-out towel pieces (the drops wait on the left, clear of the plant).
   {
-    id: 'l30', mixing: true, free: true, teach: 'towel', cups: [], towel: { x0: 8, y0: 36, x1: 152, y1: 94 },
-    drops: [{ color: 'red', x: 36, y: 20 }, { color: 'yellow', x: 80, y: 20 }, { color: 'blue', x: 124, y: 20 }],
+    id: 'l30', mixing: true, free: true, teach: 'towel', cups: [], towel: { x0: 66, y0: 22, x1: 140, y1: 86 },
+    drops: [{ color: 'red', x: 40, y: 54 }, { color: 'yellow', x: 103, y: 11 }, { color: 'blue', x: 151, y: 54 }],
   },
   {
-    id: 'l31', mixing: true, free: true, cups: [], towel: { x0: 8, y0: 36, x1: 152, y1: 94 },
+    id: 'l31', mixing: true, free: true, cups: [], towel: { x0: 66, y0: 22, x1: 140, y1: 86 },
     drops: [
-      { color: 'red', x: 18, y: 20 }, { color: 'yellow', x: 44, y: 18, vol: 2 }, { color: 'blue', x: 70, y: 20 },
-      { color: 'red', x: 94, y: 18 }, { color: 'blue', x: 120, y: 20, vol: 2 }, { color: 'yellow', x: 145, y: 18 },
+      { color: 'red', x: 42, y: 38 }, { color: 'yellow', x: 84, y: 11, vol: 2 }, { color: 'blue', x: 151, y: 36 },
+      { color: 'yellow', x: 42, y: 72 }, { color: 'blue', x: 122, y: 11, vol: 2 }, { color: 'red', x: 151, y: 72 },
     ],
   },
   {
-    id: 'l32', mixing: true, cups: [], towel: { x0: 44, y0: 6, x1: 154, y1: 94, picture: 'flower', scale: 1.7 },
-    drops: (['red', 'red', 'yellow', 'red', 'blue', 'yellow', 'red', 'red'] as const).map((c, i) => ({ color: c, x: 13 + (i % 2) * 18, y: 14 + (i >> 1) * 23 })),
+    // a first target: bring the red drop to the red dot
+    id: 'l35', mixing: true, teach: 'towel', cups: [], towel: { ...PIECES, picture: 'dot', scale: 1.4 },
+    drops: [{ color: 'red', x: 30, y: 61 }],
   },
   {
-    id: 'l33', mixing: true, cups: [], towel: { x0: 44, y0: 6, x1: 154, y1: 94, picture: 'sun', scale: 1.5 },
-    drops: (['yellow', 'yellow', 'red', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow'] as const).map((c, i) => ({ color: c, x: 13 + (i % 2) * 18, y: 14 + (i >> 1) * 23 })),
+    id: 'l32', mixing: true, cups: [], towel: { ...PIECES, picture: 'flower', scale: 1.5 },
+    drops: at(['red', 'red', 'yellow', 'red', 'blue', 'yellow', 'red']),
   },
   {
-    id: 'l34', mixing: true, cups: [], towel: { x0: 44, y0: 6, x1: 154, y1: 94, picture: 'butterfly', scale: 1.45 },
-    drops: (['red', 'blue', 'red', 'blue', 'red', 'blue', 'red'] as const).map((c, i) => ({ color: c, x: 13 + (i % 2) * 18, y: 14 + (i >> 1) * 23 })),
+    id: 'l33', mixing: true, cups: [], towel: { ...PIECES, picture: 'sun', scale: 1.1 },
+    drops: at(['yellow', 'yellow', 'red', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow']),
+  },
+  {
+    id: 'l34', mixing: true, cups: [], towel: { ...PIECES, picture: 'balloons', scale: 1.5 },
+    drops: at(['red', 'yellow', 'blue', 'blue', 'red', 'yellow']),
   },
 ];
 

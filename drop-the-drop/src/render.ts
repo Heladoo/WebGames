@@ -9,7 +9,7 @@
 import { css, INK, tint, WHITE, type RGB } from './color';
 import { type Drop, N, R1, COS, SIN } from './drop';
 import type { Glue } from './levels';
-import { PICTURES, type Shape, type TowelDef } from './towel';
+import { DECOR, PICTURES, type Shape, type TowelDef } from './towel';
 import { PIG, pigToRgb as toRgb } from './color';
 
 /** Glitter colours: gold, silver, pink, cyan, violet. */
@@ -358,6 +358,7 @@ const LEAVES = [
   { at: 2, a: 0.5, l: 26, w: 12 }, { at: 4, a: 0.02, l: 28, w: 12 }, { at: 6, a: 0.98, l: 30, w: 13 },
   { at: 8, a: 1.42, l: 24, w: 11 }, { at: 9, a: 0.38, l: 20, w: 9 },
   { at: 13, a: 0.86, l: 22, w: 10 }, { at: 16, a: 0.14, l: 21, w: 9 },
+  { at: 20, a: 1.1, l: 19, w: 8.5 }, { at: 23, a: 0.62, l: 18, w: 8 }, { at: 27, a: 1.32, l: 17, w: 7.5 }, { at: 31, a: 0.28, l: 16, w: 7 },
 ];
 
 function leaf(g: CanvasRenderingContext2D, k: number, ang: number, L: number, W: number, young: number) {
@@ -439,6 +440,8 @@ function plant(g: CanvasRenderingContext2D, k: number, stage: number) {
   if (stage >= 8) flower(g, k, stage >= 10 ? Math.min(1, (stage - 9) / 2) : 0);
   // a second, violet flower later in the game
   if (stage >= 14) flower(g, k, stage >= 16 ? Math.min(1, (stage - 15) / 2) : 0, 0.32, 40 * k, '#a874e8');
+  // a third, yellow one near the end of the game
+  if (stage >= 25) flower(g, k, stage >= 28 ? Math.min(1, (stage - 27) / 2) : 0, 0.95, 32 * k, '#f3c633');
 }
 
 /**
@@ -530,56 +533,83 @@ function drawGlue(g: CanvasRenderingContext2D, q: Glue, gi: number) {
   g.stroke();
 }
 
-/** A sheet of paper towel (world units): soft white, quilted, perforated edges, maybe an embossed picture. */
-function drawTowel(g: CanvasRenderingContext2D, t: TowelDef) {
-  const w = t.x1 - t.x0, h = t.y1 - t.y0;
-  g.save();
-  g.shadowColor = 'rgba(70,60,40,0.22)';
-  g.shadowBlur = 6; g.shadowOffsetY = 1.5;
-  g.fillStyle = '#fefdfb';
-  g.fillRect(t.x0, t.y0, w, h);
-  g.restore();
-  g.save();
-  g.beginPath(); g.rect(t.x0, t.y0, w, h); g.clip();
-  // the quilting: a soft diamond grid of pressed dots
+/** The towel's texture (world units) inside the current clip: quilted dots and fibres. */
+function towelTexture(g: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) {
   const step = 4.2;
-  for (let y = t.y0 + step / 2, row = 0; y < t.y1; y += step * 0.5, row++) {
-    for (let x = t.x0 + (row % 2 ? step / 2 : 0); x < t.x1; x += step) {
+  for (let y = y0 + step / 2, row = 0; y < y1; y += step * 0.5, row++) {
+    for (let x = x0 + (row % 2 ? step / 2 : 0); x < x1; x += step) {
       g.beginPath(); g.arc(x + 0.15, y + 0.2, 0.55, 0, Math.PI * 2);
       g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
       g.beginPath(); g.arc(x, y, 0.5, 0, Math.PI * 2);
       g.fillStyle = 'rgba(170,160,145,0.22)'; g.fill();
     }
   }
-  // fibres
+  const w = x1 - x0, h = y1 - y0;
   for (let i = 0; i < w * h * 0.5; i++) {
-    const x = t.x0 + hash(i * 3.1) * w, y = t.y0 + hash(i * 7.7) * h, a = hash(i) * Math.PI;
+    const x = x0 + hash(i * 3.1) * w, y = y0 + hash(i * 7.7) * h, a = hash(i) * Math.PI;
     g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 0.9, y + Math.sin(a) * 0.9);
     g.strokeStyle = 'rgba(160,150,135,0.08)'; g.lineWidth = 0.12; g.stroke();
   }
-  // a picture: a pale hint of each area's colour, and embossed outlines
+}
+
+/**
+ * Paper towel (world units): a whole sheet for free colouring (quilted,
+ * perforated edges), or a picture of cut-out pieces lying on the paper, each
+ * with a pale hint of the colour it wants.
+ */
+function drawTowel(g: CanvasRenderingContext2D, t: TowelDef) {
   const cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2;
-  const shape = (sh: Shape, dx = 0, dy = 0) => {
-    g.beginPath();
-    g.ellipse(cx + sh.x + dx, cy + sh.y + dy, sh.rx, sh.ry, sh.rot ?? 0, 0, Math.PI * 2);
-  };
+  if (!t.picture) {
+    const w = t.x1 - t.x0, h = t.y1 - t.y0;
+    g.save();
+    g.shadowColor = 'rgba(70,60,40,0.22)';
+    g.shadowBlur = 6; g.shadowOffsetY = 1.5;
+    g.fillStyle = '#fefdfb';
+    g.fillRect(t.x0, t.y0, w, h);
+    g.restore();
+    g.save();
+    g.beginPath(); g.rect(t.x0, t.y0, w, h); g.clip();
+    towelTexture(g, t.x0, t.y0, t.x1, t.y1);
+    g.restore();
+    g.save();
+    g.setLineDash([0.9, 0.9]);
+    g.strokeStyle = 'rgba(150,140,125,0.45)'; g.lineWidth = 0.35;
+    for (const x of [t.x0 + 1.2, t.x1 - 1.2]) { g.beginPath(); g.moveTo(x, t.y0 + 1); g.lineTo(x, t.y1 - 1); g.stroke(); }
+    g.restore();
+    return;
+  }
   const sc = t.scale ?? 1;
-  for (const area0 of t.picture ? PICTURES[t.picture] : []) {
-    const area = { ...area0, shapes: area0.shapes.map((sh) => ({ ...sh, x: sh.x * sc, y: sh.y * sc, rx: sh.rx * sc, ry: sh.ry * sc })) };
+  // lines drawn on the paper (balloon strings)
+  for (const [x0, y0, qx, qy, x1, y1] of DECOR[t.picture] ?? []) {
+    g.beginPath();
+    g.moveTo(cx + x0 * sc, cy + y0 * sc);
+    g.quadraticCurveTo(cx + qx * sc, cy + qy * sc, cx + x1 * sc, cy + y1 * sc);
+    g.strokeStyle = 'rgba(90,90,110,0.55)'; g.lineWidth = 0.45; g.lineCap = 'round';
+    g.stroke();
+  }
+  const path = (sh: Shape) => {
+    g.beginPath();
+    g.ellipse(cx + sh.x * sc, cy + sh.y * sc, sh.rx * sc, sh.ry * sc, sh.rot ?? 0, 0, Math.PI * 2);
+  };
+  for (const area of PICTURES[t.picture]) {
     const c = toRgb(PIG[area.color]);
-    for (const sh of area.shapes) { shape(sh); g.fillStyle = css(c, 0.13); g.fill(); }
+    // the pieces' shadow on the paper, then the towel itself
+    g.save();
+    g.shadowColor = 'rgba(70,60,40,0.25)';
+    g.shadowBlur = 4; g.shadowOffsetY = 1;
+    g.fillStyle = '#fefdfb';
+    for (const sh of area.shapes) { path(sh); g.fill(); }
+    g.restore();
     for (const sh of area.shapes) {
-      shape(sh, 0.25, 0.3); g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 0.7; g.stroke();
-      shape(sh); g.strokeStyle = css(tint(c, INK, 0.3), 0.32); g.lineWidth = 0.55; g.stroke();
+      g.save();
+      path(sh); g.clip();
+      const r = Math.max(sh.rx, sh.ry) * sc;
+      towelTexture(g, cx + sh.x * sc - r, cy + sh.y * sc - r, cx + sh.x * sc + r, cy + sh.y * sc + r);
+      path(sh); g.fillStyle = css(c, 0.14); g.fill();
+      g.restore();
+      path(sh); g.strokeStyle = css(tint(c, INK, 0.3), 0.3); g.lineWidth = 0.4; g.stroke();
     }
   }
-  g.restore();
-  // perforated edges, left and right
-  g.save();
-  g.setLineDash([0.9, 0.9]);
-  g.strokeStyle = 'rgba(150,140,125,0.45)'; g.lineWidth = 0.35;
-  for (const x of [t.x0 + 1.2, t.x1 - 1.2]) { g.beginPath(); g.moveTo(x, t.y0 + 1); g.lineTo(x, t.y1 - 1); g.stroke(); }
-  g.restore();
 }
 
 /** A few glints twinkling on the glue stripes (drawn every frame, world units). */

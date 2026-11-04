@@ -24,47 +24,50 @@ export interface TowelDef {
   picture?: keyof typeof PICTURES;
 }
 
-// Each shape is a piece to colour, unless shapes share a `piece` number (a wing
-// made of two ovals, or a stem with its leaves): every piece must get colour.
+// A picture is made of cut-out pieces of towel lying on the paper (like the
+// coffee-filter crafts children make). Each shape is a piece, unless shapes share
+// a `piece` number (a stem with its leaves). Paint stays in the piece it touched.
+// Pieces have gaps between them, wide enough for a drop to be led through.
 export const PICTURES = {
+  dot: [
+    { name: 'הנקודה', color: 'red', need: 1, shapes: [{ k: 'ellipse', x: 0, y: 0, rx: 7, ry: 7 }] },
+  ],
   flower: [
-    { name: 'עלי הכותרת', color: 'red', need: 5, shapes: [0, 1, 2, 3, 4].map((i) => {
-      const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-      return { k: 'ellipse', x: Math.cos(a) * 9, y: -12 + Math.sin(a) * 9, rx: 5.6, ry: 3.7, rot: a } as Shape;
+    { name: 'עלי הכותרת', color: 'red', need: 4, shapes: [45, 135, 225, 315].map((deg) => {
+      const a = (deg * Math.PI) / 180;
+      return { k: 'ellipse', x: Math.cos(a) * 15, y: -6 + Math.sin(a) * 15, rx: 5.2, ry: 5.2 } as Shape;
     }) },
-    { name: 'מרכז הפרח', color: 'yellow', need: 1, shapes: [{ k: 'ellipse', x: 0, y: -12, rx: 4.6, ry: 4.6 }] },
+    { name: 'מרכז הפרח', color: 'yellow', need: 1, shapes: [{ k: 'ellipse', x: 0, y: -6, rx: 6, ry: 6 }] },
     { name: 'הגבעול והעלים', color: 'green', need: 2, shapes: [
-      { k: 'ellipse', x: 0, y: 8, rx: 1.8, ry: 11.5, piece: 0 },
-      { k: 'ellipse', x: -4.6, y: 9.5, rx: 4.4, ry: 2.4, rot: -0.45, piece: 0 },
-      { k: 'ellipse', x: 4.6, y: 12.5, rx: 4.4, ry: 2.4, rot: 0.45, piece: 0 },
+      { k: 'ellipse', x: 0, y: 12.5, rx: 1.7, ry: 11, piece: 0 },
+      { k: 'ellipse', x: -5, y: 14, rx: 4.6, ry: 2.3, rot: -0.5, piece: 0 },
+      { k: 'ellipse', x: 5, y: 18, rx: 4.6, ry: 2.3, rot: 0.5, piece: 0 },
     ] },
   ],
   sun: [
-    { name: 'השמש', color: 'orange', need: 2, shapes: [{ k: 'ellipse', x: 0, y: -2, rx: 8.5, ry: 8.5 }] },
+    { name: 'השמש', color: 'orange', need: 2, shapes: [{ k: 'ellipse', x: 0, y: 0, rx: 9, ry: 9 }] },
     { name: 'הקרניים', color: 'yellow', need: 6, shapes: [0, 1, 2, 3, 4, 5].map((i) => {
       const a = -Math.PI / 2 + (i * Math.PI) / 3;
-      return { k: 'ellipse', x: Math.cos(a) * 17, y: -2 + Math.sin(a) * 17, rx: 4.6, ry: 3, rot: a } as Shape;
+      return { k: 'ellipse', x: Math.cos(a) * 24, y: Math.sin(a) * 24, rx: 3.8, ry: 2.3, rot: a } as Shape;
     }) },
   ],
-  butterfly: [
-    { name: 'הכנפיים העליונות', color: 'purple', need: 4, shapes: [
-      { k: 'ellipse', x: -10.5, y: -4, rx: 8, ry: 6.5, rot: -0.35 },
-      { k: 'ellipse', x: 10.5, y: -4, rx: 8, ry: 6.5, rot: 0.35 },
-    ] },
-    { name: 'הכנפיים התחתונות', color: 'red', need: 2, shapes: [
-      { k: 'ellipse', x: -7.5, y: 8, rx: 5, ry: 4.2, rot: 0.4 },
-      { k: 'ellipse', x: 7.5, y: 8, rx: 5, ry: 4.2, rot: -0.4 },
-    ] },
-    { name: 'הגוף', color: 'blue', need: 1, shapes: [{ k: 'ellipse', x: 0, y: 1.5, rx: 2.6, ry: 11 }] },
+  balloons: [
+    { name: 'הבלון הכתום', color: 'orange', need: 2, shapes: [{ k: 'ellipse', x: -13.5, y: -5, rx: 6, ry: 7.5 }] },
+    { name: 'הבלון הירוק', color: 'green', need: 2, shapes: [{ k: 'ellipse', x: 0, y: -10, rx: 6, ry: 7.5 }] },
+    { name: 'הבלון הסגול', color: 'purple', need: 2, shapes: [{ k: 'ellipse', x: 13.5, y: -5, rx: 6, ry: 7.5 }] },
   ],
 } satisfies Record<string, Area[]>;
+
+/** Strings and such: lines drawn on the paper under a picture (not towel). Quadratic curves. */
+export const DECOR: Partial<Record<keyof typeof PICTURES, [number, number, number, number, number, number][]>> = {
+  balloons: [[-13.5, 2.5, -9, 12, -2, 21], [0, -2.5, 1.5, 9, -1, 21], [13.5, 2.5, 8, 12, 0.5, 21]],
+};
 
 const CELL = 0.8;     // world units per cell
 const D = 18;         // how fast water spreads (cells² per second)
 const DRY = 0.22;     // how fast it dries (per second)
 const WATER = 2.4;    // water a drop brings per unit of paint (it carries the dye outward as it wicks)
 const UP = 3;         // the stain is smoothed up this many times before the browser stretches it
-const LINE = 0.03;    // how much an embossed line slows the flow (paint mostly stays inside an area)
 const MIXD = 3.5;     // how fast dye blends between wet neighbours (so overlapping colours really mix)
 const INK = 170;      // how dark a given amount of dye looks
 const SEEN = 0.0012;  // dye in a cell that a child sees as coloured (about a fifth of full colour)
@@ -93,6 +96,10 @@ export class Towel {
   canvas: HTMLCanvasElement;
   small: HTMLCanvasElement;
   img: ImageData;
+  /** a picture of cut-out pieces: only the pieces are towel (free colouring: the whole sheet) */
+  cut: boolean;
+  /** the picture's outer edges, in world units (for hints that go round it) */
+  bounds = { x0: 0, y0: 0, x1: 0, y1: 0 };
   /** something is wet (the simulation and the picture only run then) */
   wet = false;
   dirty = true;
@@ -102,6 +109,7 @@ export class Towel {
   constructor(def: TowelDef) {
     this.def = def;
     this.areas = def.picture ? PICTURES[def.picture] : [];
+    this.cut = !!def.picture;
     this.gw = Math.round((def.x1 - def.x0) / CELL);
     this.gh = Math.round((def.y1 - def.y0) / CELL);
     const n = this.gw * this.gh;
@@ -130,9 +138,19 @@ export class Towel {
     for (let j = 0; j < this.gh; j++) for (let i = 0; i < this.gw; i++) {
       const k = j * this.gw + i;
       const fib = () => 0.55 + rnd() * 0.9; // fibres: uneven flow, so stains get ragged edges
-      this.fx[k] = i + 1 < this.gw ? fib() * (this.area[k] === this.area[k + 1] ? 1 : LINE) : 0;
-      this.fy[k] = j + 1 < this.gh ? fib() * (this.area[k] === this.area[k + this.gw] ? 1 : LINE) : 0;
+      // paint flows only within one piece of towel (or anywhere on a whole sheet)
+      const same = (m: number) => !this.cut || (this.area[k] >= 0 && this.area[k] === this.area[m] && this.piece[k] === this.piece[m]);
+      this.fx[k] = i + 1 < this.gw && same(k + 1) ? fib() : 0;
+      this.fy[k] = j + 1 < this.gh && same(k + this.gw) ? fib() : 0;
     }
+    // the picture's outer edges
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (let k = 0; k < n; k++) {
+      if (this.cut && this.area[k] < 0) continue;
+      const x = def.x0 + ((k % this.gw) + 0.5) * CELL, y = def.y0 + (Math.floor(k / this.gw) + 0.5) * CELL;
+      bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y);
+    }
+    this.bounds = { x0: bx0, y0: by0, x1: bx1, y1: by1 };
     this.small = document.createElement('canvas');
     this.small.width = this.gw;
     this.small.height = this.gh;
@@ -144,18 +162,30 @@ export class Towel {
 
   /** Does this world point lie on the towel? */
   covers(x: number, y: number) {
-    const d = this.def;
-    return x > d.x0 && x < d.x1 && y > d.y0 && y < d.y1;
+    return this.cellAt(x, y) >= 0;
   }
 
-  /** A drop soaks in: water and dye go into the cells under it (radius r, world units). */
-  absorb(x: number, y: number, r: number, vol: number, pig: Pig) {
+  /** The towel cell at a world point (-1: no towel there). */
+  cellAt(x: number, y: number): number {
+    const d = this.def;
+    if (!(x > d.x0 && x < d.x1 && y > d.y0 && y < d.y1)) return -1;
+    const k = Math.floor((y - d.y0) / CELL) * this.gw + Math.floor((x - d.x0) / CELL);
+    return this.cut && this.area[k] < 0 ? -1 : k;
+  }
+
+  /**
+   * A drop soaks in: water and dye go into the towel cells within r of (x, y).
+   * With `like` (a cell), only into that cell's piece: the piece the drop touched.
+   */
+  absorb(x: number, y: number, r: number, vol: number, pig: Pig, like = -1) {
     const d = this.def, s = share(pig);
     const ci = (x - d.x0) / CELL, cj = (y - d.y0) / CELL, rc = Math.max(1, r / CELL);
     const cells: number[] = [];
     for (let j = Math.floor(cj - rc); j <= Math.ceil(cj + rc); j++) for (let i = Math.floor(ci - rc); i <= Math.ceil(ci + rc); i++) {
       if (i < 0 || j < 0 || i >= this.gw || j >= this.gh) continue;
-      if ((i - ci) ** 2 + (j - cj) ** 2 <= rc * rc) cells.push(j * this.gw + i);
+      const k = j * this.gw + i;
+      if (this.cut && (this.area[k] < 0 || (like >= 0 && (this.area[k] !== this.area[like] || this.piece[k] !== this.piece[like])))) continue;
+      if ((i - ci) ** 2 + (j - cj) ** 2 <= rc * rc) cells.push(k);
     }
     if (!cells.length) return;
     const each = vol / cells.length;
@@ -184,7 +214,7 @@ export class Towel {
           if (!f) continue;
           const m = k + (dir === 0 ? 1 : gw);
           const wm = w[m];
-          let q = (wk - wm) * D * f * h;
+          let q = (wk - wm) * D * (this.cut ? 1.7 : 1) * f * h;
           if (q === 0) continue;
           const src = q > 0 ? k : m;
           const ws = w[src];
@@ -347,6 +377,12 @@ export class Towel {
     }
     let pi = 0, lowest = Infinity;
     for (const [q, [n, c]] of counts) if (c / n < lowest) { lowest = c / n; pi = q; }
+    if (this.cut) {
+      // a cut-out piece: aim at its middle (the drop soaks in where it first touches)
+      let sx = 0, sy = 0, n = 0;
+      for (let k = 0; k < this.area.length; k++) if (this.area[k] === i && this.piece[k] === pi) { sx += k % this.gw; sy += Math.floor(k / this.gw); n++; }
+      if (n) return { x: d.x0 + (sx / n + 0.5) * CELL, y: d.y0 + (sy / n + 0.5) * CELL };
+    }
     const empty: number[] = [], coloured: number[] = [];
     for (let k = 0; k < this.area.length; k++) {
       if (this.area[k] !== i || this.piece[k] !== pi) continue;

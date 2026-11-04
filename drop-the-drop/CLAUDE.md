@@ -4,7 +4,7 @@
 
 ## Status
 
-**Thirty-four levels** (`src/levels.ts`; numbers below are positions, ids stay `l1`…`l34` so saves keep working), slow and gentle:
+**Thirty-five levels** (`src/levels.ts`; numbers below are positions, ids stay `l1`…`l35` so saves keep working), slow and gentle:
 
 - **1–2:** drag drops into a cup. Level 2's cup takes three small drops; dots on the glass count them.
 - **3:** sort two colours.
@@ -16,7 +16,7 @@
 - **21: free mixing** (id `l29`, owner's request: children loved mixing): twelve tiny dots, four of each base colour, and a brown cup that wants one huge drop of all of them. Any join is fine, since the totals are equal; the level is `free`, so there are no mistakes and no dead ends.
 - **22–24, 27–29:** glitter glue. Level 22 teaches it (`teach: 'glitter'`). From then on some cups want glitter and others must stay plain, so drops go through a stripe or around its end; levels 27–29 combine glue with splitting and the in-between colours.
 - **25–26:** more sharing in the style of level 20 (big drops split between two or three mixes).
-- **30–34: the paper towel** (owner's idea, after the real activity). 30–31 are free colouring: every drop soaks in, anywhere. 32–34 are pictures: a flower, a sun and a butterfly. Each area wants its colour, mixed ones too (green leaves from yellow + blue, an orange sun, purple wings), and a clear wrong colour shows the try-again card.
+- **30–35: the paper towel** (owner's idea, after the real activity). 30–31 are free colouring: every drop soaks in, anywhere. 32 (id `l35`, `teach: 'towel'`) is one red dot, so the child learns to carry a drop to a target. 33–35 are pictures: a flower, a sun and three balloons (orange, green, purple; the owner didn't like the butterfly they replace). Each area wants its colour, mixed ones too (green leaves from yellow + blue, an orange sun), and a clear wrong colour shows the try-again card.
 
 The first sample was approved. The owner's feedback since then is done:
 - an in-scene celebration;
@@ -63,23 +63,24 @@ Ideas still open are in `BACKLOG.md`.
   - **Hints:** they know about glue. A pour or join that must stay plain goes round the stripe's free end (`around`, `via`), and a drop that a glitter cup would take is led into the nearest point of the glue. Level tiles ring a glitter cup's dot in gold.
 - **The paper towel** (`src/towel.ts`, `Level.towel`). Only a target for now; the owner may add it as an obstacle later.
   - **Simulation:** a grid of cells (0.8 world units) with water and three dyes. Water flows from wetter to drier cells, with a random resistance per cell (the fibres), and carries its dye. Dye also blends between wet neighbours (`MIXD`), so overlapping stains really mix instead of pushing each other aside. Everything dries slowly (`DRY`); dry dye stays put. It only runs while something is wet.
-  - **Picture:** the lines of a picture slow the flow between areas (`LINE`), so paint mostly stays inside, with a soft bleed.
+  - **Pictures are cut out of towel** (`cut`): only the pieces are towel, with bare paper between them, and nothing flows from piece to piece (paint spreads within its piece only).
   - **Drawing:** the stain is a grid-sized picture, smoothed 3× and then stretched by the browser over the towel, on its own layer (`#towel`, between `#bg` and `#stage`). Each cell's amount is averaged with its neighbours for soft edges. A darker rim marks where dye gathered at the edge (the "coffee ring"), and wet cells are darker.
-  - **Soaking:** a drop can be carried over the towel; when it's let go there, it soaks in (`soak`) and shrinks while the towel takes its water and dye. The towel itself is in the still scene: soft white, quilted, perforated edges, and a picture's embossed lines with a pale hint of each area's colour.
+  - **Soaking on touch** (owner's expectation, like real paper towel): the moment a dragged drop's outline touches towel (`towelContact`), the drag ends and the drop soaks in at that spot (`soak`, `Drop.soakAt`), into the piece it touched, shrinking while the towel takes its water and dye. The towel is in the still scene: a soft white quilted sheet for free colouring; for pictures, cut-out pieces with a little shadow, a pale hint of each area's colour, and decorations on the paper (the balloons' strings, `DECOR`).
   - **Free colouring** (`free`, no picture): done when every drop has soaked in.
   - **Pictures** (`PICTURES`): areas made of shapes. Each shape is a piece unless shapes share a `piece` (a stem with its leaves). `need` is the paint an area takes, in drops, matched to its pieces (one drop per petal or ray). Judged by eye (`areaLook`):
     - **Colour per cell:** a cell counts as coloured only where it shows the area's colour, so yellow and blue side by side don't make a green area; they have to meet and mix.
     - **Done:** every piece is at least half coloured, or the area was given all its paint and every piece is at least a quarter coloured.
     - **Mistake:** more than a fifth of the area is clearly a colour it doesn't use (over half of the cell's dye, like red in the leaves), once the paint has settled. Small bleeds are fine. The card shows the colour it got ≠ the colour it wants: "בעלי הכותרת יש עכשיו …, אבל צריך שם …".
     - **Dead end:** an area still lacks a colour that no drop left has.
-  - **Hints** (`suggestTowel`): for each area, a drop that already has its colour goes to the emptiest spot of its least-coloured piece (`areaCentre`: far from colour and from the area's border, so it doesn't bleed). For a mixed colour, the two drops that make it are joined first. The path leaves the column of drops through a gap (`outOfTheRow`), so it doesn't brush other drops; hints can have several turns (`via` is a list).
-  - **Layout:** picture levels have a tall towel on the right, with the drops in two columns of four on the left, 23 units apart so a drop can leave between the others.
+  - **Hints** (`suggestTowel`): for each area, a drop that already has its colour goes to the middle of its least-coloured piece (`areaCentre`). For a mixed colour, the two drops that make it are joined first. Since a drop soaks into the first piece it touches, the path (`planPath`) must touch no other piece and no other drop: it tries straight, out of the column of drops through a gap (`outOfTheRow`), a spot beside the target, and walks round the outside of the whole picture (`Towel.bounds`), and takes the shortest clear one. Its margin is bigger ahead of the drop than beside it, since a dragged drop stretches toward the finger. Pieces are spaced so even a drop of volume 2 fits between them (the sun's rays at radius 24, scale 1.1). Hints can have several turns (`via` is a list).
+  - **Layout:** picture levels have the picture on the right (`PIECES`) and the drops on a 3 × 3 grid on the left (`SLOTS`, `at()`), with room to leave between them.
 - **Colour** (`color.ts`): drops carry red, yellow and blue pigment amounts; the colour comes from an RYB cube (paint-like mixing). `sameColor` compares proportions.
   - **Names:** every colour a child can mix has a Hebrew name (`colorName`, `COLOR_HE`). These are the three base colours, the three secondary ones, and the in-between ones: אדום-כתום, צהוב-כתום, ירוק-ליים, טורקיז (blue + green), כחול-סגול, סגול-אדום, and חום. A colour without an everyday adjective reads "טיפה בצבע טורקיז" (`aDrop` in `main.ts`).
 - **Rendering** (`render.ts`, Canvas 2D):
   - **Drops:** a shadow and a coloured light pool (soft blobs painted once, stretched like the drop), a see-through body whose gradient stretches with the drop, a dark inner rim, a caustic on the far side, a reflected rim line and a window highlight on the light side (top left). Big drops are flatter: the rim width is capped, so their middle is clearer and their gloss smaller.
   - **Backdrop** (`drawBackdrop`): light oak planks, the black diamond card from the reference photo (its corners peek out above and below the paper), the paper sheet, and a plant whose leaves lean over the paper's top-left corner. It is painted once per resize and per level.
-  - **The plant grows over the levels** (`LEAVES`, `plant()`): each leaf has the level it appears at. New leaves sprout small and light green and grow over the next levels, and every leaf turns a little from level to level. A pink bud appears at level 9 and blooms by level 11, and a violet one appears at level 15 and blooms by level 17 (`flower()`).
+  - **The plant grows over the levels** (`LEAVES`, `plant()`), up to the last ones: each leaf has the level it appears at (the last at 31). New leaves sprout small and light green and grow over the next levels, and every leaf turns a little from level to level. A pink bud appears at level 9 and blooms by level 11, a violet one appears at level 15 and blooms by level 17, and a yellow one appears at 25 and blooms by 29 (`flower()`).
+  - **The plant's corner stays free:** no drop starts under the plant or the top-left buttons (`PLANT` in `game.ts`; `spread()` moves such drops down).
   - **Cups:** marker drawings with scalloped water.
   - **Speed on old tablets** (owner's report: the celebration and busy levels stuttered). Measured in Chromium with the CPU slowed 6× (`Emulation.setCPUThrottlingRate`), about 140 ms a frame went to 20–35 ms. What did it:
     - **The still scene on its own canvas** (`#bg`, under `#stage`): it is painted only when the level or the size changes. The game canvas is cleared and draws only what lives. Copying a full-screen picture every frame was the biggest cost.
@@ -109,7 +110,7 @@ Ideas still open are in `BACKLOG.md`.
 
 ## Debug hooks
 
-- `?debug=state` exposes the game as `window.__dd` (`snapshot()` gives positions in CSS pixels); the tests use it. `?level=N` (1–34) picks the level (by position).
+- `?debug=state` exposes the game as `window.__dd` (`snapshot()` gives positions in CSS pixels); the tests use it. `?level=N` (1–35) picks the level (by position).
 - `?debug=play` skips the home screen. `?debug=party&level=N` plays that level's celebration at once. `?debug=lab` is a sandbox with three drops of each base colour, mixing on. `?debug=sheet` shows every colour at three sizes.
 - The icons (`public/icon-*.png`, `favicon.png`, `apple-touch-icon.png`) are the owner's logo, resized; so are `logo.webp` and the portal's `art/logos/drop-the-drop.webp`. `?debug=icon` still shows one big drop.
 - `og-image.png` is a 1200 × 630 screenshot of the home screen.
@@ -121,5 +122,5 @@ Ideas still open are in `BACKLOG.md`.
 - **Every level:** solvable (the drops' pigment equals what the cups want, and the solver finds a way), starts with drops apart, above the cups and off the glue, and has a hint.
 - **Play:** level 6 is won by joining and pouring, and "next" opens level 7. Level 2's cup fills drop by drop. A small drop is refused. Red touching blue explains purple. Level 9 mixes orange into its cup. Level 12's blue + red ends with the "no cup" card (purple). Level 15's big drop splits on a double tap and its halves fill the two cups; a small drop does not split. Level 13 mixes turquoise. A dead end shows its card. Level 21's drop gets glitter through the glue and fills the glitter cup; in level 22 a plain drop dragged through the glue gets the glitter card, and going round the stripe's end (the way the hint shows) keeps it plain. A fast finger pulls a drop along fast. Four green halves in level 19 are a dead end and get the try-again card; level 16's first hint is the split.
 - **Stats:** `api/stats.js` uses the `dd:` prefix and 4 commands per play, and stays a silent no-op without Redis. Level starts and finishes are one command each, and the summary lists them per level. The game sends nothing on localhost.
-- **New levels:** the brown level is won by joining every dot in any order, with no mistake. A free towel level is won when every drop has soaked in. The flower is won by following the hints (joining yellow and blue for the leaves). Red in the flower's centre shows the towel card. With every level open, the levels screen fits small phones (9 tiles a row on short screens).
+- **New levels:** the brown level is won by joining every dot in any order, with no mistake. A free towel level is won when every drop has soaked in. In the red-dot level a drop soaks in as soon as it touches, before it is let go. The flower, the sun and the balloons are won by following the hints (joining for green, orange and purple). Red led into the flower's centre (by the game's own path planner) shows the towel card. With every level open, the levels screen fits small phones (9 tiles a row on short screens).
 - **Colours:** every mix of up to three parts of each base colour has a Hebrew name, and blue + green is turquoise.

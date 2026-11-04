@@ -39,6 +39,8 @@ export interface GameEvents {
 }
 
 const DT = 1 / 240;
+/** the plant's corner (world units): no drop starts there */
+const PLANT = { x: 34, y: 30 };
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const portrait = matchMedia('(orientation: portrait)');
 /** water level of an empty cup (the coloured hint at the bottom) and of a full one */
@@ -242,6 +244,8 @@ export class Game {
       for (const d of this.drops) {
         d.x = Math.max(x0, Math.min(x1, d.x));
         d.y = Math.max(y0, Math.min(y1, d.y));
+        // keep clear of the plant and the buttons in the top-left corner
+        if (d.x < PLANT.x + d.R && d.y < PLANT.y + d.R) d.y = PLANT.y + d.R;
       }
       if (!moved) break;
     }
@@ -602,6 +606,8 @@ export class Game {
       if (dragged && dragged.state === 'drag') {
         this.glueCheck(dragged);
         this.touchCheck(dragged);
+        // touching the paper towel: it drinks the drop right there
+        if (this.towel && dragged.state === 'drag') { const at = this.towelContact(dragged); if (at) this.soak(dragged, at); }
       }
     }
     for (const d of this.drops) {
@@ -724,19 +730,27 @@ export class Game {
   // ------------------------------------------------------------ the paper towel
 
   /** Is any part of the drop's outline on the towel? */
-  onTowel(d: Drop): boolean {
+  onTowel(d: Drop): boolean { return !!this.towelContact(d); }
+
+  /** Where the drop's outline touches the towel (the spot nearest its middle), if it does. */
+  towelContact(d: Drop): { x: number; y: number; cell: number } | null {
     const t = this.towel!;
-    const R = d.R;
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * Math.PI * 2;
-      if (t.covers(d.x + Math.cos(a) * R * 0.9, d.y + Math.sin(a) * R * 0.9)) return true;
+    let best: { x: number; y: number; cell: number } | null = null;
+    for (const f of [0.45, 0.75, 0.95]) for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const x = d.x + Math.cos(a) * d.R * f, y = d.y + Math.sin(a) * d.R * f;
+      const cell = t.cellAt(x, y);
+      if (cell >= 0) { best = { x, y, cell }; break; }
     }
-    return false;
+    return best;
   }
 
-  /** The towel drinks the drop: it stays where it was let go and soaks in. */
-  soak(d: Drop) {
-    const i = this.towel!.areaAt(d.x, d.y);
+  /** The towel drinks the drop where it touched it: a real towel starts colouring there. */
+  soak(d: Drop, at = this.towelContact(d)) {
+    if (!at) return;
+    this.cancelDrag();
+    d.soakAt = at;
+    const i = this.towel!.area[at.cell];
     if (i >= 0) d.pig.forEach((v, k) => (this.areaGot[i][k] += v));
     d.state = 'soak';
     d.pull = null;
@@ -753,8 +767,10 @@ export class Game {
       // the drop shrinks into the towel, giving it its water and dye; it slides on a little as it goes
       const amt = Math.min(d.vol, (1.2 + d.vol * 1.5) * dt);
       const sh = share(d.pig);
-      const tx = Math.max(t.def.x0 + 1, Math.min(t.def.x1 - 1, d.x)), ty = Math.max(t.def.y0 + 1, Math.min(t.def.y1 - 1, d.y + d.R * 0.3));
-      t.absorb(tx, ty, d.R * 0.8, amt, [sh[0] * amt, sh[1] * amt, sh[2] * amt]);
+      // into the piece it touched, around the spot where it touched (it creeps in from there)
+      const at = d.soakAt ?? { x: d.x, y: d.y, cell: -1 };
+      d.x += (at.x - d.x) * Math.min(1, dt * 3); d.y += (at.y - d.y) * Math.min(1, dt * 3);
+      t.absorb(at.x, at.y, d.R * 0.9, amt, [sh[0] * amt, sh[1] * amt, sh[2] * amt], at.cell);
       d.vol -= amt;
       d.setPig(scalePig(sh, d.vol));
       if (d.vol < 0.04) d.state = 'gone';
@@ -880,8 +896,10 @@ export class Game {
     const free = this.drops.filter((d) => d.state === 'rest');
     if (!free.length) return null;
     if (!t.areas.length) {
-      const d = free[0];
-      return { ax: d.x, ay: d.y, bx: d.x, by: (t.def.y0 + t.def.y1) / 2, t: 0 };
+      // free colouring: the nearest drop to the towel's middle (it soaks in at the edge it reaches)
+      const cx = (t.def.x0 + t.def.x1) / 2, cy = (t.def.y0 + t.def.y1) / 2;
+      const d = free.reduce((m, q) => (Math.hypot(q.x - cx, q.y - cy) < Math.hypot(m.x - cx, m.y - cy) ? q : m));
+      return { ax: d.x, ay: d.y, bx: cx, by: cy, t: 0, via: this.planPath(d, cx, cy, -1) };
     }
     const fits = (p: Pig, want: number[]) => p.every((v, c) => v < 0.01 || v <= want[c] + 0.05);
     for (let k = 0; k < t.areas.length; k++) {
@@ -892,7 +910,7 @@ export class Game {
       const ready = free.find((d) => sameColor(d.pig, PIG[a.color]) && fits(d.pig, want));
       if (ready) {
         const c = t.areaCentre(k);
-        return { ax: ready.x, ay: ready.y, bx: c.x, by: c.y, t: 0, via: this.outOfTheRow(ready) };
+        return { ax: ready.x, ay: ready.y, bx: c.x, by: c.y, t: 0, via: this.planPath(ready, c.x, c.y, t.cellAt(c.x, c.y)) };
       }
       // two drops that make the colour together: join them first (the closest pair)
       let pair: [number, Drop, Drop] | null = null;
@@ -907,6 +925,99 @@ export class Game {
       if (pair) return { ax: pair[2].x, ay: pair[2].y, bx: pair[1].x, by: pair[1].y, t: 0 };
     }
     return null;
+  }
+
+  /**
+   * A path for a drop to a towel piece that touches nothing on the way: no other
+   * drop, and no other piece (it would soak in there). Tries straight, then one or
+   * two turns: a gap out of the drops, and a spot beside the target piece.
+   * Returns the turns (the path ends at bx, by). `target` is a cell of the target
+   * piece (-1: any towel, for free colouring).
+   */
+  planPath(d: Drop, bx: number, by: number, target: number): { x: number; y: number }[] {
+    const t = this.towel!;
+    const others = this.drops.filter((o) => o !== d && o.state === 'rest');
+    const sameCell = (k: number) => target < 0 || (t.area[k] === t.area[target] && t.piece[k] === t.piece[target]);
+    // a drop at (x, y) moving in direction `dir`: does it touch another drop, or a
+    // towel piece other than the target? A dragged drop stretches toward the finger,
+    // so the margin is bigger ahead of it than beside it.
+    const free = (x: number, y: number, last: boolean, dir = 0) => {
+      if (others.some((o) => Math.hypot(o.x - x, o.y - y) < o.R + d.R + 0.8)) return false;
+      for (let a = 0; a < 32; a++) {
+        const ang = (a / 32) * 6.283;
+        const R = d.R + 1.2 + Math.max(0, Math.cos(ang - dir)) * d.R * 0.5;
+        for (const f of [0.55, 1]) {
+          const k = t.cellAt(x + Math.cos(ang) * R * f, y + Math.sin(ang) * R * f);
+          if (k >= 0 && !(last && sameCell(k))) return false;
+        }
+      }
+      return true;
+    };
+    // a segment is clear if every step is free (reaching the target piece ends it)
+    const clear = (x0: number, y0: number, x1: number, y1: number, toTarget: boolean) => {
+      const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 0.8), dir = Math.atan2(y1 - y0, x1 - x0);
+      for (let i = 1; i <= n; i++) {
+        const x = x0 + ((x1 - x0) * i) / n, y = y0 + ((y1 - y0) * i) / n;
+        if (toTarget && this.towelContactAt(x, y, d.R, sameCell)) return true;
+        if (!free(x, y, toTarget, dir)) return false;
+      }
+      return true;
+    };
+    // the length of a path through some turning points, ending at (bx, by)
+    const len = (pts: { x: number; y: number }[]) => {
+      let m = 0, x = d.x, y = d.y;
+      for (const p of [...pts, { x: bx, y: by }]) { m += Math.hypot(p.x - x, p.y - y); x = p.x; y = p.y; }
+      return m;
+    };
+    const ok = (v: { x: number; y: number }) => v.x >= PAPER.x0 + d.R && v.x <= PAPER.x1 - d.R && v.y >= PAPER.y0 + d.R && v.y <= PAPER.y1 - d.R && free(v.x, v.y, false);
+    // a path through turning points is clear when each piece of it is (the last one may reach the target)
+    const path = (pts: { x: number; y: number }[]) => {
+      let x = d.x, y = d.y;
+      for (const p of pts) { if (!ok(p) || !clear(x, y, p.x, p.y, false)) return false; x = p.x; y = p.y; }
+      return clear(x, y, bx, by, true);
+    };
+    if (path([])) return [];
+    // the way out from among the drops (a gap, then across), and spots around the target
+    const out = this.outOfTheRow(d);
+    const ring: { x: number; y: number }[] = [];
+    for (const r of [d.R + 10, d.R + 16, d.R + 24]) for (let a = 0; a < 24; a++) ring.push({ x: bx + Math.cos((a / 24) * 6.283) * r, y: by + Math.sin((a / 24) * 6.283) * r });
+    // and round the outside of the whole picture: a walk along its corners and sides
+    const b = t.bounds, m = d.R * 1.3 + 3;
+    const mx = (b.x0 + b.x1) / 2, my = (b.y0 + b.y1) / 2;
+    const hull = [
+      { x: b.x0 - m, y: b.y0 - m }, { x: mx, y: b.y0 - m }, { x: b.x1 + m, y: b.y0 - m }, { x: b.x1 + m, y: my },
+      { x: b.x1 + m, y: b.y1 + m }, { x: mx, y: b.y1 + m }, { x: b.x0 - m, y: b.y1 + m }, { x: b.x0 - m, y: my },
+    ].map((p) => ({ x: Math.max(PAPER.x0 + d.R + 1, Math.min(PAPER.x1 - d.R - 1, p.x)), y: Math.max(PAPER.y0 + d.R + 1, Math.min(PAPER.y1 - d.R - 1, p.y)) }));
+    let best: { x: number; y: number }[] | null = null;
+    const consider = (pts: { x: number; y: number }[]) => { if ((!best || len(pts) < len(best)) && path(pts)) best = pts; };
+    consider(out);
+    for (const v of ring) { consider([v]); consider([...out, v]); }
+    // walks along the outside: each leg must be clear, then straight in or through a spot beside the target
+    const legOk = (pts: { x: number; y: number }[]) => {
+      let x = d.x, y = d.y;
+      for (const p of pts) { if (!ok(p) || !clear(x, y, p.x, p.y, false)) return false; x = p.x; y = p.y; }
+      return true;
+    };
+    for (let i = 0; i < hull.length; i++) for (const dir of [1, -1]) {
+      const walk = [...out];
+      for (let n = 0; n < hull.length - 1; n++) {
+        walk.push(hull[(i + dir * n + hull.length * 2) % hull.length]);
+        if (!legOk(walk)) break;
+        consider([...walk]);
+        for (const v of ring) consider([...walk, v]);
+      }
+    }
+    return best ?? out;
+  }
+
+  /** Would a drop of radius r at (x, y) touch a towel cell that `ok` accepts? */
+  towelContactAt(x: number, y: number, r: number, ok: (k: number) => boolean): boolean {
+    const t = this.towel!;
+    for (const f of [0.5, 0.95]) for (let a = 0; a < 16; a++) {
+      const k = t.cellAt(x + Math.cos((a / 16) * 6.283) * r * f, y + Math.sin((a / 16) * 6.283) * r * f);
+      if (k >= 0 && ok(k)) return true;
+    }
+    return false;
   }
 
   /**

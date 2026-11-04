@@ -186,6 +186,7 @@ function failText(info: FailInfo): string {
     const where = 'ב' + (n.startsWith('ה') ? n.slice(1) : n);
     return `${where} יש עכשיו ${COLOR_HE[colorName(info.a)]}, אבל צריך שם ${COLOR_HE[colorName(info.b)]}. ננסה שוב?`;
   }
+  if (info.kind === 'stuck' && game.towel) return 'הטיפות שנשארו כבר לא יכולות לצבוע את כל הציור. בואו ננסה שוב.';
   if (info.kind === 'stuck') return 'הטיפות שנשארו כבר לא יכולות למלא את הכוסות. בואו ננסה שוב, ואולי נחבר או נפצל אחרת.';
   const a = colorName(info.a), b = colorName(info.b), m = colorName(info.mix);
   if (info.kind === 'touch') {
