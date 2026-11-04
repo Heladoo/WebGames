@@ -8,7 +8,7 @@ import { PIG, type Pig, type RGB, pigToRgb, sameColor, scalePig, share, tint, WH
 import { Drop, mergeInto, R1, reach, stepDrop } from './drop';
 import { type Glue, type Level, LEVELS, WORLD_H, WORLD_W } from './levels';
 import { type CupView, type Particle, drawBackdrop, drawCup, drawDropCached, drawGlueTwinkle, drawHand, drawParticles, drawParty, PAPER, PARTY } from './render';
-import { sfx } from './sfx';
+import { playParty, prepareParty, sfx } from './sfx';
 import { stats } from './stats';
 import { type Answer, quarters, QUARTER, solve } from './solver';
 
@@ -84,6 +84,8 @@ export class Game {
   /** the celebration, seconds since it began (-1: none) */
   party = -1;
   partyStars = 0;
+  /** the celebration's sound plays live (its recording was not ready) */
+  liveParty = true;
   last = 0;
 
   /** the still scene (table, card, paper, glue, plant) on its own canvas under the game, painted only when it changes */
@@ -166,6 +168,8 @@ export class Game {
     }
     this.spread();
     if (drip) this.dripIn();
+    // mix this level's celebration sound in the background while it is played
+    prepareParty(this.cups.length);
   }
 
   /** Let the drops drip onto the paper one by one. */
@@ -658,7 +662,13 @@ export class Game {
         if (this.cups.every((k) => k.filled)) {
           this.over = true;
           this.won = true;
-          this.later(0.35, () => { this.party = 0; this.partyStars = 0; sfx.win(); });
+          this.later(0.35, () => {
+            this.party = 0;
+            this.partyStars = 0;
+            // the recorded celebration sound if it is ready; else it plays live
+            this.liveParty = !playParty(this.cups.length);
+            if (this.liveParty) sfx.win();
+          });
         }
       }
     }
@@ -670,11 +680,11 @@ export class Game {
     this.party += dt;
     const t = this.party;
     this.cups.forEach((c, i) => {
-      const start = 0.05 + i * 0.1;
+      const start = PARTY.hop0 + i * PARTY.hopGap;
       const q = (t - start) / 0.45;
       c.hop = q > 0 && q < 1 ? Math.sin(q * Math.PI) * (1 - q * 0.3) : 0;
       // a little fountain from each cup as it lands
-      if (t0 < start + 0.38 && t >= start + 0.38) {
+      if (t0 < start + PARTY.hopLand && t >= start + PARTY.hopLand) {
         c.wave = 1;
         const n = reduced ? 4 : 12;
         for (let k = 0; k < n; k++) {
@@ -683,11 +693,11 @@ export class Game {
             life: 1.3, max: 1.3, kind: 'drop', rgb: tint(c.rgb, WHITE, Math.random() * 0.15), size: 0.7 + Math.random() * 0.9, rot: 0,
           });
         }
-        sfx.hop(i);
+        if (this.liveParty) sfx.hop(i);
       }
     });
     const starsAt = PARTY.stars;
-    while (this.partyStars < 3 && t >= starsAt[this.partyStars]) { sfx.sticker(this.partyStars); this.partyStars++; }
+    while (this.partyStars < 3 && t >= starsAt[this.partyStars]) { if (this.liveParty) sfx.sticker(this.partyStars); this.partyStars++; }
     if (t0 < PARTY.buttons && t >= PARTY.buttons) this.events.win();
   }
 

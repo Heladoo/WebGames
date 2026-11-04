@@ -755,7 +755,7 @@ function sprite(key: string, w: number, h: number, paint: (g: CanvasRenderingCon
 }
 
 /** Celebration timing, in seconds from its start: quick, so it feels immediate (owner's request). */
-export const PARTY = { stars: [0.12, 0.22, 0.32], pop: 0.22, write: 0.3, writeFor: 0.55, buttons: 1.0 };
+export const PARTY = { stars: [0.12, 0.22, 0.32], pop: 0.22, write: 0.3, writeFor: 0.55, buttons: 1.0, hop0: 0.05, hopGap: 0.1, hopLand: 0.38 };
 
 const easeBack = (q: number) => { const c = 2.2; q = Math.max(0, Math.min(1, q)); return 1 + (c + 1) * Math.pow(q - 1, 3) + c * Math.pow(q - 1, 2); };
 
