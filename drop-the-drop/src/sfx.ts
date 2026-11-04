@@ -276,7 +276,12 @@ export const sfx = {
     plop(380, 0.08, 0, 2.2, 0.14);
     tick(rand(2000, 3200), 0.05, 0.05, 0);
   },
-  /** a cup hops in the celebration */
+  /** a drop picks up glitter: a quick shimmer of high bells */
+  glitter() {
+    [24, 28, 31, 36].forEach((st, i) => bell(note(st), 0.025, i * 0.04 + rand(0, 0.015), 0.9, rand(-0.5, 0.5)));
+    tick(rand(5000, 7000), 0.03, 0.12, 0);
+  },
+    /** a cup hops in the celebration */
   hop(i: number) { plop(500 + i * 120, 0.1, 0, 2.4, 0.15, [-0.4, 0, 0.4][i % 3]); },
   /** a star sticker pops on */
   sticker(i: number) {

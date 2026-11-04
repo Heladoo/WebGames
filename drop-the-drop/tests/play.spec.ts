@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 type Snap = {
   over: boolean; won: boolean;
-  drops: { id: number; x: number; y: number; r: number; vol: number; pig: number[]; state: string }[];
+  drops: { id: number; x: number; y: number; r: number; vol: number; pig: number[]; state: string; glitter: boolean }[];
   cups: { x: number; y: number; filled: boolean; need: number; total: number; got: number; pig: number[] }[];
 };
 
@@ -205,4 +205,58 @@ test('a fast finger pulls the drop along fast', async ({ page }) => {
   await page.mouse.up();
   // the old calm limit would have covered only about half of this in the same time
   expect(Math.hypot(now.x - d.x, now.y - d.y)).toBeGreaterThan(0.75 * Math.hypot(to.x - d.x, to.y - d.y));
+});
+
+/** Drag along several points (world units are turned into screen points by the page). */
+async function dragPath(page: Page, pts: { x: number; y: number }[]) {
+  await page.mouse.move(pts[0].x, pts[0].y);
+  await page.mouse.down();
+  for (let k = 1; k < pts.length; k++) {
+    const a = pts[k - 1], b = pts[k];
+    for (let i = 1; i <= 30; i++) { await page.mouse.move(a.x + ((b.x - a.x) * i) / 30, a.y + ((b.y - a.y) * i) / 30); await page.waitForTimeout(16); }
+    await page.waitForTimeout(350);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+}
+const world = (page: Page, x: number, y: number) => page.evaluate(([x, y]) => {
+  const g = (window as any).__dd;
+  return { x: g.ox + x * g.S, y: g.oy + y * g.S };
+}, [x, y]);
+
+test('level 21: a drop dragged through the glitter glue gets glitter, and the glitter cup takes it', async ({ page }) => {
+  await startLevel(page, 21);
+  let s = await snap(page);
+  expect(s.drops[0].glitter).toBe(false);
+  expect(s.cups[0].glitter).toBe(true);
+  await drag(page, s.drops[0], s.cups[0], 60);
+  s = await snap(page);
+  await expect(page.locator('#win')).toBeVisible({ timeout: 6000 });
+});
+
+test('level 22: a plain drop through the glue cannot go to its plain cup, and the card says why', async ({ page }) => {
+  await startLevel(page, 22);
+  const s = await snap(page);
+  const blue = s.drops.find((d) => isBlue(d.pig))!;
+  const cup = s.cups.find((c) => !c.glitter)!;
+  // straight through the middle of the stripe
+  await dragPath(page, [blue, await world(page, 80, 30), cup]);
+  await expect(page.locator('#fail')).toBeVisible({ timeout: 4000 });
+  await expect(page.locator('#fail-text')).toContainText('נצנצים');
+});
+
+test('level 22: going round the end of the glue keeps a drop plain; the hint shows that way', async ({ page }) => {
+  await startLevel(page, 22);
+  // lift the blue drop so the straight way to its cup would cross the glue
+  await page.evaluate(() => { const g = (window as any).__dd; const b = g.drops.find((d: any) => d.pig[2] > 0); b.x = 58; b.y = 14; });
+  await page.waitForTimeout(100);
+  const via = await page.evaluate(() => (window as any).__dd.suggest()?.via);
+  expect(via, 'the hint goes round the glue').toBeTruthy();
+  const s = await snap(page);
+  const blue = s.drops.find((d) => isBlue(d.pig))!;
+  const cup = s.cups.find((c) => !c.glitter)!;
+  await dragPath(page, [blue, await world(page, 58, 62), await world(page, 125, 62), cup]);
+  await page.waitForTimeout(900);
+  const after = await snap(page);
+  expect(after.cups.find((c) => !c.glitter)!.filled).toBe(true);
 });

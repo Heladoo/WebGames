@@ -8,6 +8,16 @@
 
 import { css, INK, tint, WHITE, type RGB } from './color';
 import { type Drop, N, R1, COS, SIN } from './drop';
+import type { Glue } from './levels';
+
+/** Glitter colours: gold, silver, pink, cyan, violet. */
+const GLITTER = ['#ffd54a', '#eef3fb', '#ff7ac8', '#6fe3ff', '#b88cff'];
+
+/** A small seeded random, so glitter sits in the same places every frame. */
+function hash(n: number): number {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
 
 const xs = new Float32Array(N), ys = new Float32Array(N);
 
@@ -109,6 +119,30 @@ export function drawDrop(ctx: CanvasRenderingContext2D, dr: Drop, S: number, sca
   ctx.fillStyle = ca;
   ctx.fillRect(cx - R * 2, cy - R * 2, R * 4, R * 4);
   ctx.restore();
+
+  // 4b. glitter inside the drop: specks that twinkle, floating with it
+  if (dr.glitter) {
+    const t = performance.now() / 1000;
+    ctx.save();
+    trace(ctx, xs, ys);
+    ctx.clip();
+    const n = Math.round(10 + dr.vol * 6);
+    for (let i = 0; i < n; i++) {
+      const u = hash(dr.id * 31 + i), v = hash(dr.id * 57 + i * 3.1);
+      const rr = Math.sqrt(u) * R * 0.82, an = v * Math.PI * 2 + t * 0.15;
+      const px = gx + Math.cos(an) * rr, py = gy + Math.sin(an) * rr;
+      const tw = 0.35 + 0.65 * Math.max(0, Math.sin(t * 5 + i * 1.7));
+      const sz = (0.22 + hash(i * 13 + dr.id) * 0.3) * Math.min(1.4, k * 1.1);
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(hash(i + dr.id) * 3 + t * 0.6);
+      ctx.globalAlpha = alpha * tw;
+      ctx.fillStyle = GLITTER[i % GLITTER.length];
+      ctx.fillRect(-sz, -sz * 0.6, sz * 2, sz * 1.2);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
 
   // 5. reflected rim along the lower right
   ctx.beginPath();
@@ -324,7 +358,7 @@ function plant(g: CanvasRenderingContext2D, k: number, stage: number) {
  * (its corners peek out), and the paper sheet. ox, oy and k place the world
  * in device pixels.
  */
-export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: number, stage = 0): HTMLCanvasElement {
+export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: number, stage = 0, glue: Glue[] = []): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const g = c.getContext('2d')!;
@@ -358,12 +392,80 @@ export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: nu
   g.fillStyle = v;
   g.fillRect(px, py, pw, ph);
   g.restore();
+  // glitter glue stripes on the paper
+  g.save();
+  g.setTransform(k, 0, 0, k, ox, oy);
+  glue.forEach((q, gi) => drawGlue(g, q, gi));
+  g.restore();
   // the plant leans over the paper's corner, as in the reference photo
   g.save();
   g.translate(ox, oy);
   plant(g, k, stage);
   g.restore();
   return c;
+}
+
+/** A stripe of glitter glue (world units): silvery glue, a wet shine and lots of glitter flecks. */
+function drawGlue(g: CanvasRenderingContext2D, q: Glue, gi: number) {
+  const w = q.w ?? 7;
+  const len = Math.hypot(q.x1 - q.x0, q.y1 - q.y0) || 1;
+  const ux = (q.x1 - q.x0) / len, uy = (q.y1 - q.y0) / len;
+  const nx = -uy, ny = ux;
+  g.lineCap = 'round';
+  g.beginPath(); g.moveTo(q.x0, q.y0); g.lineTo(q.x1, q.y1);
+  g.shadowColor = 'rgba(90,90,120,0.25)'; g.shadowBlur = 4; g.shadowOffsetY = 1;
+  g.strokeStyle = 'rgba(225,228,240,0.85)'; g.lineWidth = w;
+  g.stroke();
+  g.shadowColor = 'transparent';
+  g.strokeStyle = 'rgba(255,255,255,0.65)'; g.lineWidth = w * 0.7;
+  g.stroke();
+  // flecks
+  const n = Math.round(len * w * 0.9);
+  for (let i = 0; i < n; i++) {
+    const a = hash(gi * 1000 + i), b = hash(gi * 2000 + i * 1.3) - 0.5;
+    const x = q.x0 + ux * len * a + nx * b * w * 0.9, y = q.y0 + uy * len * a + ny * b * w * 0.9;
+    const sz = 0.18 + hash(i * 7 + gi) * 0.32;
+    g.save();
+    g.translate(x, y);
+    g.rotate(hash(i * 3 + gi) * 3);
+    g.globalAlpha = 0.65 + hash(i * 11) * 0.35;
+    g.fillStyle = GLITTER[i % GLITTER.length];
+    g.fillRect(-sz, -sz * 0.6, sz * 2, sz * 1.2);
+    g.restore();
+  }
+  // a wet shine along one edge
+  g.beginPath();
+  g.moveTo(q.x0 + nx * w * 0.25, q.y0 + ny * w * 0.25);
+  g.lineTo(q.x1 + nx * w * 0.25, q.y1 + ny * w * 0.25);
+  g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = w * 0.12;
+  g.stroke();
+}
+
+/** A few glints twinkling on the glue stripes (drawn every frame, world units). */
+export function drawGlueTwinkle(ctx: CanvasRenderingContext2D, glue: Glue[], t: number) {
+  glue.forEach((q, gi) => {
+    const w = q.w ?? 7;
+    const len = Math.hypot(q.x1 - q.x0, q.y1 - q.y0);
+    const n = Math.max(3, Math.round(len / 9));
+    for (let i = 0; i < n; i++) {
+      const ph = hash(gi * 97 + i) * 6.28, sp = 1.5 + hash(i * 5 + gi) * 2;
+      const s = Math.max(0, Math.sin(t * sp + ph));
+      if (s < 0.6) continue;
+      const a = hash(gi * 300 + i * 7), b = hash(gi * 400 + i) - 0.5;
+      const x = q.x0 + (q.x1 - q.x0) * a - ((q.y1 - q.y0) / (len || 1)) * b * w * 0.7;
+      const y = q.y0 + (q.y1 - q.y0) * a + ((q.x1 - q.x0) / (len || 1)) * b * w * 0.7;
+      const r = (s - 0.6) * 4.5;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.beginPath();
+      ctx.moveTo(0, -r); ctx.lineTo(r * 0.18, -r * 0.18); ctx.lineTo(r, 0); ctx.lineTo(r * 0.18, r * 0.18);
+      ctx.lineTo(0, r); ctx.lineTo(-r * 0.18, r * 0.18); ctx.lineTo(-r, 0); ctx.lineTo(-r * 0.18, -r * 0.18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  });
 }
 
 /** Plain paper filling a small canvas (for the cards). */
@@ -390,6 +492,8 @@ export interface CupView {
   got: number;
   /** 0..1: the happy hop at the end of a level */
   hop: number;
+  /** wants glittery drops: glitter in its water and a sparkle badge */
+  glitter: boolean;
 }
 
 function cupSide(c: CupView, f: number): [number, number] {
@@ -444,6 +548,19 @@ export function drawCup(ctx: CanvasRenderingContext2D, c: CupView, t: number) {
   wg.addColorStop(1, css(tint(c.rgb, INK, 0.08), 0.92));
   ctx.fillStyle = wg;
   ctx.fill();
+  if (c.glitter) {
+    // glitter in the water
+    ctx.save();
+    ctx.clip();
+    for (let i = 0; i < 40; i++) {
+      const x = c.x + (hash(i * 3 + c.x) - 0.5) * c.tw, y = bottom - hash(i * 7 + c.x) * c.h * lvl;
+      const tw = 0.4 + 0.6 * Math.max(0, Math.sin(t * 4 + i * 1.3));
+      ctx.globalAlpha = tw;
+      ctx.fillStyle = GLITTER[i % GLITTER.length];
+      ctx.fillRect(x - 0.3, y - 0.2, 0.6, 0.4);
+    }
+    ctx.restore();
+  }
 
   // marker outline (drawn twice, slightly apart, for a hand-drawn line)
   ctx.lineJoin = 'round';
@@ -481,6 +598,26 @@ export function drawCup(ctx: CanvasRenderingContext2D, c: CupView, t: number) {
     ctx.fill();
     ctx.strokeStyle = css(ink, 0.55 + (c.pulseKind === 'size' ? c.pulse * 0.4 : 0));
     ctx.lineWidth = 0.55;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // a glitter cup wears a twinkling star on its rim
+  if (c.glitter) {
+    const sx = c.x + c.tw * 0.5 + 1.5, sy = c.top - 1.5, r = 3 + Math.sin(t * 3) * 0.5;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(Math.sin(t * 1.5) * 0.2);
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const q = i % 2 ? r * 0.38 : r, an = -Math.PI / 2 + (i * Math.PI) / 4;
+      ctx.lineTo(Math.cos(an) * q, Math.sin(an) * q);
+    }
+    ctx.closePath();
+    ctx.fillStyle = '#ffd54a';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 0.6;
+    ctx.fill();
     ctx.stroke();
     ctx.restore();
   }
@@ -664,21 +801,36 @@ function drawDoubleTap(ctx: CanvasRenderingContext2D, x: number, y: number, p: n
 }
 
 /** A see-through fingertip showing a move: press at a, slide to b, lift. */
-export function drawHand(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, p: number, tap2 = false) {
+export function drawHand(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, p: number, tap2 = false, via?: { x: number; y: number }) {
   if (tap2) { drawDoubleTap(ctx, ax, ay, p); return; }
+  // the path: straight, or round a glue stripe through `via`
+  const pts = via ? [[ax, ay], [via.x, via.y], [bx, by]] : [[ax, ay], [bx, by]];
+  const segs = pts.slice(1).map((q, i) => Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]));
+  const total = segs.reduce((m, v) => m + v, 0) || 1;
+  const at = (e: number): [number, number] => {
+    let d = e * total;
+    for (let i = 0; i < segs.length; i++) {
+      if (d <= segs[i] || i === segs.length - 1) {
+        const f = segs[i] ? Math.min(1, d / segs[i]) : 1;
+        return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * f, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * f];
+      }
+      d -= segs[i];
+    }
+    return [bx, by];
+  };
   let x = ax, y = ay, a = 1, press = 0;
   if (p < 0.18) { a = p / 0.18; press = p / 0.18; }
   else if (p < 0.78) {
     const q = (p - 0.18) / 0.6;
     const e = q * q * (3 - 2 * q);
-    x = ax + (bx - ax) * e; y = ay + (by - ay) * e; press = 1;
+    [x, y] = at(e); press = 1;
   } else { x = bx; y = by; a = 1 - (p - 0.78) / 0.22; press = a; }
   // dotted path
   ctx.save();
   ctx.setLineDash([1, 2]);
   ctx.strokeStyle = `rgba(70,80,110,${0.25 * Math.min(1, a + 0.3)})`;
   ctx.lineWidth = 0.6;
-  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ax, ay); for (const q of pts.slice(1)) ctx.lineTo(q[0], q[1]); ctx.stroke();
   ctx.restore();
   // fingertip
   ctx.save();

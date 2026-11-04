@@ -12,6 +12,8 @@
 //
 //   POST {type:"start", id}      → one more play
 //   POST {type:"time", id, s}    → add s seconds of play (1..120)
+//   POST {type:"level", id, level} → that level was started (1 command)
+//   POST {type:"won", id, level}   → that level was finished (1 command)
 //   GET  ?key=STATS_KEY          → totals + last 30 days (for /stats.html)
 
 import { timingSafeEqual } from 'node:crypto';
@@ -66,6 +68,11 @@ export function commandsFor(msg, today = day()) {
       ['PFADD', `${P}players:${today}`, msg.id],
     ];
   }
+  if (msg.type === 'level' || msg.type === 'won') {
+    // which levels are played and finished: one hash field per level id (l1..l99)
+    if (typeof msg.level !== 'string' || !/^l\d{1,2}$/.test(msg.level)) return null;
+    return [['HINCRBY', `${P}${msg.type === 'won' ? 'won' : 'levels'}`, msg.level, 1]];
+  }
   if (msg.type === 'time') {
     const s = Math.round(Number(msg.s));
     if (!Number.isFinite(s) || s < 1 || s > MAX_SECONDS) return null;
@@ -82,9 +89,19 @@ export async function summary(fetchImpl = fetch, now = new Date(), env = process
   for (let i = 29; i >= 0; i--) days.push(day(new Date(now.getTime() - i * 864e5)));
   const cmds = [['GET', `${P}plays`], ['GET', `${P}seconds`], ['PFCOUNT', `${P}players`]];
   for (const d of days) cmds.push(['GET', `${P}plays:${d}`], ['GET', `${P}seconds:${d}`], ['PFCOUNT', `${P}players:${d}`]);
+  cmds.push(['HGETALL', `${P}levels`], ['HGETALL', `${P}won`]);
   const res = await redis(cmds, fetchImpl, env);
   const n = (v) => Number(v) || 0;
+  // HGETALL answers [field, value, field, value, ...]
+  const hash = (a) => {
+    const o = {};
+    if (Array.isArray(a)) for (let i = 0; i + 1 < a.length; i += 2) o[a[i]] = n(a[i + 1]);
+    return o;
+  };
+  const started = hash(res[res.length - 2]), won = hash(res[res.length - 1]);
+  const ids = [...new Set([...Object.keys(started), ...Object.keys(won)])].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
   return {
+    levels: ids.map((id) => ({ level: id, started: started[id] || 0, won: won[id] || 0 })),
     plays: n(res[0]),
     seconds: n(res[1]),
     players: n(res[2]),

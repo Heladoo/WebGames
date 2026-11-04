@@ -21,7 +21,14 @@ test('every level is solvable and starts tidy', async ({ page }) => {
       let closest = Infinity;
       for (const a of g.drops) for (const b of g.drops) if (a !== b) closest = Math.min(closest, Math.hypot(a.x - b.x, a.y - b.y) - a.R - b.R);
       const lowest = Math.max(...g.drops.map((d: any) => d.y + d.R));
-      return { id: l.id, have, want, closest, lowest, cupTop: g.cups[0].top, hint: !!g.suggest() };
+      // no drop starts on a glue stripe
+      let onGlue = false;
+      for (const q of l.glue ?? []) for (const d of g.drops) {
+        const dx = q.x1 - q.x0, dy = q.y1 - q.y0;
+        const t = Math.max(0, Math.min(1, ((d.x - q.x0) * dx + (d.y - q.y0) * dy) / (dx * dx + dy * dy)));
+        if (Math.hypot(d.x - q.x0 - dx * t, d.y - q.y0 - dy * t) < (q.w ?? 7) / 2 + d.R + 2) onGlue = true;
+      }
+      return { id: l.id, have, want, closest, lowest, onGlue, cupTop: g.cups[0].top, hint: !!g.suggest() };
     });
   });
   for (const r of report) {
@@ -29,6 +36,7 @@ test('every level is solvable and starts tidy', async ({ page }) => {
     expect(r.closest, `${r.id}: drops start apart`).toBeGreaterThan(5);
     expect(r.lowest, `${r.id}: drops start above the cups`).toBeLessThan(r.cupTop - 5);
     expect(r.hint, `${r.id}: the hint has a first move`).toBe(true);
+    expect(r.onGlue, `${r.id}: no drop starts on glue`).toBe(false);
   }
 });
 

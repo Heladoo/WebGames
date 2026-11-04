@@ -6,8 +6,8 @@
 
 import { PIG, type Pig, type RGB, pigToRgb, sameColor, scalePig, share, tint, WHITE } from './color';
 import { Drop, mergeInto, R1, reach, stepDrop } from './drop';
-import { type Level, LEVELS, WORLD_H, WORLD_W } from './levels';
-import { type CupView, type Particle, drawBackdrop, drawCup, drawDrop, drawHand, drawParticles, drawParty, PAPER, PARTY } from './render';
+import { type Glue, type Level, LEVELS, WORLD_H, WORLD_W } from './levels';
+import { type CupView, type Particle, drawBackdrop, drawCup, drawDrop, drawGlueTwinkle, drawHand, drawParticles, drawParty, PAPER, PARTY } from './render';
 import { sfx } from './sfx';
 import { stats } from './stats';
 
@@ -23,7 +23,9 @@ export interface Cup extends CupView {
 export interface FailInfo {
   a: Pig; b: Pig; mix: Pig;
   /** 'touch': colours touched in a level that keeps them apart; 'nocup': no cup wants the new drop */
-  kind: 'touch' | 'nocup' | 'stuck';
+  kind: 'touch' | 'nocup' | 'stuck' | 'glitter';
+  /** the drop that caused it has glitter (and no cup wants glitter of that colour) */
+  glitter?: boolean;
 }
 
 export interface GameEvents {
@@ -66,7 +68,7 @@ export class Game {
   grab = { x: 0, y: 0 };
   idle = 0;
   /** a move to show: slide from a to b, or (tap2) tap a drop twice to split it */
-  hint: { ax: number; ay: number; bx: number; by: number; t: number; tap2?: boolean } | null = null;
+  hint: { ax: number; ay: number; bx: number; by: number; t: number; tap2?: boolean; via?: { x: number; y: number } } | null = null;
   /** the last tap on a drop, to catch a double tap (split) */
   lastTap: { id: number; t: number; x: number; y: number } | null = null;
   /** seconds with no useful move left (a dead end ends the level gently) */
@@ -117,7 +119,7 @@ export class Game {
       return {
         x: def.x ?? (this.W * (i + 0.5)) / n, top, tw: cw, bw: cw * 0.76, h: ch,
         rgb: pigToRgb(pig), pig, need: def.need, total: def.total ?? def.need, got: 0,
-        level: LOW, goal: LOW, wave: 0, filled: false, pulse: 0, pulseKind: '', hop: 0,
+        level: LOW, goal: LOW, wave: 0, filled: false, pulse: 0, pulseKind: '', hop: 0, glitter: !!def.glitter,
       };
     });
   }
@@ -232,7 +234,7 @@ export class Game {
     if (gl > max) { gx *= max / gl; gy *= max / gl; }
     this.grab = { x: gx, y: gy };
     best.pull = { x: p.x - gx, y: p.y - gy };
-    best.excite(0.06, Math.atan2(gy, gx));
+    best.jiggle(Math.atan2(gy, gx));
     this.touched = true;
     sfx.pick(best.vol, best.pig);
   }
@@ -271,6 +273,7 @@ export class Game {
   release(d: Drop) {
     d.state = 'rest';
     d.pull = null;
+    d.excite(0.08, Math.atan2(d.vy, d.vx));
     const cup = this.cupUnder(d);
     if (cup >= 0) this.tryCup(d, cup);
     else sfx.settle(d.vol);
@@ -292,7 +295,7 @@ export class Game {
   tryCup(d: Drop, i: number) {
     const c = this.cups[i];
     let why: 'size' | 'color' | '' = '';
-    if (c.filled || !sameColor(d.pig, c.pig)) why = 'color';
+    if (c.filled || !sameColor(d.pig, c.pig) || c.glitter !== d.glitter) why = 'color';
     else if (d.vol < c.need - 0.01 || d.vol > c.total - c.got + 0.01) why = 'size';
     if (why) {
       c.pulse = 1; c.pulseKind = why;
@@ -331,9 +334,12 @@ export class Game {
    * Could this drop still go into some cup, alone or with more drops? A drop
    * can be split in halves (down to a volume of 1), so a half that fits counts.
    */
-  fitsACup(p: Pig, vol = p[0] + p[1] + p[2]): boolean {
+  fitsACup(p: Pig, vol = p[0] + p[1] + p[2], glitter = false): boolean {
     return this.cups.some((c) => {
       if (c.filled) return false;
+      // a glittery drop only goes to a glitter cup; a plain one can still get glitter where there is glue
+      if (glitter && !c.glitter) return false;
+      if (!glitter && c.glitter && !this.glue.length) return false;
       const room = c.total - c.got;
       const t = share(c.pig);
       for (let s = 1; s === 1 || vol * s >= 0.99; s /= 2) {
@@ -370,6 +376,7 @@ export class Game {
     const ux = Math.cos(best), uy = Math.sin(best);
     const half: Pig = scalePig(d.pig, 0.5);
     const b = new Drop(d.x + ux * Rn * 0.5, d.y + uy * Rn * 0.5, v, half);
+    b.glitter = d.glitter;
     const cx = d.x, cy = d.y;
     d.vol = v; d.setPig(half);
     d.x = cx - ux * Rn * 0.5; d.y = cy - uy * Rn * 0.5;
@@ -389,6 +396,48 @@ export class Game {
     });
   }
 
+  get glue(): Glue[] { return this.level?.glue ?? []; }
+
+  /** A dragged drop crossing a glitter glue stripe picks up glitter. */
+  glueCheck(d: Drop) {
+    if (d.glitter) return;
+    for (const g of this.glue) {
+      if (segDist(d.x, d.y, g) > (g.w ?? 7) / 2 + d.R * 0.3) continue;
+      d.glitter = true;
+      d.jiggle(Math.random() * 3);
+      this.splash(d.x, d.y, [1, 0.85, 0.3], 8);
+      sfx.glitter();
+      if (!this.fitsACup(d.pig, d.vol, true)) {
+        // no cup wants this colour with glitter: say so
+        const info: FailInfo = { a: [...d.pig] as Pig, b: [...d.pig] as Pig, mix: [...d.pig] as Pig, kind: 'glitter', glitter: true };
+        this.cancelDrag();
+        this.over = true;
+        sfx.oops();
+        this.later(1.3, () => this.events.fail(info));
+      }
+      return;
+    }
+  }
+
+  /** If the straight way from a to b crosses glue that would spoil the drop, go round the stripe's end. */
+  around(ax: number, ay: number, bx: number, by: number, R: number): { x: number; y: number } | undefined {
+    for (const g of this.glue) {
+      const w = (g.w ?? 7) / 2 + R;
+      if (segSegDist(ax, ay, bx, by, g) > w) continue;
+      const len = Math.hypot(g.x1 - g.x0, g.y1 - g.y0) || 1;
+      const ux = (g.x1 - g.x0) / len, uy = (g.y1 - g.y0) / len;
+      let best: { x: number; y: number } | undefined, bl = Infinity;
+      for (const [ex, ey, s] of [[g.x0, g.y0, -1], [g.x1, g.y1, 1]] as const) {
+        const x = ex + s * ux * (w + 5), y = ey + s * uy * (w + 5);
+        if (x < PAPER.x0 + R || x > PAPER.x1 - R || y < PAPER.y0 + R || y > PAPER.y1 - R) continue;
+        const l = Math.hypot(x - ax, y - ay) + Math.hypot(bx - x, by - y);
+        if (l < bl) { bl = l; best = { x, y }; }
+      }
+      return best;
+    }
+    return undefined;
+  }
+
   touchCheck(d: Drop) {
     for (const o of this.drops) {
       if (o === d || o.state !== 'rest' || o.grow < 0.9) continue;
@@ -396,17 +445,17 @@ export class Game {
       const r = reach(d, o);
       const same = sameColor(d.pig, o.pig);
       if (r > 0) {
-        const info: FailInfo = { a: [...d.pig] as Pig, b: [...o.pig] as Pig, mix: [0, 0, 0], kind: 'touch' };
+        const info: FailInfo = { a: [...d.pig] as Pig, b: [...o.pig] as Pig, mix: [0, 0, 0], kind: 'touch', glitter: d.glitter || o.glitter };
         mergeInto(d, o);
         info.mix = [...d.pig] as Pig;
         this.grab.x *= 0.5; this.grab.y *= 0.5;
         this.splash(d.x, d.y, d.rgb, 5);
-        const ok = (same || this.level.mixing) && this.fitsACup(d.pig, d.vol);
+        const ok = (same || this.level.mixing) && this.fitsACup(d.pig, d.vol, d.glitter);
         if (ok) {
           sfx.merge(d.vol, !same);
         } else {
           // show it really happen, then explain
-          if (this.level.mixing || same) info.kind = 'nocup';
+          if (this.level.mixing || same) info.kind = d.glitter && this.fitsACup(d.pig, d.vol, false) ? 'glitter' : 'nocup';
           this.cancelDrag();
           this.over = true;
           sfx.oops();
@@ -469,7 +518,7 @@ export class Game {
         this.clamp(d);
       }
       // touches every step, so a fast drop cannot jump over another one
-      if (dragged && dragged.state === 'drag') this.touchCheck(dragged);
+      if (dragged && dragged.state === 'drag') { this.glueCheck(dragged); this.touchCheck(dragged); }
     }
     for (const d of this.drops) {
       d.shiver = Math.max(0, d.shiver - dt * 2.5);
@@ -588,24 +637,39 @@ export class Game {
   /** What should a stuck player try next? */
   suggest(): Game['hint'] {
     const free = this.drops.filter((d) => d.state === 'rest');
-    // a drop that a cup takes now
+    const takes = (k: Cup, d: { pig: Pig; vol: number }, glitter: boolean) =>
+      !k.filled && sameColor(d.pig, k.pig) && k.glitter === glitter && d.vol >= k.need - 0.01 && d.vol <= k.total - k.got + 0.01;
+    const cupPoint = (c: Cup) => ({ x: c.x, y: c.top + c.h * 0.3 });
+    // a drop that a cup takes now (going round glue if it must stay plain)
     for (const d of free) {
-      const c = this.cups.find((k) => !k.filled && sameColor(d.pig, k.pig) && d.vol >= k.need - 0.01 && d.vol <= k.total - k.got + 0.01);
-      if (c) return { ax: d.x, ay: d.y, bx: c.x, by: c.top + c.h * 0.3, t: 0 };
+      const c = this.cups.find((k) => takes(k, d, d.glitter));
+      if (!c) continue;
+      const p = cupPoint(c);
+      return { ax: d.x, ay: d.y, bx: p.x, by: p.y, t: 0, via: d.glitter ? undefined : this.around(d.x, d.y, p.x, p.y, d.R) };
+    }
+    // a drop that a glitter cup would take once it has glitter: through the glue
+    for (const d of free) {
+      if (d.glitter || !this.glue.length || !this.cups.some((k) => takes(k, d, true))) continue;
+      const g = this.glue.reduce((m, q) => (segDist(d.x, d.y, q) < segDist(d.x, d.y, m) ? q : m));
+      const p = nearest(d.x, d.y, g);
+      return { ax: d.x, ay: d.y, bx: p.x, by: p.y, t: 0 };
     }
     // two drops that make something a cup wants (prefer the closest pair)
-    let best: [number, typeof free[0], typeof free[0]] | null = null;
+    let best: [number, Drop, Drop, { x: number; y: number } | undefined] | null = null;
     for (const a of free) for (const b of free) {
       if (a === b || a.vol < b.vol) continue;
       if (!this.level.mixing && !sameColor(a.pig, b.pig)) continue;
       const p: Pig = [a.pig[0] + b.pig[0], a.pig[1] + b.pig[1], a.pig[2] + b.pig[2]];
-      if (!this.fitsACup(p, a.vol + b.vol)) continue;
+      const glit = a.glitter || b.glitter;
+      if (!this.fitsACup(p, a.vol + b.vol, glit)) continue;
+      // the smaller drop (b) moves; it must not pick up glitter if the join has to stay plain
+      const via = !glit && !this.fitsACup(p, a.vol + b.vol, true) ? this.around(b.x, b.y, a.x, a.y, b.R) : undefined;
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
-      if (!best || dist < best[0]) best = [dist, a, b];
+      if (!best || dist < best[0]) best = [dist, a, b, via];
     }
-    if (best) return { ax: best[2].x, ay: best[2].y, bx: best[1].x, by: best[1].y, t: 0 };
+    if (best) return { ax: best[2].x, ay: best[2].y, bx: best[1].x, by: best[1].y, t: 0, via: best[3] };
     // a big drop whose halves a cup wants: tap it twice
-    const big = free.find((d) => d.vol >= 1.99 && this.fitsACup(scalePig(d.pig, 0.5), d.vol / 2));
+    const big = free.find((d) => d.vol >= 1.99 && this.fitsACup(scalePig(d.pig, 0.5), d.vol / 2, d.glitter));
     if (big) return { ax: big.x, ay: big.y, bx: big.x, by: big.y, t: 0, tap2: true };
     return null;
   }
@@ -614,16 +678,17 @@ export class Game {
     const ctx = this.ctx;
     const k = this.dpr * this.S;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (!this.backdrop) this.backdrop = drawBackdrop(this.canvas.width, this.canvas.height, this.ox * this.dpr, this.oy * this.dpr, k, this.stage());
+    if (!this.backdrop) this.backdrop = drawBackdrop(this.canvas.width, this.canvas.height, this.ox * this.dpr, this.oy * this.dpr, k, this.stage(), this.glue);
     ctx.drawImage(this.backdrop, 0, 0);
     ctx.setTransform(k, 0, 0, k, this.ox * this.dpr, this.oy * this.dpr);
+    if (this.glue.length) drawGlueTwinkle(ctx, this.glue, this.time);
     for (const c of this.cups) drawCup(ctx, c, this.time);
     // resting drops first, the moving one on top
     const order = [...this.drops].sort((a, b) => (a.state === 'drag' ? 1 : 0) - (b.state === 'drag' ? 1 : 0));
     for (const d of order) drawDrop(ctx, d, k);
     if (this.party >= 0) drawParty(ctx, this.party, this.cups.map((c) => c.rgb));
     drawParticles(ctx, this.particles);
-    if (this.hint) drawHand(ctx, this.hint.ax, this.hint.ay, this.hint.bx, this.hint.by, this.hint.t, this.hint.tap2);
+    if (this.hint) drawHand(ctx, this.hint.ax, this.hint.ay, this.hint.bx, this.hint.by, this.hint.t, this.hint.tap2, this.hint.via);
   }
 
   /** How far along the game this level is (0..11), for the plant on the table. */
@@ -637,8 +702,33 @@ export class Game {
     const X = (x: number) => this.ox + x * this.S, Y = (y: number) => this.oy + y * this.S;
     return {
       over: this.over, won: this.won,
-      drops: this.drops.map((d) => ({ id: d.id, x: X(d.x), y: Y(d.y), r: d.R * this.S, vol: d.vol, pig: d.pig, state: d.state })),
-      cups: this.cups.map((c) => ({ x: X(c.x), y: Y(c.top + c.h * 0.35), filled: c.filled, need: c.need, total: c.total, got: c.got, pig: c.pig })),
+      drops: this.drops.map((d) => ({ id: d.id, x: X(d.x), y: Y(d.y), r: d.R * this.S, vol: d.vol, pig: d.pig, state: d.state, glitter: d.glitter })),
+      cups: this.cups.map((c) => ({ x: X(c.x), y: Y(c.top + c.h * 0.35), filled: c.filled, need: c.need, total: c.total, got: c.got, pig: c.pig, glitter: c.glitter })),
+      toScreen: (x: number, y: number) => ({ x: X(x), y: Y(y) }),
     };
   }
+}
+
+// ---------------------------------------------------------------- geometry for glue stripes
+
+/** The point of segment g nearest to (x, y). */
+function nearest(x: number, y: number, g: Glue) {
+  const dx = g.x1 - g.x0, dy = g.y1 - g.y0;
+  const t = Math.max(0, Math.min(1, ((x - g.x0) * dx + (y - g.y0) * dy) / (dx * dx + dy * dy || 1)));
+  return { x: g.x0 + dx * t, y: g.y0 + dy * t };
+}
+
+function segDist(x: number, y: number, g: Glue) {
+  const p = nearest(x, y, g);
+  return Math.hypot(x - p.x, y - p.y);
+}
+
+/** Distance between segment a-b and segment g (0 when they cross). */
+function segSegDist(ax: number, ay: number, bx: number, by: number, g: Glue) {
+  const cross = (px: number, py: number, qx: number, qy: number, rx: number, ry: number) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
+  const d1 = cross(ax, ay, bx, by, g.x0, g.y0), d2 = cross(ax, ay, bx, by, g.x1, g.y1);
+  const d3 = cross(g.x0, g.y0, g.x1, g.y1, ax, ay), d4 = cross(g.x0, g.y0, g.x1, g.y1, bx, by);
+  if (d1 * d2 < 0 && d3 * d4 < 0) return 0;
+  const ab: Glue = { x0: ax, y0: ay, x1: bx, y1: by };
+  return Math.min(segDist(ax, ay, g), segDist(bx, by, g), segDist(g.x0, g.y0, ab), segDist(g.x1, g.y1, ab));
 }

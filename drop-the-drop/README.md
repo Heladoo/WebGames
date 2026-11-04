@@ -9,7 +9,8 @@ A calm browser game for young children, based on a real activity: drops of colou
 - A slow finger moves a drop calmly; a fast finger pulls it along fast.
 - The plant on the table grows from level to level and blooms near the end.
 - **Split** a big drop in two with a double tap (or a double click), to share one colour between two mixes.
-- **20 levels** that open one by one. Play (or "next" at the end of a level) goes on to the next level; the Levels screen shows every open level, plus the next one, locked.
+- **Glitter glue:** dragging a drop through a glue stripe gives it glitter. Cups with a star want glittery drops; plain cups don't, so sometimes you go through the glue and sometimes around it.
+- **28 levels** that open one by one. Play (or "next" at the end of a level) goes on to the next level; the Levels screen shows every open level, plus the next one, locked.
 - When the last cup fills, the cups hop, star stickers pop onto the paper and "כל הכבוד!" is written on it.
 - If you wait a while, a see-through finger shows a move to try.
 - Buttons are drops of jelly: pressing one splashes it, then the next screen opens.
@@ -33,7 +34,7 @@ A Vercel project with Root Directory `drop-the-drop` (framework Vite). `vercel.j
 
 ### Play statistics (optional)
 
-Anonymous counts of plays, players and play time, shown at `/stats.html`. In Vercel → Settings → Environment Variables (all environments), set:
+Anonymous counts of plays, players, play time and which levels are started and finished, shown at `/stats.html`. In Vercel → Settings → Environment Variables (all environments), set:
 
 - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: from a free database at upstash.com. The URL is `https://<name>.upstash.io`, with no port. One database can serve all the games, since each game uses its own key prefix; this one is `dd:`.
 - `STATS_KEY`: the password for the dashboard.
