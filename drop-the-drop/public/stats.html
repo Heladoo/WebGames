@@ -49,7 +49,7 @@
     <main>
       <section class="panel">
         <h1>Drop the Drop · Stats</h1>
-        <p class="msg">Anonymous counts only: plays, estimated unique players, and play time.</p>
+        <p class="msg">Anonymous counts only: plays, estimated unique players, play time, and which levels are started and finished.</p>
         <form id="login">
           <input id="key" type="password" autocomplete="current-password" placeholder="Stats key (STATS_KEY)" required />
           <button>Show stats</button>
@@ -75,6 +75,7 @@
           <h2>Minutes played per day (last 30 days)</h2><div class="chart" id="c-time"></div>
           <details><summary>Show as a table</summary><table id="table"></table></details>
         </section>
+        <section class="panel"><h2>Levels: started and finished (all time)</h2><table id="levels"></table></section>
       </div>
     </main>
     <div class="tip" id="tip"></div>

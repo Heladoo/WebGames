@@ -140,6 +140,7 @@ function enterLevel(i: number, drip = true) {
   game.paused = false;
   lockLandscape();
   if (!counted) { counted = true; stats.start(); }
+  stats.level(LEVELS[i].id);
 }
 /** one play per visit, counted when the first level starts */
 let counted = false;
@@ -174,6 +175,9 @@ function ask(text: string, yes: () => void) {
 }
 
 function failText(info: FailInfo): string {
+  if (info.kind === 'glitter') {
+    return `ל${aDrop(colorName(info.mix))} יש עכשיו נצנצים, אבל אף כוס כאן לא רוצה אותה עם נצנצים. כוס שרוצה נצנצים מסומנת בכוכב; לכוס בלי כוכב עוקפים את פס הדבק.`;
+  }
   if (info.kind === 'stuck') return 'הטיפות שנשארו כבר לא יכולות למלא את הכוסות. בואו ננסה שוב, ואולי נחבר או נפצל אחרת.';
   const a = colorName(info.a), b = colorName(info.b), m = colorName(info.mix);
   if (info.kind === 'touch') {
@@ -195,6 +199,7 @@ function showFail(info: FailInfo) {
 }
 
 function showWin() {
+  if (game.level !== LAB) stats.won(game.level.id);
   if (game.level !== LAB && !store.done.includes(game.level.id)) { store.done.push(game.level.id); save(store); }
   const last = index >= LEVELS.length - 1;
   $('btn-next').hidden = last;
@@ -216,8 +221,8 @@ function openPicker() {
 }
 
 
-function cupColors(l: Level): string[] {
-  return l.cups.map((c) => css(pigToRgb(PIG[c.color])));
+function cupColors(l: Level): { c: string; glitter: boolean }[] {
+  return l.cups.map((c) => ({ c: css(pigToRgb(PIG[c.color])), glitter: !!c.glitter }));
 }
 
 function buildLevels() {
@@ -232,7 +237,7 @@ function buildLevels() {
     b.setAttribute('role', 'listitem');
     b.disabled = !open;
     b.setAttribute('aria-label', open ? `שלב ${i + 1}${isDone(i) ? ', הושלם' : ''}` : `שלב ${i + 1}, נעול`);
-    const dots = cupColors(l).map((c) => `<i style="--c:${c}"></i>`).join('');
+    const dots = cupColors(l).map((d) => `<i style="--c:${d.c}"${d.glitter ? ' class="glit"' : ''}></i>`).join('');
     b.innerHTML = open
       ? `<span class="num">${i + 1}</span><span class="dots">${dots}</span>${isDone(i) ? `<span class="badge">${ICON_STAR}</span>` : ''}`
       : `<span class="lock">${ICON_LOCK}</span><span class="dots">${dots}</span>`;

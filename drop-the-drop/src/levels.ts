@@ -25,7 +25,12 @@ export interface CupDef {
   total?: number;
   /** centre, in world units (default: spread evenly) */
   x?: number;
+  /** wants glittery drops (true) or plain ones (default) */
+  glitter?: boolean;
 }
+
+/** A stripe of glitter glue on the paper, from (x0, y0) to (x1, y1), w wide (default 7). A drop dragged through it gets glitter. */
+export interface Glue { x0: number; y0: number; x1: number; y1: number; w?: number }
 /** A drop: usually a base colour, but a level may start with a mixed one (a big green drop). */
 export interface DropDef { color: CupColor; x: number; y: number; vol?: number }
 export interface Level {
@@ -35,7 +40,9 @@ export interface Level {
   /** may drops of different colours join? (true in mixing levels) */
   mixing: boolean;
   /** a level that teaches something shows its hint sooner */
-  teach?: 'split';
+  teach?: 'split' | 'glitter';
+  /** glitter glue stripes */
+  glue?: Glue[];
 }
 
 export const LEVELS: Level[] = [
@@ -136,6 +143,46 @@ export const LEVELS: Level[] = [
   {
     id: 'l20', mixing: true, cups: [{ color: 'orange', need: 2 }, { color: 'green', need: 2 }, { color: 'purple', need: 2 }],
     drops: [{ color: 'red', x: 32, y: 32, vol: 2 }, { color: 'yellow', x: 80, y: 44, vol: 2 }, { color: 'blue', x: 128, y: 32, vol: 2 }],
+  },
+  // ---- glitter glue: pass through it for a sparkly cup, go around it for a plain one
+  {
+    id: 'l21', mixing: false, teach: 'glitter', glue: [{ x0: 80, y0: 3, x1: 80, y1: 97 }],
+    cups: [{ color: 'red', need: 1, x: 122, glitter: true }],
+    drops: [{ color: 'red', x: 32, y: 32 }],
+  },
+  {
+    id: 'l22', mixing: false, glue: [{ x0: 80, y0: 3, x1: 80, y1: 50 }],
+    cups: [{ color: 'red', need: 1, x: 108, glitter: true }, { color: 'blue', need: 1, x: 140 }],
+    drops: [{ color: 'red', x: 30, y: 24 }, { color: 'blue', x: 30, y: 46 }],
+  },
+  {
+    id: 'l23', mixing: true, glue: [{ x0: 80, y0: 3, x1: 80, y1: 52 }],
+    cups: [{ color: 'green', need: 2, x: 32 }, { color: 'orange', need: 2, x: 128, glitter: true }],
+    drops: [{ color: 'blue', x: 24, y: 46 }, { color: 'yellow', x: 48, y: 26, vol: 2 }, { color: 'red', x: 128, y: 32 }],
+  },
+  // ---- more sharing: big drops split between mixes
+  {
+    id: 'l24', mixing: true, cups: [{ color: 'orange', need: 2 }, { color: 'purple', need: 2 }, { color: 'green', need: 2 }],
+    drops: [{ color: 'red', x: 30, y: 30, vol: 2 }, { color: 'yellow', x: 70, y: 46 }, { color: 'blue', x: 100, y: 24, vol: 2 }, { color: 'yellow', x: 136, y: 46 }],
+  },
+  {
+    id: 'l25', mixing: true, cups: [{ color: 'turquoise', need: 3 }, { color: 'indigo', need: 3 }],
+    drops: [{ color: 'yellow', x: 28, y: 42 }, { color: 'blue', x: 80, y: 30, vol: 4 }, { color: 'red', x: 132, y: 42 }],
+  },
+  {
+    id: 'l26', mixing: true, glue: [{ x0: 3, y0: 40, x1: 104, y1: 40 }],
+    cups: [{ color: 'lime', need: 3, x: 40, glitter: true }, { color: 'turquoise', need: 3, x: 122 }],
+    drops: [{ color: 'yellow', x: 28, y: 22 }, { color: 'green', x: 76, y: 22, vol: 4 }, { color: 'blue', x: 136, y: 52 }],
+  },
+  {
+    id: 'l27', mixing: true, glue: [{ x0: 55, y0: 3, x1: 55, y1: 54 }, { x0: 105, y0: 3, x1: 105, y1: 54 }],
+    cups: [{ color: 'orange', need: 2, x: 27, glitter: true }, { color: 'green', need: 2, x: 80 }, { color: 'purple', need: 2, x: 133, glitter: true }],
+    drops: [{ color: 'red', x: 28, y: 30, vol: 2 }, { color: 'yellow', x: 80, y: 30, vol: 2 }, { color: 'blue', x: 132, y: 30, vol: 2 }],
+  },
+  {
+    id: 'l28', mixing: true, glue: [{ x0: 80, y0: 3, x1: 80, y1: 52 }],
+    cups: [{ color: 'lime', need: 3, x: 36 }, { color: 'magenta', need: 3, x: 124, glitter: true }],
+    drops: [{ color: 'red', x: 30, y: 26, vol: 2 }, { color: 'blue', x: 52, y: 46, vol: 2 }, { color: 'yellow', x: 130, y: 30, vol: 2 }],
   },
 ];
 

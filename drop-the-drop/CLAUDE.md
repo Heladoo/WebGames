@@ -4,7 +4,7 @@
 
 ## Status
 
-**Twenty levels** (`src/levels.ts`), slow and gentle:
+**Twenty-eight levels** (`src/levels.ts`), slow and gentle:
 
 - **1–2:** drag drops into a cup. Level 2's cup takes three small drops; dots on the glass count them.
 - **3:** sort two colours.
@@ -13,6 +13,8 @@
 - **9–12:** mix colours (red + yellow = orange, and so on). Level 12 mixes one colour and keeps another apart.
 - **13–14:** the in-between colours: turquoise (two blue, one yellow) and lime, with a blue cup that must keep one blue for itself.
 - **15–20:** splitting. Level 15 teaches it (its hint comes after 2.5 s, `teach: 'split'`), then big drops are split to share one colour between two mixes. These levels use red-orange, indigo, magenta, lime and turquoise, and level 19 starts with a big green drop.
+- **21–23, 26–28:** glitter glue. Level 21 teaches it (`teach: 'glitter'`). From then on some cups want glitter and others must stay plain, so drops go through a stripe or around its end; levels 26–28 combine glue with splitting and the in-between colours.
+- **24–25:** more sharing in the style of level 20 (big drops split between two or three mixes).
 
 The first sample was approved. The owner's feedback since then is done:
 - an in-scene celebration;
@@ -21,7 +23,8 @@ The first sample was approved. The owner's feedback since then is done:
 - landscape only;
 - a more varied touch sound;
 - names for every mixable colour, the plant growing from level to level, faster drops for fast fingers, a quicker celebration, the owner's logo;
-- levels with in-between colours (turquoise and friends) and splitting a drop with a double tap.
+- levels with in-between colours (turquoise and friends) and splitting a drop with a double tap;
+- glitter glue stripes, more level-20-style levels, a stronger wiggle on touch, per-level stats; oil drops are designed in `BACKLOG.md`, not built yet.
 
 Ideas still open are in `BACKLOG.md`.
 
@@ -47,7 +50,13 @@ Ideas still open are in `BACKLOG.md`.
   - **Joining** (`mergeInto`): the new outline starts as both old outlines seen from the joint centre (a peanut with a neck), and the springs pull it round. Pigment and volume add up.
   - **Touch** (`reach`): the dragged drop's outline reaching into another drop, so a stretched tip can touch first.
   - **Splitting** (`split`, owner's request): a double tap on a drop (a second tap on the same drop within 0.4 s, in the same place) splits it into two halves with half the paint each. The halves start overlapping and stretched toward each other, then slide apart in the direction with the most room (away from other drops, the edges and the cups) and round off. Drops smaller than 2 only wobble (`sfx.noSplit`).
+  - **Wiggle:** a touch jiggles the drop: a squash toward the finger, a smaller three-lobed ripple and a little random shiver (`jiggle`). The outline damping `C` is light (5), so touches and releases ring a little longer (owner's request: "wiggle more when touched").
   - **Paint per volume:** one unit of paint per unit of water, so a level's big mixed drop (a green drop of volume 4) is `share(PIG.green) × 4`.
+- **Glitter glue** (`Level.glue`, owner's request): stripes of glue on the paper, drawn into the backdrop as silvery glue with coloured flecks and a wet shine, plus a few glints twinkling every frame (`drawGlueTwinkle`).
+  - **Picking up glitter:** a dragged drop whose centre comes within half the stripe's width (plus a little) gets `glitter` (`glueCheck`, every physics step). It jiggles, sparkles and shimmers (`sfx.glitter`). Glitter is kept through joins (either drop) and splits (both halves). Only dragged drops pick it up; drops that slide by themselves never do.
+  - **Cups:** a cup with `glitter: true` has glitter in its water and a twinkling star on its rim, and takes only glittery drops. Plain cups refuse glittery drops (the cup throbs).
+  - **Mistakes:** a drop that gets glitter when no cup wants that colour with glitter ends the level with its own card. So does a join that has glitter when only a plain cup could take it.
+  - **Hints:** they know about glue. A pour or join that must stay plain goes round the stripe's free end (`around`, `via`), and a drop that a glitter cup would take is led into the nearest point of the glue. Level tiles ring a glitter cup's dot in gold.
 - **Colour** (`color.ts`): drops carry red, yellow and blue pigment amounts; the colour comes from an RYB cube (paint-like mixing). `sameColor` compares proportions.
   - **Names:** every colour a child can mix has a Hebrew name (`colorName`, `COLOR_HE`). These are the three base colours, the three secondary ones, and the in-between ones: אדום-כתום, צהוב-כתום, ירוק-ליים, טורקיז (blue + green), כחול-סגול, סגול-אדום, and חום. A colour without an everyday adjective reads "טיפה בצבע טורקיז" (`aDrop` in `main.ts`).
 - **Rendering** (`render.ts`, Canvas 2D):
@@ -62,7 +71,7 @@ Ideas still open are in `BACKLOG.md`.
 - **Buttons are liquid jelly** (owner's request, to match the logo; the "liquid buttons" block in `styles.css`): a glossy gradient body with a darker rim, a white shine and a slightly uneven blob shape; a press squashes it. (A small drop hanging from the main buttons was removed: the owner found it detached and confusing.) Blue is the main way on, pale aqua the others, green "yes", and orange the big "next". The top-bar buttons are bubbles and the level tiles are jelly squares.
 - **Buttons splash** (`src/splash.ts`, owner's request, as the transition between screens): pressing a menu button, a level tile, or the top bar's home or restart button squashes it, bursts it into droplets of its own colour (drawn on the `#splash` canvas over everything) with a splashy sound, and runs the button's own action 0.23 s later. A capture-phase click listener holds the click and clicks the button again afterwards, so the buttons' handlers did not change. The sound toggle stays instant. With reduced motion there are fewer droplets and no delay.
 - **Home:** the owner's logo (`public/logo.webp`, 600 px; its size follows the screen height), Play/Continue and Levels, then the Dorothy Games logo. On tall screens the logo is on top; on phones held sideways (560 px tall or less) it is on the left with the menu on the right, so the card never scrolls (owner's request). The menu buttons share one width, with their icons in one column and their words starting at one line (owner's request). The owner removed the "from the start" button and the subtitle.
-- **Hints:** after 7 quiet seconds (2.5 s in a teaching level), a see-through fingertip shows a useful move (`suggest()`): a drop a cup takes now, else the closest pair whose join still fits a cup, else a big drop to split, shown as the finger tapping twice (`tap2`).
+- **Hints:** after 7 quiet seconds (2.5 s in a teaching level), a see-through fingertip shows a useful move (`suggest()`). In order: a drop a cup takes now; a drop that needs glitter first, led into the glue; the closest pair whose join still fits a cup; or a big drop to split, shown as the finger tapping twice (`tap2`). Paths go round glue when the drop must stay plain.
 - **Sound** (`sfx.ts`):
   - **Touching a drop:** never the same twice. The pitch comes from the drop's size and colour and walks a pentatonic scale on quick touches. Each touch also gets a random pan, a random envelope, sometimes a soft fifth, and a short noise "tick".
   - **Dragging:** a quiet pink-noise slide sound that follows the speed. Letting go gives a low settle plop.
@@ -71,11 +80,11 @@ Ideas still open are in `BACKLOG.md`.
   - **Celebration:** hop plops, sticker pops and the win arpeggio.
   - All of it goes through a room reverb and a compressor.
 - **Save** (`state.ts`): `drop-the-drop:v1` keeps the mute setting and the finished level ids.
-- **Anonymous stats** (the shared pattern from the root `CLAUDE.md`, prefix `dd:`): `src/stats.ts` → `api/stats.js` → Upstash, with the dashboard at `public/stats.html`. A play is counted once per visit, when the first level starts. Play time ticks only while a level is on screen (not paused, not upright, not hidden), with a report every 2 minutes and a beacon on page hide. Nothing is counted on localhost or `?debug` URLs. The home screen's small line says what is counted.
+- **Anonymous stats** (the shared pattern from the root `CLAUDE.md`, prefix `dd:`): `src/stats.ts` → `api/stats.js` → Upstash, with the dashboard at `public/stats.html`. A play is counted once per visit, when the first level starts. Each level start and each finished level is counted per level id (`HINCRBY dd:levels`, `dd:won`; one command each), and the dashboard shows a table of levels started and finished. Play time ticks only while a level is on screen (not paused, not upright, not hidden), with a report every 2 minutes and a beacon on page hide. Nothing is counted on localhost or `?debug` URLs. The home screen's small line says what is counted.
 
 ## Debug hooks
 
-- `?debug=state` exposes the game as `window.__dd` (`snapshot()` gives positions in CSS pixels); the tests use it. `?level=N` (1–20) picks the level.
+- `?debug=state` exposes the game as `window.__dd` (`snapshot()` gives positions in CSS pixels); the tests use it. `?level=N` (1–28) picks the level.
 - `?debug=play` skips the home screen. `?debug=party&level=N` plays that level's celebration at once. `?debug=lab` is a sandbox with three drops of each base colour, mixing on. `?debug=sheet` shows every colour at three sizes.
 - The icons (`public/icon-*.png`, `favicon.png`, `apple-touch-icon.png`) are the owner's logo, resized; so are `logo.webp` and the portal's `art/logos/drop-the-drop.webp`. `?debug=icon` still shows one big drop.
 - `og-image.png` is a 1200 × 630 screenshot of the home screen.
@@ -84,7 +93,7 @@ Ideas still open are in `BACKLOG.md`.
 
 `npm test` (Playwright):
 - **Home and levels screens:** both fit four landscape sizes (640 × 360 up to a laptop). The home screen has icons, 48 px buttons and the portal link. The levels screen shows the open levels plus one locked tile. An upright screen shows the turn prompt. The card never scrolls (also at 800 × 330, a phone with browser bars). The logo sits above the buttons on tall screens and left of them on phones. The buttons share one width and line up their icons and words. Play opens the next level, a tile opens its level, and the house button comes back. A pressed button splashes (droplets drawn) before the next screen opens.
-- **Every level:** solvable (the drops' pigment equals what the cups want), starts with drops apart and above the cups, and has a hint.
-- **Play:** level 6 is won by joining and pouring, and "next" opens level 7. Level 2's cup fills drop by drop. A small drop is refused. Red touching blue explains purple. Level 9 mixes orange into its cup. Level 12's blue + red ends with the "no cup" card (purple). Level 15's big drop splits on a double tap and its halves fill the two cups; a small drop does not split. Level 13 mixes turquoise. A dead end shows its card. A fast finger pulls a drop along fast.
-- **Stats:** `api/stats.js` uses the `dd:` prefix and 4 commands per play, and stays a silent no-op without Redis. The game sends nothing on localhost.
+- **Every level:** solvable (the drops' pigment equals what the cups want), starts with drops apart, above the cups and off the glue, and has a hint.
+- **Play:** level 6 is won by joining and pouring, and "next" opens level 7. Level 2's cup fills drop by drop. A small drop is refused. Red touching blue explains purple. Level 9 mixes orange into its cup. Level 12's blue + red ends with the "no cup" card (purple). Level 15's big drop splits on a double tap and its halves fill the two cups; a small drop does not split. Level 13 mixes turquoise. A dead end shows its card. Level 21's drop gets glitter through the glue and fills the glitter cup; in level 22 a plain drop dragged through the glue gets the glitter card, and going round the stripe's end (the way the hint shows) keeps it plain. A fast finger pulls a drop along fast.
+- **Stats:** `api/stats.js` uses the `dd:` prefix and 4 commands per play, and stays a silent no-op without Redis. Level starts and finishes are one command each, and the summary lists them per level. The game sends nothing on localhost.
 - **Colours:** every mix of up to three parts of each base colour has a Hebrew name, and blue + green is turquoise.

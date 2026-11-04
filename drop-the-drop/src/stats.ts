@@ -38,6 +38,14 @@ export const stats = {
   start() {
     send({ type: 'start' });
   },
+  /** a level was started (counted per level id) */
+  level(id: string) {
+    send({ type: 'level', level: id });
+  },
+  /** a level was finished */
+  won(id: string) {
+    send({ type: 'won', level: id });
+  },
   /** Call every frame with the real elapsed time while the game is actually being played. */
   tick(dt: number) {
     pending += dt;

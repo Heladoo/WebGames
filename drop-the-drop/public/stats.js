@@ -63,6 +63,14 @@
       [d.day, d.plays, d.players, Math.round(d.seconds / 60)].forEach(function (v) { var td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
       t.appendChild(tr);
     });
+    var lv = $('levels');
+    lv.innerHTML = '<tr><th>Level</th><th>Started</th><th>Finished</th><th>Finished %</th></tr>';
+    (s.levels || []).forEach(function (l) {
+      var tr = document.createElement('tr');
+      [l.level.slice(1), l.started, l.won, l.started ? Math.round(l.won / l.started * 100) + '%' : '-'].forEach(function (v) { var td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+      lv.appendChild(tr);
+    });
+    if (!(s.levels || []).length) lv.innerHTML += '<tr><td colspan="4">No levels played yet.</td></tr>';
     $('out').classList.remove('hidden');
   }
   function load(key) {

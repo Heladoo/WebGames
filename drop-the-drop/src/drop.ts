@@ -41,6 +41,8 @@ export class Drop {
   shake = 0;
   /** where it is being pulled (finger, or an automatic move) */
   pull: { x: number; y: number } | null = null;
+  /** picked up glitter from a glue stripe (kept through joins and splits) */
+  glitter = false;
   /** pour animation */
   pour: { cup: number; t: number; x0: number; y0: number } | null = null;
 
@@ -53,12 +55,19 @@ export class Drop {
   setPig(p: Pig) { this.pig = p; this.rgb = pigToRgb(p); }
 
   /** Kick the outline into an oval wobble (dripping in, merging, being refused). */
-  excite(amount: number, angle = 0) {
+  excite(amount: number, angle = 0, mode = 2) {
     const R = this.R;
     for (let i = 0; i < N; i++) {
       const th = (i / N) * Math.PI * 2 - angle;
-      this.d[i] += amount * R * Math.cos(2 * th);
+      this.d[i] += amount * R * Math.cos(mode * th);
     }
+  }
+
+  /** A touch makes the drop jiggle: a squash toward the finger and a smaller three-lobed ripple. */
+  jiggle(angle: number) {
+    this.excite(0.2, angle, 2);
+    this.excite(0.08, angle + 0.5, 3);
+    for (let i = 0; i < N; i++) this.dv[i] += (Math.random() - 0.5) * this.R * 0.6;
   }
 
   /** Outline points in world coordinates. */
@@ -114,7 +123,8 @@ export function stepDrop(dr: Drop, dt: number, t: number) {
   }
 
   // outline springs: toward the target, coupled to the neighbours, damped
-  const K = 330 / Math.sqrt(dr.vol), C = 7, Kn = 900, Cn = 26;
+  // a lighter damping (C) lets a touched or released drop ring a little longer
+  const K = 330 / Math.sqrt(dr.vol), C = 5, Kn = 900, Cn = 26;
   const d = dr.d, dv = dr.dv, tg = dr.tgt;
   for (let i = 0; i < N; i++) {
     const a = d[(i + N - 1) % N], b = d[(i + 1) % N];
@@ -159,6 +169,7 @@ export function mergeInto(a: Drop, b: Drop) {
   a.vx = (a.vx * va + b.vx * vb) / v; a.vy = (a.vy * va + b.vy * vb) / v;
   a.vol = v;
   a.setPig([a.pig[0] + b.pig[0], a.pig[1] + b.pig[1], a.pig[2] + b.pig[2]]);
+  a.glitter = a.glitter || b.glitter;
   const R = a.R;
   for (let i = 0; i < N; i++) {
     let far = 0;
