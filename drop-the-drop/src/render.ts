@@ -235,6 +235,7 @@ const LEAVES = [
   { at: 0, a: 0.25, l: 34, w: 15 }, { at: 0, a: 0.75, l: 40, w: 17 }, { at: 0, a: 1.2, l: 32, w: 14 },
   { at: 2, a: 0.5, l: 26, w: 12 }, { at: 4, a: 0.02, l: 28, w: 12 }, { at: 6, a: 0.98, l: 30, w: 13 },
   { at: 8, a: 1.42, l: 24, w: 11 }, { at: 9, a: 0.38, l: 20, w: 9 },
+  { at: 13, a: 0.86, l: 22, w: 10 }, { at: 16, a: 0.14, l: 21, w: 9 },
 ];
 
 function leaf(g: CanvasRenderingContext2D, k: number, ang: number, L: number, W: number, young: number) {
@@ -270,8 +271,7 @@ function leaf(g: CanvasRenderingContext2D, k: number, ang: number, L: number, W:
 }
 
 /** A pink flower on a stem: a closed bud (open = 0) to a full bloom (open = 1). */
-function flower(g: CanvasRenderingContext2D, k: number, open: number) {
-  const ang = 1.28, len = 36 * k;
+function flower(g: CanvasRenderingContext2D, k: number, open: number, ang = 1.28, len = 36 * k, petal = '#ee6f98') {
   const ex = -6 * k + Math.cos(ang) * len, ey = -6 * k + Math.sin(ang) * len;
   g.save();
   g.strokeStyle = '#4f8a36';
@@ -294,7 +294,7 @@ function flower(g: CanvasRenderingContext2D, k: number, open: number) {
       g.rotate((i / 5) * Math.PI * 2 + 0.3);
       g.beginPath(); g.ellipse(r * 0.55, 0, r * 0.6, r * 0.38, 0, 0, Math.PI * 2);
       const pg = g.createRadialGradient(0, 0, 0, 0, 0, r * 1.1);
-      pg.addColorStop(0, '#ffd1e0'); pg.addColorStop(1, '#ee6f98');
+      pg.addColorStop(0, '#fff1f6'); pg.addColorStop(1, petal);
       g.fillStyle = pg; g.fill();
       g.restore();
     }
@@ -314,7 +314,9 @@ function plant(g: CanvasRenderingContext2D, k: number, stage: number) {
     const sway = Math.sin(stage * 1.7 + i * 2.1) * 0.06;
     leaf(g, k, lf.a + sway, lf.l * grown * 0.82, lf.w * grown * 0.82, Math.max(0, 1 - (stage - lf.at) * 0.35));
   });
-  if (stage >= 8) flower(g, k, stage >= 10 ? (stage - 9) / 2 : 0);
+  if (stage >= 8) flower(g, k, stage >= 10 ? Math.min(1, (stage - 9) / 2) : 0);
+  // a second, violet flower later in the game
+  if (stage >= 14) flower(g, k, stage >= 16 ? Math.min(1, (stage - 15) / 2) : 0, 0.32, 40 * k, '#a874e8');
 }
 
 /**
@@ -631,8 +633,39 @@ export function drawParticles(ctx: CanvasRenderingContext2D, ps: Particle[]) {
   }
 }
 
+/** A see-through fingertip tapping twice on a drop (the split gesture). */
+function drawDoubleTap(ctx: CanvasRenderingContext2D, x: number, y: number, p: number) {
+  const taps = [0.2, 0.42];
+  let press = 0;
+  for (const t of taps) press = Math.max(press, 1 - Math.min(1, Math.abs(p - t) / 0.08));
+  const a = p < 0.08 ? p / 0.08 : p > 0.8 ? Math.max(0, 1 - (p - 0.8) / 0.2) : 1;
+  ctx.save();
+  for (const t of taps) {
+    const q = (p - t) / 0.3;
+    if (q <= 0 || q >= 1) continue;
+    ctx.beginPath();
+    ctx.arc(x, y, 4 + q * 7, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255,255,255,${0.85 * (1 - q)})`;
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 0.75 * a;
+  ctx.shadowColor = 'rgba(40,40,60,0.35)';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(x + 1.2, y + 1.6 - (1 - press) * 2.5, 3.4 - press * 0.4, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff6ee';
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = 'rgba(120,90,80,0.6)';
+  ctx.lineWidth = 0.45;
+  ctx.stroke();
+  ctx.restore();
+}
+
 /** A see-through fingertip showing a move: press at a, slide to b, lift. */
-export function drawHand(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, p: number) {
+export function drawHand(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, p: number, tap2 = false) {
+  if (tap2) { drawDoubleTap(ctx, ax, ay, p); return; }
   let x = ax, y = ay, a = 1, press = 0;
   if (p < 0.18) { a = p / 0.18; press = p / 0.18; }
   else if (p < 0.78) {

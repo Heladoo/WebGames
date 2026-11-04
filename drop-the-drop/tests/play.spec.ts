@@ -131,24 +131,65 @@ test('level 9: red and yellow mix to orange, and the orange cup takes it', async
   await expect(page.locator('#win')).toBeVisible({ timeout: 7000 });
 });
 
-test('level 10: two blue drops make a drop no cup wants, and the card says so', async ({ page }) => {
-  await startLevel(page, 10);
+test('level 12: blue and red make purple, which no cup wants, and the card says so', async ({ page }) => {
+  await startLevel(page, 12);
   const s = await snap(page);
-  const blues = s.drops.filter((d) => isBlue(d.pig));
-  // go around the other drops: up to the top, across, and down
-  await page.mouse.move(blues[0].x, blues[0].y);
-  await page.mouse.down();
-  const top = 120;
-  const path = [{ x: blues[0].x, y: top }, { x: blues[1].x, y: top }, { x: blues[1].x, y: blues[1].y }];
-  let from = { x: blues[0].x, y: blues[0].y };
-  for (const p of path) {
-    for (let i = 1; i <= 30; i++) { await page.mouse.move(from.x + ((p.x - from.x) * i) / 30, from.y + ((p.y - from.y) * i) / 30); await page.waitForTimeout(16); }
-    await page.waitForTimeout(400);
-    from = p;
-  }
-  await page.mouse.up();
+  const blue = s.drops.filter((d) => isBlue(d.pig)).sort((a, b) => a.x - b.x)[0];
+  const red = s.drops.find((d) => isRed(d.pig))!;
+  await drag(page, blue, red, 60);
   await expect(page.locator('#fail')).toBeVisible({ timeout: 4000 });
-  await expect(page.locator('#fail-text')).toContainText('כחולות');
+  await expect(page.locator('#fail-text')).toContainText('סגולה');
+});
+
+test('level 15: a double tap splits a big drop in two, and each half fills a cup', async ({ page }) => {
+  await startLevel(page, 15);
+  let s = await snap(page);
+  expect(s.drops.map((d) => d.vol)).toEqual([2]);
+  await page.mouse.dblclick(s.drops[0].x, s.drops[0].y);
+  await page.waitForTimeout(900);
+  s = await snap(page);
+  expect(s.drops.map((d) => d.vol)).toEqual([1, 1]);
+  expect(s.drops.every((d) => d.state === 'rest')).toBe(true);
+  const [a, b] = s.drops.sort((p, q) => p.x - q.x);
+  expect(Math.hypot(a.x - b.x, a.y - b.y), 'the halves end apart').toBeGreaterThan(a.r + b.r);
+  const cups = s.cups.slice().sort((p, q) => p.x - q.x);
+  await drag(page, a, cups[0]);
+  await drag(page, b, cups[1]);
+  await expect(page.locator('#win')).toBeVisible({ timeout: 6000 });
+});
+
+test('a small drop does not split', async ({ page }) => {
+  await startLevel(page, 1);
+  const d = (await snap(page)).drops[0];
+  await page.mouse.dblclick(d.x, d.y);
+  await page.waitForTimeout(600);
+  expect((await snap(page)).drops.map((x) => x.vol)).toEqual([1]);
+});
+
+test('level 13: blue, yellow and blue make turquoise for the turquoise cup', async ({ page }) => {
+  await startLevel(page, 13);
+  let s = await snap(page);
+  const blues = s.drops.filter((d) => isBlue(d.pig)).sort((a, b) => a.x - b.x);
+  const yellow = s.drops.find((d) => isYellow(d.pig))!;
+  await drag(page, blues[0], yellow, 60);
+  s = await snap(page);
+  const green = s.drops.find((d) => d.vol === 2)!;
+  await drag(page, blues[1], green, 60);
+  s = await snap(page);
+  expect(s.drops.length).toBe(1);
+  expect(s.drops[0].pig).toEqual([0, 1, 2]);
+  await drag(page, s.drops[0], s.cups[0]);
+  await expect(page.locator('#win')).toBeVisible({ timeout: 7000 });
+});
+
+test('a dead end (no useful move left) ends the level gently with a card', async ({ page }) => {
+  await startLevel(page, 1);
+  await page.evaluate(() => {
+    const g = (window as any).__dd;
+    g.start({ id: 'dead', mixing: true, cups: [{ color: 'red', need: 1 }], drops: [{ color: 'blue', x: 80, y: 30 }] }, false);
+  });
+  await expect(page.locator('#fail')).toBeVisible({ timeout: 4000 });
+  await expect(page.locator('#fail-text')).toContainText('ננסה שוב');
 });
 
 test('a fast finger pulls the drop along fast', async ({ page }) => {

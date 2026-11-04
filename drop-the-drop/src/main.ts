@@ -7,6 +7,8 @@ import { LAB, LEVELS, type Level } from './levels';
 import { drawDrop } from './render';
 import { setMuted, unlock } from './sfx';
 import { load, save } from './state';
+import { stats } from './stats';
+import { initSplash } from './splash';
 
 const params = new URLSearchParams(location.search);
 const debug = params.get('debug') ?? '';
@@ -47,7 +49,7 @@ app.innerHTML = `
           <button class="home-btn alt" id="btn-levels"><span class="home-ic">${ICON.levels}</span><span class="home-label">שלבים</span></button>
         </div>
         <a class="portal-link" href="https://dorothy-games.vercel.app/" aria-label="Dorothy Games: more games"><img src="/dorothy-logo.webp" alt="" width="180" height="90"></a>
-        <p class="fine">בלי פרסומות, בלי חשבונות ובלי עוגיות. שום דבר לא נספר ולא נשלח.</p>
+        <p class="fine">בלי פרסומות, חשבונות או עוגיות. נספרים רק משחקים וזמן משחק, בלי מידע אישי.</p>
       </div>
     </div>
   </div>
@@ -137,7 +139,12 @@ function enterLevel(i: number, drip = true) {
   game.start(LEVELS[i], drip);
   game.paused = false;
   lockLandscape();
+  if (!counted) { counted = true; stats.start(); }
 }
+/** one play per visit, counted when the first level starts */
+let counted = false;
+addEventListener('pagehide', () => stats.flush(true));
+document.addEventListener('visibilitychange', () => { if (document.hidden) stats.flush(true); });
 
 /** Is a level under way (something done, not finished)? */
 function going() { return game.touched && !game.over && game.level === LEVELS[index]; }
@@ -167,6 +174,7 @@ function ask(text: string, yes: () => void) {
 }
 
 function failText(info: FailInfo): string {
+  if (info.kind === 'stuck') return 'הטיפות שנשארו כבר לא יכולות למלא את הכוסות. בואו ננסה שוב, ואולי נחבר או נפצל אחרת.';
   const a = colorName(info.a), b = colorName(info.b), m = colorName(info.mix);
   if (info.kind === 'touch') {
     return `${aDrop(a)} נגעה ב${aDrop(b)}, והן התערבבו ל${aDrop(m)}. כאן כל צבע הולך לכוס שלו, אז שומרים שטיפות בצבעים שונים לא ייגעו.`;
@@ -180,7 +188,8 @@ function failText(info: FailInfo): string {
 function showFail(info: FailInfo) {
   game.paused = true;
   $('fail-text').textContent = failText(info);
-  paintEquation($<HTMLCanvasElement>('fail-pic'), info);
+  if (info.kind === 'stuck') paintLeft($<HTMLCanvasElement>('fail-pic'));
+  else paintEquation($<HTMLCanvasElement>('fail-pic'), info);
   show('fail', true);
   $('btn-retry').focus();
 }
@@ -249,6 +258,14 @@ function paintDrops(cv: HTMLCanvasElement, items: { x: number; y: number; vol: n
   for (const it of items) drawDrop(ctx, new Drop(it.x, it.y, it.vol, it.pig), unit);
 }
 
+/** The drops still on the paper, in a row (for the dead-end card). */
+function paintLeft(cv: HTMLCanvasElement) {
+  const unit = cv.height / 28;
+  const w = cv.width / unit;
+  const left = game.drops.slice(0, 6);
+  paintDrops(cv, left.map((d, i) => ({ x: (w * (left.length - i - 0.5)) / left.length, y: 14, vol: Math.min(2.4, d.vol), pig: share(d.pig) })), unit);
+}
+
 function paintEquation(cv: HTMLCanvasElement, info: FailInfo) {
   const ctx = cv.getContext('2d')!;
   const unit = cv.height / 28;
@@ -288,6 +305,7 @@ function lockLandscape() {
 }
 
 addEventListener('pointerdown', unlock, { capture: true });
+initSplash();
 addEventListener('keydown', unlock, { capture: true });
 
 $('btn-play').onclick = play;

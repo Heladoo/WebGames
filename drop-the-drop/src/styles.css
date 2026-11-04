@@ -95,11 +95,11 @@ h1 { margin: 0; line-height: 0; }
 .portal-link img { display: block; width: 110px; height: auto; }
 .fine { margin: 0; font-size: 11.5px; color: var(--soft); max-width: none; line-height: 1.3; }
 
-.pick-card { max-width: min(560px, 100%); gap: 16px; }
+.pick-card { max-width: min(620px, 100%); gap: 16px; }
 .pick-head { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 12px; }
 .pick-head h2 { margin: 0; font-size: 30px; color: #2d3a6b; }
 .round-space { width: 48px; }
-.levels { display: grid; grid-template-columns: repeat(6, 64px); gap: 10px; align-content: center; justify-content: center; }
+.levels { display: grid; grid-template-columns: repeat(7, 64px); gap: 10px; align-content: center; justify-content: center; }
 .level-tile {
   position: relative; width: 64px; height: 64px; border-radius: 18px;
   border: none; background: #f2f4fa; color: #2d3a6b;
@@ -138,8 +138,8 @@ h1 { margin: 0; line-height: 0; }
 
 /* ------------------------------------------------------------------ liquid buttons
    Glossy jelly, like the logo's letters: a coloured body with a darker rim,
-   a white shine across the top, a deep edge below, a slightly uneven blob
-   shape, and a small drop hanging from the main buttons. A press squashes it. */
+   a white shine across the top, a deep edge below and a slightly uneven blob
+   shape. A press squashes it. */
 .home-btn, .round, .level-tile, .level-pill {
   --j1: #7fd6ff; --j2: #2f9cf0; --j3: #1668c9; --rim: #0f4c97; --ink-on: #fff;
   position: relative; isolation: isolate; overflow: visible;
@@ -160,14 +160,6 @@ h1 { margin: 0; line-height: 0; }
   left: 12%; right: 30%; top: 9%; height: 30%;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.1));
-}
-/* a little drop hanging from the main buttons */
-.home-btn:not(.alt)::after {
-  content: ''; position: absolute; pointer-events: none;
-  inset-inline-start: 22%; bottom: -12px; width: 13px; height: 16px;
-  border-radius: 50% 50% 50% 50% / 38% 38% 62% 62%;
-  background: radial-gradient(circle at 40% 35%, #fff 0 12%, var(--j2) 40%, var(--j3) 100%);
-  border: 2.5px solid var(--rim); border-top: none;
 }
 .home-btn .home-ic svg { filter: drop-shadow(0 2px 0 var(--rim)); }
 .home-btn:active, .round:active, .level-tile:not(:disabled):active {
@@ -197,6 +189,17 @@ h1 { margin: 0; line-height: 0; }
 .level-tile.locked { --j1: #f2f3f6; --j2: #e2e5ec; --j3: #cfd3dd; --rim: #a3aabb; --ink-on: #8a91a5; opacity: 0.8; }
 .level-tile.locked::before { opacity: 0.5; }
 
+/* the splash on press: a squash, then the jelly bursts (the droplets are drawn on #splash) */
+#splash { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9; }
+.pop { animation: pop 0.42s ease-out forwards !important; }
+@keyframes pop {
+  0% { transform: scale(1, 1); }
+  30% { transform: scale(1.12, 0.84); }
+  55% { transform: scale(1.3, 1.2); opacity: 0.35; }
+  56% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* landscape only: upright screens are asked to turn */
 #rotate {
   position: fixed; inset: 0; z-index: 10; display: none;
@@ -218,20 +221,26 @@ h1 { margin: 0; line-height: 0; }
   .title-side { gap: 8px; }
   .home-btn { min-height: 50px; font-size: 19px; }
   .portal-link img { width: 80px; }
-  .levels { grid-template-columns: repeat(6, 56px); gap: 8px; }
+  .levels { grid-template-columns: repeat(7, 56px); gap: 8px; }
   .pick-head h2 { font-size: 24px; }
   .level-tile { width: 56px; height: 56px; }
   .card { gap: 8px; padding: 14px 20px; }
   .card p { font-size: 16px; }
   .home-btn.big { min-height: 56px; font-size: 21px; }
 }
+/* phones held sideways: the logo on the left, the menu on the right, so the
+   card fits without scrolling (row-reverse, since the page is right-to-left) */
+@media (max-height: 560px) {
+  .title-card { flex-direction: row-reverse; max-width: min(680px, 100%); gap: 10px 28px; padding: 14px 24px; }
+  .title-logo img { width: min(62vh, 230px); }
+}
 @media (max-height: 380px) {
   .fine { display: none; }
-  .levels { grid-template-columns: repeat(6, 52px); }
+  .levels { grid-template-columns: repeat(7, 52px); }
   .level-tile { width: 52px; height: 52px; border-radius: 14px; }
   .level-tile .num { font-size: 20px; }
   .home-btn { min-width: 160px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .screen, .title-card, .card, #win .row, .level-tile.current, .rot-phone, .home-btn:active, .round:active, .level-tile:active { animation: none; }
+  .screen, .title-card, .card, #win .row, .level-tile.current, .rot-phone, .home-btn:active, .round:active, .level-tile:active, .pop { animation: none !important; }
 }

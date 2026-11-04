@@ -57,5 +57,5 @@ Before shipping, also check the production build against the real headers: `npm 
 
 ## Open items
 
-- All five game urls were given by the owner (the Birdnet Kids address is GitHub Pages, so it is not a `vercel.app` one). The sandbox can't reach vercel.app, so none has been opened from here.
+- All six game urls were given by the owner (the Birdnet Kids address is GitHub Pages, so it is not a `vercel.app` one). The sandbox can't reach vercel.app, so none has been opened from here.
 - Postponed ideas are in `BACKLOG.md`.

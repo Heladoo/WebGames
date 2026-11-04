@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `word-trail/` | Endless English word adventure for young children, in paper-cut SVG art: pick choices, then tap or trace the letters | `word-trail/CLAUDE.md` |
 | `bead-box/` | Calm SVG bracelet-making game that teaches English words; places unlock as bracelets are finished | `bead-box/CLAUDE.md` |
 | `palace-race/` | **המרוץ לארמון**, a stress-free Hebrew racing game playable without reading: royal animals with child riders race to a palace, collect candies and coins, and shop for helmets, hairstyles and saddles | `palace-race/CLAUDE.md` |
-| `drop-the-drop/` | **Drop the Drop**, a calm Hebrew landscape-only game after a real children's activity: drag drops of coloured water on paper, join them, keep or mix colours, and lead each to its cup (12 levels) | `drop-the-drop/CLAUDE.md` |
+| `drop-the-drop/` | **Drop the Drop**, a calm Hebrew landscape-only game after a real children's activity: drag drops of coloured water on paper, join them, keep or mix colours, and lead each to its cup (20 levels, double tap splits a drop) | `drop-the-drop/CLAUDE.md` |
 | `portal/` | "Dorothy Games" (משחקי דורותי): the Hebrew homepage, a toy shelf of all games plus a moderated board of players' game ideas | `portal/CLAUDE.md` |
 
 ## Shared stack and workflow
@@ -34,7 +34,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Anonymous play statistics (reusable)
 
-Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstash Redis REST, with a private dashboard at `public/stats.html`. Copy all four into a new game and change the Redis key prefix so games sharing one database don't collide. Prefixes in use: `or:` (Otter River), `wt:` (Word Trail), `bb:` (Bead Box), `pr:` (Race to the Palace) and `pt:` (the portal, which also keeps players' game ideas there).
+Pattern: `src/stats.ts` (client) → `api/stats.js` (Vercel function) → Upstash Redis REST, with a private dashboard at `public/stats.html`. Copy all four into a new game and change the Redis key prefix so games sharing one database don't collide. Prefixes in use: `or:` (Otter River), `wt:` (Word Trail), `bb:` (Bead Box), `pr:` (Race to the Palace), `dd:` (Drop the Drop) and `pt:` (the portal, which also keeps players' game ideas there).
 
 - Counts plays, estimated unique players (HyperLogLog of a random id kept in localStorage) and play time (heartbeat every 2 minutes plus `sendBeacon` on page hide).
 - **Env vars** (set in Vercel → Settings → Environment Variables for all environments, then **redeploy**; variables only apply to new deployments): `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (or the Marketplace names `KV_REST_API_URL/TOKEN`) and `STATS_KEY` (dashboard password).

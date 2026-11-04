@@ -11,7 +11,15 @@
 ## Next
 
 - Anonymous play stats (the shared `stats.ts` / `api/stats.js` pattern, prefix `dd:`), plus a note in the UI.
-- More levels: obstacles on the paper (a ruler, a tape strip) to go around; mixing with amounts (two yellow + one red); a drop that has to be split.
+
+## Next complications (suggested, for the owner to pick)
+
+- **Walls on the paper:** a strip of tape or a wax-crayon line that water will not cross. Drops have to go around it, and narrow gaps let only small drops through, so a big drop must be split to pass.
+- **Clear water:** drops of plain water that lighten a colour (red + water = pink, blue + water = light blue). This adds a new kind of colour target without new base colours.
+- **Exact amounts with halves:** cups that want 1½ drops, or a "2 red : 1 yellow" mix made from halves, so splitting is used for measuring and not just for sharing.
+- **A mystery cup:** the cup shows only its colour as a painted swatch, with no colour hint in its water. The child finds the recipe by mixing.
+- **Layer cups:** a tall cup that wants its colours in order (blue, then yellow, then red), poured as stripes.
+- **A gentle slope:** part of the paper tilts, and a drop left there slowly slides down until it reaches a flat spot or a bump. It has to be parked or joined quickly, without any danger.
 
 ## Ideas
 

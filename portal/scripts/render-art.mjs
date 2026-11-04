@@ -9,10 +9,10 @@
 import { chromium } from '@playwright/test';
 import { existsSync } from 'node:fs';
 
-const localChromium = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const localChromium = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/opt/pw-browsers/chromium'].find((p) => existsSync(p));
 const BASE = process.env.BASE_URL || 'http://localhost:5199';
 
-const browser = await chromium.launch(existsSync(localChromium) ? { executablePath: localChromium } : {});
+const browser = await chromium.launch(localChromium ? { executablePath: localChromium } : {});
 const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
 await page.goto(`${BASE}/?debug=og`);
 await page.waitForFunction(() => window.__ready === true);

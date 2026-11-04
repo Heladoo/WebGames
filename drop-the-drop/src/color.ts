@@ -14,11 +14,16 @@ export const PIG = {
   orange: [1, 1, 0] as Pig,
   purple: [1, 0, 1] as Pig,
   green: [0, 1, 1] as Pig,
+  // the in-between colours: two parts of one base colour and one of another
+  redOrange: [2, 1, 0] as Pig,
+  yellowOrange: [1, 2, 0] as Pig,
+  lime: [0, 2, 1] as Pig,
+  turquoise: [0, 1, 2] as Pig,
+  indigo: [1, 0, 2] as Pig,
+  magenta: [2, 0, 1] as Pig,
 };
 /** Every colour a child can make from the three base colours, by its nearest mix. */
-export type ColorName =
-  | keyof typeof PIG
-  | 'redOrange' | 'yellowOrange' | 'lime' | 'turquoise' | 'indigo' | 'magenta' | 'brown';
+export type ColorName = keyof typeof PIG | 'brown';
 
 // Corners of the RYB cube, tuned to look like food colouring in water.
 const W: RGB = [0.97, 0.97, 0.95];
@@ -63,11 +68,7 @@ export function sameColor(a: Pig, b: Pig): boolean {
   return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]) < 0.12;
 }
 
-// The in-between mixes: two parts of one colour and one of its neighbour.
-const MIXES: [ColorName, Pig][] = [
-  ['redOrange', [2, 1, 0]], ['yellowOrange', [1, 2, 0]], ['lime', [0, 2, 1]],
-  ['turquoise', [0, 1, 2]], ['indigo', [1, 0, 2]], ['magenta', [2, 0, 1]], ['brown', [1, 1, 1]],
-];
+const MIXES: [ColorName, Pig][] = [['brown', [1, 1, 1]]];
 
 export function colorName(p: Pig): ColorName {
   const q = share(p);
