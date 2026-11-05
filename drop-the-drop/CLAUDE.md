@@ -113,7 +113,7 @@ Ideas still open are in `BACKLOG.md`.
 
 - `?debug=state` exposes the game as `window.__dd` (`snapshot()` gives positions in CSS pixels); the tests use it. `?level=N` (1–35) picks the level (by position).
 - `?debug=play` skips the home screen. `?debug=party&level=N` plays that level's celebration at once. `?debug=lab` is a sandbox with three drops of each base colour, mixing on. `?debug=sheet` shows every colour at three sizes.
-- The icons (`public/icon-*.png`, `favicon.png`, `apple-touch-icon.png`) are the owner's logo, resized; so are `logo.webp` and the portal's `art/logos/drop-the-drop.webp`. `?debug=icon` still shows one big drop.
+- The favicon (`public/favicon.png`, 64 px) is the owner's drop-and-finger drawing in a round white badge with a blue ring, transparent outside. The other icons (`public/icon-*.png`, `apple-touch-icon.png`) are the owner's logo, resized; so are `logo.webp` and the portal's `art/logos/drop-the-drop.webp`. `?debug=icon` still shows one big drop.
 - `og-image.png` is a 1200 × 630 screenshot of the home screen.
 
 ## Tests
