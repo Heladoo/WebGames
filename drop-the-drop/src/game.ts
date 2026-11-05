@@ -93,8 +93,12 @@ export class Game {
   towel: Towel | null = null;
   towelEl: HTMLCanvasElement;
   areaDone: boolean[] = [];
-  /** the paint each area of the picture has been given (drops let go over it) */
+  /** the paint each area of the picture has been given (drops that soaked in on it) */
   areaGot: Pig[] = [];
+  /** each area's parts (petals, rays), the paint each part was given, and which are done */
+  parts: { area: number; piece: number; got: Pig; done: boolean }[] = [];
+  /** a drop of a colour its area doesn't use soaked in there (the mistake card follows) */
+  towelWrong: { area: number; pig: Pig } | null = null;
   towelCheckIn = 0;
   /** the celebration's sound plays live (its recording was not ready) */
   liveParty = true;
@@ -185,6 +189,8 @@ export class Game {
     }
     this.areaDone = this.towel ? this.towel.areas.map(() => false) : [];
     this.areaGot = this.towel ? this.towel.areas.map(() => [0, 0, 0] as Pig) : [];
+    this.parts = this.towel ? this.towel.parts().flatMap((ps, area) => ps.map((piece) => ({ area, piece, got: [0, 0, 0] as Pig, done: false }))) : [];
+    this.towelWrong = null;
     this.layoutTowel();
     this.drops = [];
     this.particles = [];
@@ -732,6 +738,11 @@ export class Game {
   /** Is any part of the drop's outline on the towel? */
   onTowel(d: Drop): boolean { return !!this.towelContact(d); }
 
+  /** The parts of the picture that a drop has soaked into (their guides are gone): "area:piece". */
+  placedParts(): Set<string> {
+    return new Set(this.parts.filter((q) => q.got.some((v) => v > 0.01)).map((q) => `${q.area}:${q.piece}`));
+  }
+
   /** Where the drop's outline touches the towel (the spot nearest its middle), if it does. */
   towelContact(d: Drop): { x: number; y: number; cell: number } | null {
     const t = this.towel!;
@@ -750,8 +761,17 @@ export class Game {
     if (!at) return;
     this.cancelDrag();
     d.soakAt = at;
-    const i = this.towel!.area[at.cell];
-    if (i >= 0) d.pig.forEach((v, k) => (this.areaGot[i][k] += v));
+    const t = this.towel!, i = t.area[at.cell];
+    if (i >= 0) {
+      d.pig.forEach((v, k) => (this.areaGot[i][k] += v));
+      const part = this.parts.find((q) => q.area === i && q.piece === t.piece[at.cell])!;
+      d.pig.forEach((v, k) => (part.got[k] += v));
+      // a colour this area doesn't use at all (red on the green stem) is a mistake
+      const tg = areaTarget(t.areas[i]), sh = share(d.pig);
+      if (sh.some((v, k) => v > 0.05 && tg[k] < 0.02) && !this.towelWrong) this.towelWrong = { area: i, pig: [...part.got] as Pig };
+      // its guide (pale colour and outline) has done its job: the still scene is painted again without it
+      this.backdrop = null;
+    }
     d.state = 'soak';
     d.pull = null;
     d.vx *= 0.2; d.vy *= 0.2;
@@ -770,7 +790,7 @@ export class Game {
       // into the piece it touched, around the spot where it touched (it creeps in from there)
       const at = d.soakAt ?? { x: d.x, y: d.y, cell: -1 };
       d.x += (at.x - d.x) * Math.min(1, dt * 3); d.y += (at.y - d.y) * Math.min(1, dt * 3);
-      t.absorb(at.x, at.y, d.R * 0.9, amt, [sh[0] * amt, sh[1] * amt, sh[2] * amt], at.cell);
+      t.absorb(at.x, at.y, d.R * 0.9, amt, [sh[0] * amt, sh[1] * amt, sh[2] * amt]);
       d.vol -= amt;
       d.setPig(scalePig(sh, d.vol));
       if (d.vol < 0.04) d.state = 'gone';
@@ -788,42 +808,37 @@ export class Game {
       if (!left.length && t.quiet > 1) this.winLevel();
       return;
     }
-    // a picture: each area wants its colour, judged by eye: coloured in, mostly in its colour
-    const look = t.areaLook();
-    t.areas.forEach((a, i) => {
-      const l = look[i], tg = areaTarget(a);
-      // a clear wrong colour (more than a third of what is coloured), once the paint has settled
-      if (l.wrong > 0.2 && !soaking && t.quiet > 0.8) {
-        this.over = true;
-        sfx.oops();
-        const want = scalePig(tg, a.need);
-        this.later(1, () => this.events.fail({ a: l.colour, b: want, mix: l.colour, kind: 'towel', area: a.name }));
-        return;
+    // a picture: each part wants a drop of its area's colour (paint spreads freely on the towel,
+    // so it is judged by what was put where, not by where the colour ran)
+    if (this.towelWrong && !soaking) {
+      const w = this.towelWrong, a = t.areas[w.area];
+      this.over = true;
+      sfx.oops();
+      this.later(1, () => this.events.fail({ a: w.pig, b: scalePig(areaTarget(a), a.need), mix: w.pig, kind: 'towel', area: a.name }));
+      return;
+    }
+    const per = (q: { area: number }) => t.areas[q.area].need / this.parts.filter((o) => o.area === q.area).length;
+    for (const q of this.parts) {
+      if (q.done) continue;
+      const vol = q.got[0] + q.got[1] + q.got[2];
+      if (vol >= per(q) * 0.9 && sameColor(q.got, PIG[t.areas[q.area].color])) {
+        q.done = true;
+        const c = t.partCentre(q.area, q.piece);
+        this.splash(c.x, c.y, pigToRgb(areaTarget(t.areas[q.area])), 6);
       }
-      // or: it was given all its paint and a good part shows its colour (a patchy job is fine)
-      const given = tg.every((v, k) => this.areaGot[i][k] >= v * a.need * 0.85 - 0.01);
-      // every piece (each petal, each ray, each wing) shows its colour
-      const each = Math.min(...l.pieces);
-      if (!this.areaDone[i] && (each >= 0.5 || (given && each >= 0.25 && !soaking && t.quiet > 1.2))) {
-        this.areaDone[i] = true;
-        const c = t.areaCentre(i);
-        this.splash(c.x, c.y, pigToRgb(tg), 10);
-        sfx.cup(i, true);
-      }
+    }
+    t.areas.forEach((_, i) => {
+      if (this.areaDone[i] || !this.parts.every((q) => q.area !== i || q.done)) return;
+      this.areaDone[i] = true;
+      sfx.cup(i, true);
     });
-    if (this.over) return;
     if (this.areaDone.every(Boolean) && !soaking) { this.winLevel(); return; }
-    // a dead end: an area still needs a colour that no drop left has
+    // a dead end: the parts still want more of a colour than the drops left have
     if (!soaking && t.quiet > 1) {
-      const have = [0, 0, 0];
+      const have = [0, 0, 0], miss = [0, 0, 0];
       for (const d of left) d.pig.forEach((v, k) => (have[k] += v));
-      // an area still lacks a colour (by what it was given) that no drop left has
-      // (a colour it already has doesn't count: mixing happens on the towel too)
-      const stuck = t.areas.some((a, i) => {
-        if (this.areaDone[i]) return false;
-        return areaTarget(a).some((v, k) => v > 0.05 && this.areaGot[i][k] < v * a.need * 0.5 && have[k] < 0.05);
-      });
-      if (stuck) {
+      for (const q of this.parts) if (!q.done) areaTarget(t.areas[q.area]).forEach((v, k) => (miss[k] += Math.max(0, v * per(q) - q.got[k])));
+      if (miss.some((v, k) => v > have[k] + 0.1)) {
         this.over = true;
         sfx.oops();
         const p = left[0]?.pig ?? [1, 1, 1];
@@ -902,14 +917,15 @@ export class Game {
       return { ax: d.x, ay: d.y, bx: cx, by: cy, t: 0, via: this.planPath(d, cx, cy, -1) };
     }
     const fits = (p: Pig, want: number[]) => p.every((v, c) => v < 0.01 || v <= want[c] + 0.05);
-    for (let k = 0; k < t.areas.length; k++) {
-      if (this.areaDone[k]) continue;
-      const a = t.areas[k], tg = areaTarget(a);
-      const want = tg.map((v, c) => v * a.need - this.areaGot[k][c]);
-      // a drop that already has the colour: onto the area (first straight onto the towel, past the other drops)
+    for (const q of this.parts) {
+      if (q.done) continue;
+      const a = t.areas[q.area], tg = areaTarget(a);
+      const per = a.need / this.parts.filter((o) => o.area === q.area).length;
+      const want = tg.map((v, c) => v * per - q.got[c]);
+      // a drop that already has the colour: onto the part (past the other drops and parts)
       const ready = free.find((d) => sameColor(d.pig, PIG[a.color]) && fits(d.pig, want));
       if (ready) {
-        const c = t.areaCentre(k);
+        const c = t.partCentre(q.area, q.piece);
         return { ax: ready.x, ay: ready.y, bx: c.x, by: c.y, t: 0, via: this.planPath(ready, c.x, c.y, t.cellAt(c.x, c.y)) };
       }
       // two drops that make the colour together: join them first (the closest pair)
@@ -1086,7 +1102,7 @@ export class Game {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (!this.backdrop) {
       // paint the still scene once, onto the layer underneath
-      this.backdrop = drawBackdrop(this.canvas.width, this.canvas.height, this.ox * this.dpr, this.oy * this.dpr, k, this.stage(), this.glue, this.level?.towel);
+      this.backdrop = drawBackdrop(this.canvas.width, this.canvas.height, this.ox * this.dpr, this.oy * this.dpr, k, this.stage(), this.glue, this.level?.towel, this.placedParts());
       const b = this.bg.getContext('2d')!;
       b.setTransform(1, 0, 0, 1, 0, 0);
       b.drawImage(this.backdrop, 0, 0);

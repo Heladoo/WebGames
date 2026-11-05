@@ -329,6 +329,7 @@ test('the red dot: a drop soaks in as soon as it touches the towel, before it is
   for (let i = 1; i <= 30; i++) { await page.mouse.move(d.x + ((dot.x - d.x) * i) / 30, d.y + ((dot.y - d.y) * i) / 30); await page.waitForTimeout(16); }
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => (window as any).__dd.drops[0].state), 'soaking while the finger is still down').toBe('soak');
+  expect(await page.evaluate(() => (window as any).__dd.placedParts().size), 'the dot\'s guide is gone once a drop is on it').toBe(1);
   await page.mouse.up();
   await expect(page.locator('#win')).toBeVisible({ timeout: 8000 });
 });

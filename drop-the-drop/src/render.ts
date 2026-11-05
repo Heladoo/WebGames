@@ -449,7 +449,7 @@ function plant(g: CanvasRenderingContext2D, k: number, stage: number) {
  * (its corners peek out), and the paper sheet. ox, oy and k place the world
  * in device pixels.
  */
-export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: number, stage = 0, glue: Glue[] = [], towel?: TowelDef): HTMLCanvasElement {
+export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: number, stage = 0, glue: Glue[] = [], towel?: TowelDef, placed: Set<string> = new Set()): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const g = c.getContext('2d')!;
@@ -487,7 +487,7 @@ export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: nu
   g.save();
   g.setTransform(k, 0, 0, k, ox, oy);
   glue.forEach((q, gi) => drawGlue(g, q, gi));
-  if (towel) drawTowel(g, towel);
+  if (towel) drawTowel(g, towel, placed);
   g.restore();
   // the plant leans over the paper's corner, as in the reference photo
   g.save();
@@ -557,7 +557,7 @@ function towelTexture(g: CanvasRenderingContext2D, x0: number, y0: number, x1: n
  * perforated edges), or a picture of cut-out pieces lying on the paper, each
  * with a pale hint of the colour it wants.
  */
-function drawTowel(g: CanvasRenderingContext2D, t: TowelDef) {
+function drawTowel(g: CanvasRenderingContext2D, t: TowelDef, placed: Set<string>) {
   const cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2;
   if (!t.picture) {
     const w = t.x1 - t.x0, h = t.y1 - t.y0;
@@ -588,7 +588,7 @@ function drawTowel(g: CanvasRenderingContext2D, t: TowelDef) {
     g.strokeStyle = 'rgba(90,90,110,0.55)'; g.lineWidth = 0.45; g.lineCap = 'round';
     g.stroke();
   }
-  const cut = cutPicture(pic, t, Math.min(12, g.getTransform().a));
+  const cut = cutPicture(pic, t, Math.min(12, g.getTransform().a), placed);
   if (!cut) return;
   // the towel's shadow on the paper, then the towel
   g.save();
@@ -600,59 +600,70 @@ function drawTowel(g: CanvasRenderingContext2D, t: TowelDef) {
   g.restore();
 }
 
+/** The cut shape of the last picture (which pixel is which part, the edge), kept so the guides can be repainted quickly. */
+let cutCache: { key: string; W: number; H: number; bx0: number; by0: number; bx1: number; by1: number; id: Int16Array; alpha: Float32Array; rim: Float32Array; area: Int8Array; piece: Int8Array } | null = null;
+
 /**
- * A picture cut out of towel, painted once into its own canvas at `res` pixels
- * per world unit: the hand-cut outline (soft and a little fibrous at the edge),
- * a faint hint of each part's colour, a faint line between the parts, and the
- * towel's quilted texture. The white middle stays plain.
+ * A picture cut out of towel, painted into its own canvas at `res` pixels per
+ * world unit: the hand-cut outline (soft and a little fibrous at the edge), the
+ * towel's quilted texture, and the guides: a faint hint of each part's colour
+ * and a faint line round it, until a drop has soaked into that part (`placed`).
  */
-function cutPicture(pic: Picture, t: TowelDef, res: number) {
-  const shape = new PictureShape(pic, t.scale ?? 1);
-  const cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2;
-  // where the picture is (a quick coarse look)
-  let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
-  for (let y = t.y0; y <= t.y1; y += 0.5) for (let x = t.x0; x <= t.x1; x += 0.5) {
-    if (shape.at(x - cx, y - cy).edge < 1) { bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); }
+function cutPicture(pic: Picture, t: TowelDef, res: number, placed: Set<string>) {
+  const key = `${t.picture}|${t.scale}|${t.x0},${t.y0},${t.x1},${t.y1}|${res}`;
+  if (cutCache?.key !== key) {
+    const shape = new PictureShape(pic, t.scale ?? 1);
+    const cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2;
+    // where the picture is (a quick coarse look)
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (let y = t.y0; y <= t.y1; y += 0.5) for (let x = t.x0; x <= t.x1; x += 0.5) {
+      if (shape.at(x - cx, y - cy).edge < 1) { bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); }
+    }
+    if (bx0 > bx1) return null;
+    bx0 -= 1; by0 -= 1; bx1 += 1; by1 += 1;
+    const W = Math.ceil((bx1 - bx0) * res), H = Math.ceil((by1 - by0) * res);
+    const id = new Int16Array(W * H), alpha = new Float32Array(W * H), rim = new Float32Array(W * H);
+    const area = new Int8Array(W * H), piece = new Int8Array(W * H);
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const q = shape.at(bx0 + (i + 0.5) / res - cx, by0 + (j + 0.5) / res - cy);
+      const k = j * W + i;
+      // fibres at the cut edge: a little fuzz
+      const e = q.edge + (hash(k * 0.37) - 0.5) * 0.18;
+      alpha[k] = Math.max(0, Math.min(1, 0.5 - e * res));
+      id[k] = alpha[k] > 0 ? (q.area + 1) * 32 + q.piece + 1 : -1;
+      area[k] = q.area; piece[k] = q.piece;
+      // the cut edge is a touch darker (the towel's thickness)
+      rim[k] = Math.max(0, Math.min(1, 1 + q.edge / 0.6)) * 0.07;
+    }
+    cutCache = { key, W, H, bx0, by0, bx1, by1, id, alpha, rim, area, piece };
   }
-  if (bx0 > bx1) return null;
-  bx0 -= 1; by0 -= 1; bx1 += 1; by1 += 1;
-  const W = Math.ceil((bx1 - bx0) * res), H = Math.ceil((by1 - by0) * res);
+  const { W, H, bx0, by0, bx1, by1, id, alpha, rim, area, piece } = cutCache;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const g = c.getContext('2d')!;
   const img = g.createImageData(W, H), px = img.data;
-  const id = new Int16Array(W * H);
-  const cols = shape.areas.map((a) => toRgb(PIG[a.color]));
-  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
-    const x = bx0 + (i + 0.5) / res - cx, y = by0 + (j + 0.5) / res - cy;
-    const q = shape.at(x, y);
-    const k = j * W + i, o = k * 4;
-    // fibres at the cut edge: a little fuzz
-    const e = q.edge + (hash(k * 0.37) - 0.5) * 0.18;
-    const alpha = Math.max(0, Math.min(1, 0.5 - e * res));
-    id[k] = alpha > 0 ? (q.area + 1) * 32 + q.piece + 1 : -1;
-    if (alpha <= 0) continue;
+  const cols = pic.areas.map((a) => toRgb(PIG[a.color]));
+  const guide = (k: number) => area[k] >= 0 && !placed.has(`${area[k]}:${piece[k]}`);
+  for (let k = 0; k < W * H; k++) {
+    if (alpha[k] <= 0) continue;
     let r = 254, gg = 253, b = 251;
-    if (q.area >= 0) {
-      const cc = cols[q.area];
+    if (guide(k)) {
+      const cc = cols[area[k]];
       r = r * 0.86 + cc[0] * 255 * 0.14; gg = gg * 0.86 + cc[1] * 255 * 0.14; b = b * 0.86 + cc[2] * 255 * 0.14;
     }
-    // the cut edge is a touch darker (the towel's thickness)
-    const rim = Math.max(0, Math.min(1, 1 + q.edge / 0.6)) * 0.07;
-    px[o] = r * (1 - rim); px[o + 1] = gg * (1 - rim); px[o + 2] = b * (1 - rim); px[o + 3] = alpha * 255;
+    const o = k * 4, f = 1 - rim[k];
+    px[o] = r * f; px[o + 1] = gg * f; px[o + 2] = b * f; px[o + 3] = alpha[k] * 255;
   }
-  // a faint guide line where one part meets another
+  // a faint guide line round each part still waiting for its drop
   const lw = Math.max(1, Math.round(res * 0.3));
-  for (let j = 0; j < H - lw; j++) for (let i = 0; i < W - lw; i++) {
+  for (let j = lw; j < H - lw; j++) for (let i = lw; i < W - lw; i++) {
     const k = j * W + i, a = id[k];
-    if (a < 0) continue;
-    const r = id[k + lw], d = id[k + lw * W];
-    if ((r >= 0 && r !== a) || (d >= 0 && d !== a)) {
-      const area = Math.floor(a / 32) - 1 >= 0 ? Math.floor(a / 32) - 1 : Math.floor((r !== a && r >= 0 ? r : d) / 32) - 1;
-      const cc = area >= 0 ? tint(cols[area], INK, 0.3) : ([0.6, 0.58, 0.55] as RGB);
-      const o = k * 4, f = 0.3;
-      px[o] = px[o] * (1 - f) + cc[0] * 255 * f; px[o + 1] = px[o + 1] * (1 - f) + cc[1] * 255 * f; px[o + 2] = px[o + 2] * (1 - f) + cc[2] * 255 * f;
-    }
+    if (a < 0 || !guide(k)) continue;
+    let edge = false;
+    for (const m of [k + lw, k - lw, k + lw * W, k - lw * W]) if (id[m] >= 0 && id[m] !== a) edge = true;
+    if (!edge) continue;
+    const cc = tint(cols[area[k]], INK, 0.3), o = k * 4, f = 0.3;
+    px[o] = px[o] * (1 - f) + cc[0] * 255 * f; px[o + 1] = px[o + 1] * (1 - f) + cc[1] * 255 * f; px[o + 2] = px[o + 2] * (1 - f) + cc[2] * 255 * f;
   }
   g.putImageData(img, 0, 0);
   // the towel's quilted texture, only on the towel

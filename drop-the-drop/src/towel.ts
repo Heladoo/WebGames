@@ -149,8 +149,6 @@ const UP = 3;         // the stain is smoothed up this many times before the bro
 const MIXD = 3.5;     // how fast dye blends between wet neighbours (so overlapping colours really mix)
 const INK = 170;      // how dark a given amount of dye looks
 const SEEN = 0.0012;  // dye in a cell that a child sees as coloured (about a fifth of full colour)
-const LINE = 0.03;    // how much slower paint crosses from one part of a picture to another (a soft bleed)
-const BLANK = 0.004;  // and into the white middle of a picture
 
 export const TOWEL_UP = UP;
 
@@ -213,13 +211,8 @@ export class Towel {
     for (let j = 0; j < this.gh; j++) for (let i = 0; i < this.gw; i++) {
       const k = j * this.gw + i;
       const fib = () => 0.55 + rnd() * 0.9; // fibres: uneven flow, so stains get ragged edges
-      // paint flows over the towel only; from one part of a picture to another it only bleeds a little
-      // (and hardly at all into the white middle, which stays white)
-      const flow = (m: number) => {
-        if (!this.on[k] || !this.on[m]) return 0;
-        if (this.area[k] === this.area[m] && this.piece[k] === this.piece[m]) return fib();
-        return fib() * (this.area[k] < 0 || this.area[m] < 0 ? BLANK : LINE);
-      };
+      // paint flows anywhere on the towel, as on real paper: the parts of a picture are only guides
+      const flow = (m: number) => (this.on[k] && this.on[m] ? fib() : 0);
       this.fx[k] = i + 1 < this.gw ? flow(k + 1) : 0;
       this.fy[k] = j + 1 < this.gh ? flow(k + this.gw) : 0;
     }
@@ -255,16 +248,15 @@ export class Towel {
 
   /**
    * A drop soaks in: water and dye go into the towel cells within r of (x, y).
-   * With `like` (a cell), only into that cell's piece: the piece the drop touched.
    */
-  absorb(x: number, y: number, r: number, vol: number, pig: Pig, like = -1) {
+  absorb(x: number, y: number, r: number, vol: number, pig: Pig) {
     const d = this.def, s = share(pig);
     const ci = (x - d.x0) / CELL, cj = (y - d.y0) / CELL, rc = Math.max(1, r / CELL);
     const cells: number[] = [];
     for (let j = Math.floor(cj - rc); j <= Math.ceil(cj + rc); j++) for (let i = Math.floor(ci - rc); i <= Math.ceil(ci + rc); i++) {
       if (i < 0 || j < 0 || i >= this.gw || j >= this.gh) continue;
       const k = j * this.gw + i;
-      if (!this.on[k] || (this.cut && like >= 0 && (this.area[k] !== this.area[like] || this.piece[k] !== this.piece[like]))) continue;
+      if (!this.on[k]) continue;
       if ((i - ci) ** 2 + (j - cj) ** 2 <= rc * rc) cells.push(k);
     }
     if (!cells.length) return;
@@ -425,6 +417,21 @@ export class Towel {
       out[a][0] += pr[k]; out[a][1] += py[k]; out[a][2] += pb[k];
     }
     return out;
+  }
+
+  /** The parts of each area (their piece numbers), as they lie on the towel. */
+  parts(): number[][] {
+    const out: Set<number>[] = this.areas.map(() => new Set());
+    for (let k = 0; k < this.area.length; k++) if (this.area[k] >= 0) out[this.area[k]].add(this.piece[k]);
+    return out.map((s) => [...s].sort((a, b) => a - b));
+  }
+
+  /** The middle of one part of an area (where a hint aims). */
+  partCentre(i: number, p: number) {
+    const d = this.def;
+    let sx = 0, sy = 0, n = 0;
+    for (let k = 0; k < this.area.length; k++) if (this.area[k] === i && this.piece[k] === p) { sx += k % this.gw; sy += Math.floor(k / this.gw); n++; }
+    return n ? { x: d.x0 + (sx / n + 0.5) * CELL, y: d.y0 + (sy / n + 0.5) * CELL } : { x: (d.x0 + d.x1) / 2, y: (d.y0 + d.y1) / 2 };
   }
 
   /** Which area of the picture is at this world point (-1: none). */
