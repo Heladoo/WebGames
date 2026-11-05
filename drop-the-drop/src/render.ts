@@ -9,7 +9,7 @@
 import { css, INK, tint, WHITE, type RGB } from './color';
 import { type Drop, N, R1, COS, SIN } from './drop';
 import type { Glue } from './levels';
-import { DECOR, PICTURES, type Shape, type TowelDef } from './towel';
+import { PICTURES, PictureShape, type Picture, type TowelDef } from './towel';
 import { PIG, pigToRgb as toRgb } from './color';
 
 /** Glitter colours: gold, silver, pink, cyan, violet. */
@@ -579,37 +579,87 @@ function drawTowel(g: CanvasRenderingContext2D, t: TowelDef) {
     return;
   }
   const sc = t.scale ?? 1;
+  const pic: Picture = PICTURES[t.picture];
   // lines drawn on the paper (balloon strings)
-  for (const [x0, y0, qx, qy, x1, y1] of DECOR[t.picture] ?? []) {
+  for (const [x0, y0, qx, qy, x1, y1] of pic.decor ?? []) {
     g.beginPath();
     g.moveTo(cx + x0 * sc, cy + y0 * sc);
     g.quadraticCurveTo(cx + qx * sc, cy + qy * sc, cx + x1 * sc, cy + y1 * sc);
     g.strokeStyle = 'rgba(90,90,110,0.55)'; g.lineWidth = 0.45; g.lineCap = 'round';
     g.stroke();
   }
-  const path = (sh: Shape) => {
-    g.beginPath();
-    g.ellipse(cx + sh.x * sc, cy + sh.y * sc, sh.rx * sc, sh.ry * sc, sh.rot ?? 0, 0, Math.PI * 2);
-  };
-  for (const area of PICTURES[t.picture]) {
-    const c = toRgb(PIG[area.color]);
-    // the pieces' shadow on the paper, then the towel itself
-    g.save();
-    g.shadowColor = 'rgba(70,60,40,0.25)';
-    g.shadowBlur = 4; g.shadowOffsetY = 1;
-    g.fillStyle = '#fefdfb';
-    for (const sh of area.shapes) { path(sh); g.fill(); }
-    g.restore();
-    for (const sh of area.shapes) {
-      g.save();
-      path(sh); g.clip();
-      const r = Math.max(sh.rx, sh.ry) * sc;
-      towelTexture(g, cx + sh.x * sc - r, cy + sh.y * sc - r, cx + sh.x * sc + r, cy + sh.y * sc + r);
-      path(sh); g.fillStyle = css(c, 0.14); g.fill();
-      g.restore();
-      path(sh); g.strokeStyle = css(tint(c, INK, 0.3), 0.3); g.lineWidth = 0.4; g.stroke();
+  const cut = cutPicture(pic, t, Math.min(12, g.getTransform().a));
+  if (!cut) return;
+  // the towel's shadow on the paper, then the towel
+  g.save();
+  g.shadowColor = 'rgba(70,60,40,0.25)';
+  g.shadowBlur = 4 * g.getTransform().a; g.shadowOffsetY = 1 * g.getTransform().a;
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(cut.img, cut.x, cut.y, cut.w, cut.h);
+  g.restore();
+}
+
+/**
+ * A picture cut out of towel, painted once into its own canvas at `res` pixels
+ * per world unit: the hand-cut outline (soft and a little fibrous at the edge),
+ * a faint hint of each part's colour, a faint line between the parts, and the
+ * towel's quilted texture. The white middle stays plain.
+ */
+function cutPicture(pic: Picture, t: TowelDef, res: number) {
+  const shape = new PictureShape(pic, t.scale ?? 1);
+  const cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2;
+  // where the picture is (a quick coarse look)
+  let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+  for (let y = t.y0; y <= t.y1; y += 0.5) for (let x = t.x0; x <= t.x1; x += 0.5) {
+    if (shape.at(x - cx, y - cy).edge < 1) { bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); }
+  }
+  if (bx0 > bx1) return null;
+  bx0 -= 1; by0 -= 1; bx1 += 1; by1 += 1;
+  const W = Math.ceil((bx1 - bx0) * res), H = Math.ceil((by1 - by0) * res);
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d')!;
+  const img = g.createImageData(W, H), px = img.data;
+  const id = new Int16Array(W * H);
+  const cols = shape.areas.map((a) => toRgb(PIG[a.color]));
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const x = bx0 + (i + 0.5) / res - cx, y = by0 + (j + 0.5) / res - cy;
+    const q = shape.at(x, y);
+    const k = j * W + i, o = k * 4;
+    // fibres at the cut edge: a little fuzz
+    const e = q.edge + (hash(k * 0.37) - 0.5) * 0.18;
+    const alpha = Math.max(0, Math.min(1, 0.5 - e * res));
+    id[k] = alpha > 0 ? (q.area + 1) * 32 + q.piece + 1 : -1;
+    if (alpha <= 0) continue;
+    let r = 254, gg = 253, b = 251;
+    if (q.area >= 0) {
+      const cc = cols[q.area];
+      r = r * 0.86 + cc[0] * 255 * 0.14; gg = gg * 0.86 + cc[1] * 255 * 0.14; b = b * 0.86 + cc[2] * 255 * 0.14;
+    }
+    // the cut edge is a touch darker (the towel's thickness)
+    const rim = Math.max(0, Math.min(1, 1 + q.edge / 0.6)) * 0.07;
+    px[o] = r * (1 - rim); px[o + 1] = gg * (1 - rim); px[o + 2] = b * (1 - rim); px[o + 3] = alpha * 255;
+  }
+  // a faint guide line where one part meets another
+  const lw = Math.max(1, Math.round(res * 0.3));
+  for (let j = 0; j < H - lw; j++) for (let i = 0; i < W - lw; i++) {
+    const k = j * W + i, a = id[k];
+    if (a < 0) continue;
+    const r = id[k + lw], d = id[k + lw * W];
+    if ((r >= 0 && r !== a) || (d >= 0 && d !== a)) {
+      const area = Math.floor(a / 32) - 1 >= 0 ? Math.floor(a / 32) - 1 : Math.floor((r !== a && r >= 0 ? r : d) / 32) - 1;
+      const cc = area >= 0 ? tint(cols[area], INK, 0.3) : ([0.6, 0.58, 0.55] as RGB);
+      const o = k * 4, f = 0.3;
+      px[o] = px[o] * (1 - f) + cc[0] * 255 * f; px[o + 1] = px[o + 1] * (1 - f) + cc[1] * 255 * f; px[o + 2] = px[o + 2] * (1 - f) + cc[2] * 255 * f;
     }
   }
+  g.putImageData(img, 0, 0);
+  // the towel's quilted texture, only on the towel
+  g.globalCompositeOperation = 'source-atop';
+  g.setTransform(res, 0, 0, res, -bx0 * res, -by0 * res);
+  towelTexture(g, bx0, by0, bx1, by1);
+  return { img: c, x: bx0, y: by0, w: W / res, h: H / res };
 }
 
 /** A few glints twinkling on the glue stripes (drawn every frame, world units). */

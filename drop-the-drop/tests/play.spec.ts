@@ -333,7 +333,7 @@ test('the red dot: a drop soaks in as soon as it touches the towel, before it is
   await expect(page.locator('#win')).toBeVisible({ timeout: 8000 });
 });
 
-for (const [n, what] of [[33, 'the flower (joining yellow and blue for green)'], [34, 'the sun (red + yellow for orange)'], [35, 'the balloons (orange, green, purple)']] as const) {
+for (const [n, what] of [[33, 'the flower (joining yellow and blue for green)'], [34, 'the sun (a yellow drop on each ray)'], [35, 'the balloons (orange, green, purple)']] as const) {
   test(`towel picture ${n}: following the hints colours ${what}`, async ({ page }) => {
     await startLevel(page, n);
     await followHints(page);
@@ -341,9 +341,9 @@ for (const [n, what] of [[33, 'the flower (joining yellow and blue for green)'],
   });
 }
 
-test('the towel flower: red in the yellow centre is a mistake, and the card says where', async ({ page }) => {
+test('the towel flower: red on the green stem is a mistake, and the card says where', async ({ page }) => {
   await startLevel(page, 33);
-  // the game's own path planner leads the red drop to the centre without touching the petals
+  // the game's own path planner leads the red drop to the stem without touching the petals
   const pts = await page.evaluate(() => {
     const g = (window as any).__dd, t = g.towel;
     const red = g.drops.find((d: any) => d.pig[0] > 0.9);
@@ -354,5 +354,5 @@ test('the towel flower: red in the yellow centre is a mistake, and the card says
   });
   await dragPath(page, pts);
   await expect(page.locator('#fail')).toBeVisible({ timeout: 6000 });
-  await expect(page.locator('#fail-text')).toContainText('במרכז הפרח');
+  await expect(page.locator('#fail-text')).toContainText('בגבעול');
 });

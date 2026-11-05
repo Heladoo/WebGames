@@ -225,12 +225,12 @@ export const LEVELS: Level[] = [
     drops: [{ color: 'red', x: 30, y: 61 }],
   },
   {
-    id: 'l32', mixing: true, cups: [], towel: { ...PIECES, picture: 'flower', scale: 1.5 },
-    drops: at(['red', 'red', 'yellow', 'red', 'blue', 'yellow', 'red']),
+    id: 'l32', mixing: true, cups: [], towel: { ...PIECES, picture: 'flower', scale: 1.2 },
+    drops: at(['red', 'red', 'yellow', 'red', 'blue', 'red', 'red']),
   },
   {
-    id: 'l33', mixing: true, cups: [], towel: { ...PIECES, picture: 'sun', scale: 1.1 },
-    drops: at(['yellow', 'yellow', 'red', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow']),
+    id: 'l33', mixing: true, cups: [], towel: { ...PIECES, picture: 'sun', scale: 1.5 },
+    drops: at(['yellow', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow']),
   },
   {
     id: 'l34', mixing: true, cups: [], towel: { ...PIECES, picture: 'balloons', scale: 1.5 },

@@ -233,7 +233,7 @@ function openPicker() {
 function cupColors(l: Level): { c: string; glitter: boolean }[] {
   if (l.towel) {
     // a towel level: its picture's colours, or the three base colours for free colouring
-    const cols = l.towel.picture ? PICTURES[l.towel.picture].map((a) => a.color) : (['red', 'yellow', 'blue'] as const);
+    const cols = l.towel.picture ? PICTURES[l.towel.picture].areas.map((a) => a.color) : (['red', 'yellow', 'blue'] as const);
     return cols.map((c) => ({ c: css(pigToRgb(PIG[c])), glitter: false }));
   }
   return l.cups.map((c) => ({ c: css(pigToRgb(PIG[c.color])), glitter: !!c.glitter }));
