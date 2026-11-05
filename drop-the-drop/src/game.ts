@@ -177,7 +177,8 @@ export class Game {
   }
 
   start(level: Level, drip: boolean) {
-    if (this.level !== level) this.backdrop = null; // the plant grows from level to level
+    // the plant grows from level to level; a towel picture shows all its guides again on a fresh try
+    if (this.level !== level || level.towel?.picture) this.backdrop = null;
     this.level = level;
     this.layoutCups();
     this.towel = level.towel ? new Towel(level.towel) : null;

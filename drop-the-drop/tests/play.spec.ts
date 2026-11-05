@@ -356,4 +356,17 @@ test('the towel flower: red on the green stem is a mistake, and the card says wh
   await dragPath(page, pts);
   await expect(page.locator('#fail')).toBeVisible({ timeout: 6000 });
   await expect(page.locator('#fail-text')).toContainText('בגבעול');
+  // trying again brings back every guide (the stem's had gone when the red drop soaked in)
+  await page.click('#btn-retry');
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => (window as any).__dd.placedParts().size)).toBe(0);
+  const guide = await page.evaluate(() => {
+    const g = (window as any).__dd, t = g.towel, c = t.partCentre(1, t.parts()[1][0]);
+    // the average of a small patch (the towel's quilted dots are grey)
+    const b = g.bg.getContext('2d').getImageData(Math.round((g.ox + c.x * g.S) * g.dpr) - 4, Math.round((g.oy + c.y * g.S) * g.dpr) - 4, 9, 9).data;
+    const m = [0, 0, 0];
+    for (let i = 0; i < b.length; i += 4) for (let k = 0; k < 3; k++) m[k] += b[i + k] / 81;
+    return m;
+  });
+  expect(guide[1] - guide[0], 'the stem is pale green again').toBeGreaterThan(4);
 });
