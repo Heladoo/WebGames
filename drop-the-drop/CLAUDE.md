@@ -103,6 +103,7 @@ Ideas still open are in `BACKLOG.md`.
   - **Touching a drop:** never the same twice. The pitch comes from the drop's size and colour and walks a pentatonic scale on quick touches. Each touch also gets a random pan, a random envelope, sometimes a soft fifth, and a short noise "tick".
   - **Dragging:** a quiet pink-noise slide sound that follows the speed. Letting go gives a low settle plop.
   - **Splits:** two falling plops, a little apart and panned left and right, with a soft bell.
+  - **Soaking into the paper towel:** no impact (owner's request): a quiet fizz of filtered noise that swells in over 0.3 s, sinks from a high hiss to a low one and fades over about a second, as the towel drinks the drop.
   - **Joins:** a plop and a bell, with two more bells when colours mix. Each cup gets a note (a chord when full).
   - **Celebration:** hop plops, sticker pops and the win arpeggio.
   - All of it goes through a room reverb and a compressor.
