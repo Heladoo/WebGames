@@ -9,6 +9,8 @@
 import { css, INK, tint, WHITE, type RGB } from './color';
 import { type Drop, N, R1, COS, SIN } from './drop';
 import type { Glue } from './levels';
+import { PICTURES, PictureShape, type Picture, type TowelDef } from './towel';
+import { PIG, pigToRgb as toRgb } from './color';
 
 /** Glitter colours: gold, silver, pink, cyan, violet. */
 const GLITTER = ['#ffd54a', '#eef3fb', '#ff7ac8', '#6fe3ff', '#b88cff'];
@@ -17,6 +19,51 @@ const GLITTER = ['#ffd54a', '#eef3fb', '#ff7ac8', '#6fe3ff', '#b88cff'];
 function hash(n: number): number {
   const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
+}
+
+/** A four-pointed glint. */
+function glint(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color = 'rgba(255,255,255,0.95)') {
+  if (r <= 0.05) return;
+  ctx.beginPath();
+  ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.18, y - r * 0.18); ctx.lineTo(x + r, y); ctx.lineTo(x + r * 0.18, y + r * 0.18);
+  ctx.lineTo(x, y + r); ctx.lineTo(x - r * 0.18, y + r * 0.18); ctx.lineTo(x - r, y); ctx.lineTo(x - r * 0.18, y - r * 0.18);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+/** Glitter flecks scattered in a circle of radius r (world units), twinkling with time t. */
+function flecks(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, n: number, seed: number, t: number, size: number, squash = 1) {
+  for (let i = 0; i < n; i++) {
+    const u = hash(seed * 31 + i), v = hash(seed * 57 + i * 3.1);
+    const rr = Math.sqrt(u) * r, an = v * Math.PI * 2;
+    const px = cx + Math.cos(an) * rr, py = cy + Math.sin(an) * rr * squash;
+    const tw = 0.45 + 0.55 * Math.max(0, Math.sin(t * 5 + i * 1.7));
+    const sz = size * (0.6 + hash(i * 13 + seed) * 0.8);
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(hash(i + seed) * 3 + t * 0.6);
+    ctx.globalAlpha = tw;
+    ctx.fillStyle = GLITTER[i % GLITTER.length];
+    ctx.fillRect(-sz, -sz * 0.6, sz * 2, sz * 1.2);
+    ctx.restore();
+  }
+}
+
+/** A little heap of glitter (for the mistake card's picture sum). */
+export function drawGlitterPile(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(x, y + r * 0.35, r * 1.05, r * 0.6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(230,232,245,0.85)';
+  ctx.fill();
+  flecks(ctx, x, y + r * 0.25, r, 120, 7, 0.4, r * 0.08, 0.62);
+  flecks(ctx, x, y - r * 0.1, r * 0.75, 80, 9, 1.1, r * 0.08, 0.6);
+  flecks(ctx, x, y - r * 0.4, r * 0.45, 40, 11, 2.3, r * 0.08, 0.6);
+  glint(ctx, x - r * 0.45, y - r * 0.15, r * 0.35);
+  glint(ctx, x + r * 0.5, y + r * 0.05, r * 0.25);
+  glint(ctx, x + r * 0.05, y - r * 0.55, r * 0.42);
+  ctx.restore();
 }
 
 const xs = new Float32Array(N), ys = new Float32Array(N);
@@ -29,6 +76,48 @@ function trace(ctx: CanvasRenderingContext2D, px: Float32Array, py: Float32Array
     ctx.quadraticCurveTo(px[i] + ox, py[i] + oy, (px[i] + px[j]) / 2 + ox, (py[i] + py[j]) / 2 + oy);
   }
   ctx.closePath();
+}
+
+// Soft round blobs, one per colour, painted once: shadows and light pools.
+const blobs = new Map<string, HTMLCanvasElement>();
+function softBlob(color: string): HTMLCanvasElement {
+  let c = blobs.get(color);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, color);
+  gr.addColorStop(0.62, color);
+  gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 64, 64);
+  blobs.set(color, c);
+  return c;
+}
+
+/**
+ * A drop that has stopped moving is painted once into its own small picture
+ * and reused, so a level with many resting drops costs little. Glittery drops
+ * refresh their picture a few times a second so their glitter still twinkles.
+ */
+export function drawDropCached(ctx: CanvasRenderingContext2D, dr: Drop, S: number) {
+  if (dr.still < 0.25) { dr.cache = null; drawDrop(ctx, dr, S); return; }
+  const tick = dr.glitter ? Math.floor(performance.now() / 300) : 0;
+  const key = `${S.toFixed(3)}|${dr.vol}|${dr.x.toFixed(2)}|${dr.y.toFixed(2)}|${dr.rgb.join()}|${dr.glitter}|${tick}`;
+  const half = Math.ceil((dr.R * 1.7 + 2) * S);
+  if (!dr.cache || dr.cacheKey !== key) {
+    const c = dr.cache && dr.cache.width === half * 2 ? dr.cache : document.createElement('canvas');
+    c.width = c.height = half * 2;
+    const g = c.getContext('2d')!;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, c.width, c.height);
+    g.setTransform(S, 0, 0, S, half - dr.x * S, half - dr.y * S);
+    drawDrop(g, dr, S);
+    dr.cache = c;
+    dr.cacheKey = key;
+  }
+  ctx.drawImage(dr.cache, dr.x - half / S, dr.y - half / S, (half * 2) / S, (half * 2) / S);
 }
 
 /**
@@ -64,22 +153,22 @@ export function drawDrop(ctx: CanvasRenderingContext2D, dr: Drop, S: number, sca
   const flat = 1 - rim / R; // 0.5 for a small drop, more for big ones
 
   // 1. shadow on the paper (down and right of the light), then the coloured
-  //    light that passed through the drop and lands just beside it
-  const OFF = 4000;
-  ctx.fillStyle = '#000';
-  trace(ctx, xs, ys, -OFF, 0);
-  ctx.shadowColor = css(tint(col, INK, 0.75), 0.16 * alpha);
-  ctx.shadowBlur = rim * 0.9 * S;
-  ctx.shadowOffsetX = (OFF + rim * 0.35) * S;
-  ctx.shadowOffsetY = rim * 0.5 * S;
-  ctx.fill();
-  ctx.shadowColor = css(col, 0.22 * alpha);
-  ctx.shadowBlur = rim * 0.45 * S;
-  ctx.shadowOffsetX = (OFF + rim * 0.22) * S;
-  ctx.shadowOffsetY = rim * 0.3 * S;
-  ctx.fill();
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+  //    light that passed through the drop and lands just beside it. Both are
+  //    soft blobs painted once (a live canvas blur is far too slow on old
+  //    tablets), stretched like the drop.
+  const sx = 1 + m, sy = Math.max(0.4, 1 - m * 0.8);
+  const blob = (c: string, a: number, ox: number, oy: number, r: number) => {
+    ctx.save();
+    ctx.globalAlpha = alpha * a;
+    ctx.translate(gx + ox, gy + oy);
+    ctx.rotate(psi);
+    ctx.scale(sx, sy);
+    ctx.drawImage(softBlob(c), -r, -r, r * 2, r * 2);
+    ctx.restore();
+  };
+  blob(css(tint(col, INK, 0.75)), 0.2, rim * 0.35, rim * 0.5, R + rim * 0.55);
+  blob(css(col), 0.28, rim * 0.22, rim * 0.3, R + rim * 0.25);
+  void S;
 
   // 2. the body: clear water with dye, see-through in the middle (the paper
   //    shows), deeper colour toward the rim; the gradient stretches with the drop
@@ -126,22 +215,21 @@ export function drawDrop(ctx: CanvasRenderingContext2D, dr: Drop, S: number, sca
     ctx.save();
     trace(ctx, xs, ys);
     ctx.clip();
-    const n = Math.round(10 + dr.vol * 6);
-    for (let i = 0; i < n; i++) {
-      const u = hash(dr.id * 31 + i), v = hash(dr.id * 57 + i * 3.1);
-      const rr = Math.sqrt(u) * R * 0.82, an = v * Math.PI * 2 + t * 0.15;
-      const px = gx + Math.cos(an) * rr, py = gy + Math.sin(an) * rr;
-      const tw = 0.35 + 0.65 * Math.max(0, Math.sin(t * 5 + i * 1.7));
-      const sz = (0.22 + hash(i * 13 + dr.id) * 0.3) * Math.min(1.4, k * 1.1);
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.rotate(hash(i + dr.id) * 3 + t * 0.6);
-      ctx.globalAlpha = alpha * tw;
-      ctx.fillStyle = GLITTER[i % GLITTER.length];
-      ctx.fillRect(-sz, -sz * 0.6, sz * 2, sz * 1.2);
-      ctx.restore();
-    }
+    // a pale shimmer, then lots of flecks
+    ctx.fillStyle = `rgba(255,248,220,${0.08 * alpha})`;
+    ctx.fill();
+    ctx.globalAlpha = alpha;
+    flecks(ctx, gx, gy, R * 0.85, Math.round(22 + dr.vol * 12), dr.id, t, R * 0.075);
     ctx.restore();
+    // glints that twinkle over the drop
+    for (let i = 0; i < 3; i++) {
+      const s = Math.max(0, Math.sin(t * (2.2 + i * 0.7) + i * 2.1 + dr.id));
+      if (s < 0.4) continue;
+      const an = hash(dr.id * 5 + i) * Math.PI * 2, rr = R * (0.3 + hash(i * 9 + dr.id) * 0.5);
+      ctx.globalAlpha = alpha;
+      glint(ctx, gx + Math.cos(an) * rr, gy + Math.sin(an) * rr, R * 0.32 * (s - 0.4) / 0.6);
+    }
+    ctx.globalAlpha = alpha;
   }
 
   // 5. reflected rim along the lower right
@@ -270,6 +358,7 @@ const LEAVES = [
   { at: 2, a: 0.5, l: 26, w: 12 }, { at: 4, a: 0.02, l: 28, w: 12 }, { at: 6, a: 0.98, l: 30, w: 13 },
   { at: 8, a: 1.42, l: 24, w: 11 }, { at: 9, a: 0.38, l: 20, w: 9 },
   { at: 13, a: 0.86, l: 22, w: 10 }, { at: 16, a: 0.14, l: 21, w: 9 },
+  { at: 20, a: 1.1, l: 19, w: 8.5 }, { at: 23, a: 0.62, l: 18, w: 8 }, { at: 27, a: 1.32, l: 17, w: 7.5 }, { at: 31, a: 0.28, l: 16, w: 7 },
 ];
 
 function leaf(g: CanvasRenderingContext2D, k: number, ang: number, L: number, W: number, young: number) {
@@ -351,6 +440,8 @@ function plant(g: CanvasRenderingContext2D, k: number, stage: number) {
   if (stage >= 8) flower(g, k, stage >= 10 ? Math.min(1, (stage - 9) / 2) : 0);
   // a second, violet flower later in the game
   if (stage >= 14) flower(g, k, stage >= 16 ? Math.min(1, (stage - 15) / 2) : 0, 0.32, 40 * k, '#a874e8');
+  // a third, yellow one near the end of the game
+  if (stage >= 25) flower(g, k, stage >= 28 ? Math.min(1, (stage - 27) / 2) : 0, 0.95, 32 * k, '#f3c633');
 }
 
 /**
@@ -358,7 +449,7 @@ function plant(g: CanvasRenderingContext2D, k: number, stage: number) {
  * (its corners peek out), and the paper sheet. ox, oy and k place the world
  * in device pixels.
  */
-export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: number, stage = 0, glue: Glue[] = []): HTMLCanvasElement {
+export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: number, stage = 0, glue: Glue[] = [], towel?: TowelDef, placed: Set<string> = new Set()): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const g = c.getContext('2d')!;
@@ -396,6 +487,7 @@ export function drawBackdrop(w: number, h: number, ox: number, oy: number, k: nu
   g.save();
   g.setTransform(k, 0, 0, k, ox, oy);
   glue.forEach((q, gi) => drawGlue(g, q, gi));
+  if (towel) drawTowel(g, towel, placed);
   g.restore();
   // the plant leans over the paper's corner, as in the reference photo
   g.save();
@@ -439,6 +531,146 @@ function drawGlue(g: CanvasRenderingContext2D, q: Glue, gi: number) {
   g.lineTo(q.x1 + nx * w * 0.25, q.y1 + ny * w * 0.25);
   g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = w * 0.12;
   g.stroke();
+}
+
+/** The towel's texture (world units) inside the current clip: quilted dots and fibres. */
+function towelTexture(g: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) {
+  const step = 4.2;
+  for (let y = y0 + step / 2, row = 0; y < y1; y += step * 0.5, row++) {
+    for (let x = x0 + (row % 2 ? step / 2 : 0); x < x1; x += step) {
+      g.beginPath(); g.arc(x + 0.15, y + 0.2, 0.55, 0, Math.PI * 2);
+      g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
+      g.beginPath(); g.arc(x, y, 0.5, 0, Math.PI * 2);
+      g.fillStyle = 'rgba(170,160,145,0.22)'; g.fill();
+    }
+  }
+  const w = x1 - x0, h = y1 - y0;
+  for (let i = 0; i < w * h * 0.5; i++) {
+    const x = x0 + hash(i * 3.1) * w, y = y0 + hash(i * 7.7) * h, a = hash(i) * Math.PI;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 0.9, y + Math.sin(a) * 0.9);
+    g.strokeStyle = 'rgba(160,150,135,0.08)'; g.lineWidth = 0.12; g.stroke();
+  }
+}
+
+/**
+ * Paper towel (world units): a whole sheet for free colouring (quilted,
+ * perforated edges), or a picture of cut-out pieces lying on the paper, each
+ * with a pale hint of the colour it wants.
+ */
+function drawTowel(g: CanvasRenderingContext2D, t: TowelDef, placed: Set<string>) {
+  const cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2;
+  if (!t.picture) {
+    const w = t.x1 - t.x0, h = t.y1 - t.y0;
+    g.save();
+    g.shadowColor = 'rgba(70,60,40,0.22)';
+    g.shadowBlur = 6; g.shadowOffsetY = 1.5;
+    g.fillStyle = '#fefdfb';
+    g.fillRect(t.x0, t.y0, w, h);
+    g.restore();
+    g.save();
+    g.beginPath(); g.rect(t.x0, t.y0, w, h); g.clip();
+    towelTexture(g, t.x0, t.y0, t.x1, t.y1);
+    g.restore();
+    g.save();
+    g.setLineDash([0.9, 0.9]);
+    g.strokeStyle = 'rgba(150,140,125,0.45)'; g.lineWidth = 0.35;
+    for (const x of [t.x0 + 1.2, t.x1 - 1.2]) { g.beginPath(); g.moveTo(x, t.y0 + 1); g.lineTo(x, t.y1 - 1); g.stroke(); }
+    g.restore();
+    return;
+  }
+  const sc = t.scale ?? 1;
+  const pic: Picture = PICTURES[t.picture];
+  // lines drawn on the paper (balloon strings)
+  for (const [x0, y0, qx, qy, x1, y1] of pic.decor ?? []) {
+    g.beginPath();
+    g.moveTo(cx + x0 * sc, cy + y0 * sc);
+    g.quadraticCurveTo(cx + qx * sc, cy + qy * sc, cx + x1 * sc, cy + y1 * sc);
+    g.strokeStyle = 'rgba(90,90,110,0.55)'; g.lineWidth = 0.45; g.lineCap = 'round';
+    g.stroke();
+  }
+  const cut = cutPicture(pic, t, Math.min(12, g.getTransform().a), placed);
+  if (!cut) return;
+  // the towel's shadow on the paper, then the towel
+  g.save();
+  g.shadowColor = 'rgba(70,60,40,0.25)';
+  g.shadowBlur = 4 * g.getTransform().a; g.shadowOffsetY = 1 * g.getTransform().a;
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(cut.img, cut.x, cut.y, cut.w, cut.h);
+  g.restore();
+}
+
+/** The cut shape of the last picture (which pixel is which part, the edge), kept so the guides can be repainted quickly. */
+let cutCache: { key: string; W: number; H: number; bx0: number; by0: number; bx1: number; by1: number; id: Int16Array; alpha: Float32Array; rim: Float32Array; area: Int8Array; piece: Int8Array } | null = null;
+
+/**
+ * A picture cut out of towel, painted into its own canvas at `res` pixels per
+ * world unit: the hand-cut outline (soft and a little fibrous at the edge), the
+ * towel's quilted texture, and the guides: a faint hint of each part's colour
+ * and a faint line round it, until a drop has soaked into that part (`placed`).
+ */
+function cutPicture(pic: Picture, t: TowelDef, res: number, placed: Set<string>) {
+  const key = `${t.picture}|${t.scale}|${t.x0},${t.y0},${t.x1},${t.y1}|${res}`;
+  if (cutCache?.key !== key) {
+    const shape = new PictureShape(pic, t.scale ?? 1);
+    const cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2;
+    // where the picture is (a quick coarse look)
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (let y = t.y0; y <= t.y1; y += 0.5) for (let x = t.x0; x <= t.x1; x += 0.5) {
+      if (shape.at(x - cx, y - cy).edge < 1) { bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); }
+    }
+    if (bx0 > bx1) return null;
+    bx0 -= 1; by0 -= 1; bx1 += 1; by1 += 1;
+    const W = Math.ceil((bx1 - bx0) * res), H = Math.ceil((by1 - by0) * res);
+    const id = new Int16Array(W * H), alpha = new Float32Array(W * H), rim = new Float32Array(W * H);
+    const area = new Int8Array(W * H), piece = new Int8Array(W * H);
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const q = shape.at(bx0 + (i + 0.5) / res - cx, by0 + (j + 0.5) / res - cy);
+      const k = j * W + i;
+      // fibres at the cut edge: a little fuzz
+      const e = q.edge + (hash(k * 0.37) - 0.5) * 0.18;
+      alpha[k] = Math.max(0, Math.min(1, 0.5 - e * res));
+      id[k] = alpha[k] > 0 ? (q.area + 1) * 32 + q.piece + 1 : -1;
+      area[k] = q.area; piece[k] = q.piece;
+      // the cut edge is a touch darker (the towel's thickness)
+      rim[k] = Math.max(0, Math.min(1, 1 + q.edge / 0.6)) * 0.07;
+    }
+    cutCache = { key, W, H, bx0, by0, bx1, by1, id, alpha, rim, area, piece };
+  }
+  const { W, H, bx0, by0, bx1, by1, id, alpha, rim, area, piece } = cutCache;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d')!;
+  const img = g.createImageData(W, H), px = img.data;
+  const cols = pic.areas.map((a) => toRgb(PIG[a.color]));
+  const guide = (k: number) => area[k] >= 0 && !placed.has(`${area[k]}:${piece[k]}`);
+  for (let k = 0; k < W * H; k++) {
+    if (alpha[k] <= 0) continue;
+    let r = 254, gg = 253, b = 251;
+    if (guide(k)) {
+      const cc = cols[area[k]];
+      r = r * 0.86 + cc[0] * 255 * 0.14; gg = gg * 0.86 + cc[1] * 255 * 0.14; b = b * 0.86 + cc[2] * 255 * 0.14;
+    }
+    const o = k * 4, f = 1 - rim[k];
+    px[o] = r * f; px[o + 1] = gg * f; px[o + 2] = b * f; px[o + 3] = alpha[k] * 255;
+  }
+  // a faint guide line round each part still waiting for its drop
+  const lw = Math.max(1, Math.round(res * 0.3));
+  for (let j = lw; j < H - lw; j++) for (let i = lw; i < W - lw; i++) {
+    const k = j * W + i, a = id[k];
+    if (a < 0 || !guide(k)) continue;
+    let edge = false;
+    for (const m of [k + lw, k - lw, k + lw * W, k - lw * W]) if (id[m] >= 0 && id[m] !== a) edge = true;
+    if (!edge) continue;
+    const cc = tint(cols[area[k]], INK, 0.3), o = k * 4, f = 0.3;
+    px[o] = px[o] * (1 - f) + cc[0] * 255 * f; px[o + 1] = px[o + 1] * (1 - f) + cc[1] * 255 * f; px[o + 2] = px[o + 2] * (1 - f) + cc[2] * 255 * f;
+  }
+  g.putImageData(img, 0, 0);
+  // the towel's quilted texture, only on the towel
+  g.globalCompositeOperation = 'source-atop';
+  g.setTransform(res, 0, 0, res, -bx0 * res, -by0 * res);
+  towelTexture(g, bx0, by0, bx1, by1);
+  return { img: c, x: bx0, y: by0, w: W / res, h: H / res };
 }
 
 /** A few glints twinkling on the glue stripes (drawn every frame, world units). */
@@ -552,12 +784,18 @@ export function drawCup(ctx: CanvasRenderingContext2D, c: CupView, t: number) {
     // glitter in the water
     ctx.save();
     ctx.clip();
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 90; i++) {
       const x = c.x + (hash(i * 3 + c.x) - 0.5) * c.tw, y = bottom - hash(i * 7 + c.x) * c.h * lvl;
-      const tw = 0.4 + 0.6 * Math.max(0, Math.sin(t * 4 + i * 1.3));
+      const tw = 0.45 + 0.55 * Math.max(0, Math.sin(t * 4 + i * 1.3));
       ctx.globalAlpha = tw;
       ctx.fillStyle = GLITTER[i % GLITTER.length];
-      ctx.fillRect(x - 0.3, y - 0.2, 0.6, 0.4);
+      ctx.fillRect(x - 0.45, y - 0.3, 0.9, 0.6);
+    }
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < 2; i++) {
+      const s = Math.max(0, Math.sin(t * 2.5 + i * 2.6 + c.x));
+      const x = c.x + (hash(i * 17 + c.x) - 0.5) * c.bw * 0.7, y = bottom - (0.3 + hash(i * 23 + c.x) * 0.6) * c.h * lvl;
+      glint(ctx, x, y, 2.2 * s);
     }
     ctx.restore();
   }
@@ -602,23 +840,27 @@ export function drawCup(ctx: CanvasRenderingContext2D, c: CupView, t: number) {
     ctx.restore();
   }
 
-  // a glitter cup wears a twinkling star on its rim
+  // a glitter cup wears glitter on its rim (not a star): flecks along the mouth, and glints
   if (c.glitter) {
-    const sx = c.x + c.tw * 0.5 + 1.5, sy = c.top - 1.5, r = 3 + Math.sin(t * 3) * 0.5;
     ctx.save();
-    ctx.translate(sx, sy);
-    ctx.rotate(Math.sin(t * 1.5) * 0.2);
-    ctx.beginPath();
-    for (let i = 0; i < 8; i++) {
-      const q = i % 2 ? r * 0.38 : r, an = -Math.PI / 2 + (i * Math.PI) / 4;
-      ctx.lineTo(Math.cos(an) * q, Math.sin(an) * q);
+    for (let i = 0; i < 70; i++) {
+      const an = hash(i * 7 + c.x) * Math.PI * 2;
+      const x = c.x + Math.cos(an) * rx * (0.96 + hash(i * 3) * 0.1), y = c.top + Math.sin(an) * ry * (0.9 + hash(i * 5) * 0.3);
+      const tw = 0.5 + 0.5 * Math.max(0, Math.sin(t * 4 + i * 1.9));
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(hash(i * 11) * 3);
+      ctx.globalAlpha = tw;
+      ctx.fillStyle = GLITTER[i % GLITTER.length];
+      ctx.fillRect(-0.55, -0.35, 1.1, 0.7);
+      ctx.restore();
     }
-    ctx.closePath();
-    ctx.fillStyle = '#ffd54a';
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 0.6;
-    ctx.fill();
-    ctx.stroke();
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < 3; i++) {
+      const s = Math.max(0, Math.sin(t * 2 + i * 2.1 + c.x * 0.3));
+      const an = Math.PI + (i + 0.5) * (Math.PI / 3);
+      glint(ctx, c.x + Math.cos(an) * rx * 0.9, c.top + Math.sin(an) * ry - 1.2, 2.6 * s);
+    }
     ctx.restore();
   }
 
@@ -643,17 +885,43 @@ export function drawCup(ctx: CanvasRenderingContext2D, c: CupView, t: number) {
 
 // ---------------------------------------------------------------- the celebration
 
+// Pictures painted once and reused: stickers, the writing, falling droplets.
+// (Blurred shadows, gradients and text redrawn every frame were too heavy for old tablets.)
+const sprites = new Map<string, HTMLCanvasElement>();
+function sprite(key: string, w: number, h: number, paint: (g: CanvasRenderingContext2D) => void): HTMLCanvasElement {
+  let c = sprites.get(key);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = Math.max(1, Math.ceil(w));
+  c.height = Math.max(1, Math.ceil(h));
+  paint(c.getContext('2d')!);
+  if (sprites.size > 60) sprites.clear();
+  sprites.set(key, c);
+  return c;
+}
+
 /** Celebration timing, in seconds from its start: quick, so it feels immediate (owner's request). */
-export const PARTY = { stars: [0.12, 0.22, 0.32], pop: 0.22, write: 0.3, writeFor: 0.55, buttons: 1.0 };
+export const PARTY = { stars: [0.12, 0.22, 0.32], pop: 0.22, write: 0.3, writeFor: 0.55, buttons: 1.0, hop0: 0.05, hopGap: 0.1, hopLand: 0.38 };
 
 const easeBack = (q: number) => { const c = 2.2; q = Math.max(0, Math.min(1, q)); return 1 + (c + 1) * Math.pow(q - 1, 3) + c * Math.pow(q - 1, 2); };
 
-function sticker(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, rot: number, s: number) {
+function sticker(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, rot: number, s: number, k: number) {
   if (s <= 0) return;
+  const half = r * 1.45;
+  const img = sprite(`sticker|${r}|${k.toFixed(2)}`, half * 2 * k, half * 2 * k, (g) => {
+    g.setTransform(k, 0, 0, k, half * k, half * k);
+    stickerShape(g, r);
+  });
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rot);
   ctx.scale(s, s);
+  ctx.drawImage(img, -half, -half, half * 2, half * 2);
+  ctx.restore();
+}
+
+function stickerShape(ctx: CanvasRenderingContext2D, r: number) {
+  ctx.save();
   const star = (rr: number) => {
     ctx.beginPath();
     for (let i = 0; i < 10; i++) {
@@ -691,35 +959,37 @@ function sticker(ctx: CanvasRenderingContext2D, x: number, y: number, r: number,
  * Drawn over the paper after the last cup fills: three star stickers pop on,
  * then "כל הכבוד!" is written in marker from right to left, in the cups' colours.
  */
-export function drawParty(ctx: CanvasRenderingContext2D, t: number, colors: RGB[]) {
+export function drawParty(ctx: CanvasRenderingContext2D, t: number, colors: RGB[], k = 4) {
   const cx = 80;
   const [s0, s1, s2] = PARTY.stars;
-  sticker(ctx, cx + 18, 17, 5.5, 0.2, easeBack((t - s0) / PARTY.pop));
-  sticker(ctx, cx, 13, 7, 0, easeBack((t - s1) / PARTY.pop));
-  sticker(ctx, cx - 18, 17, 5.5, -0.2, easeBack((t - s2) / PARTY.pop));
+  sticker(ctx, cx + 18, 17, 5.5, 0.2, easeBack((t - s0) / PARTY.pop), k);
+  sticker(ctx, cx, 13, 7, 0, easeBack((t - s1) / PARTY.pop), k);
+  sticker(ctx, cx - 18, 17, 5.5, -0.2, easeBack((t - s2) / PARTY.pop), k);
   const p = Math.max(0, Math.min(1, (t - PARTY.write) / PARTY.writeFor));
   if (p <= 0) return;
-  const text = 'כל הכבוד!';
-  ctx.save();
-  ctx.font = '700 15px Fredoka, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.direction = 'rtl';
-  const w = ctx.measureText(text).width + 4;
-  ctx.beginPath();
-  ctx.rect(cx + w / 2 - w * p, 20, w * p, 22);
-  ctx.clip();
-  const gr = ctx.createLinearGradient(cx + w / 2, 0, cx - w / 2, 0);
+  // the writing is painted once; it is revealed from right to left by showing more of the picture
+  const W = 64, H = 22; // world units around the text
   const cols = colors.length ? colors : [[0.2, 0.4, 0.9] as RGB];
-  cols.forEach((c, i) => gr.addColorStop(cols.length === 1 ? 0 : i / (cols.length - 1), css(c)));
-  if (cols.length === 1) gr.addColorStop(1, css(tint(cols[0], INK, 0.2)));
-  ctx.lineJoin = 'round';
-  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-  ctx.lineWidth = 2.2;
-  ctx.strokeText(text, cx, 31.5);
-  ctx.fillStyle = gr;
-  ctx.fillText(text, cx, 31.5);
-  ctx.restore();
+  const img = sprite(`write|${k.toFixed(2)}|${cols.map((c) => c.join()).join('/')}`, W * k, H * k, (g) => {
+    g.setTransform(k, 0, 0, k, (W / 2) * k, (H / 2) * k);
+    const text = 'כל הכבוד!';
+    g.font = '700 15px Fredoka, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.direction = 'rtl';
+    const w = g.measureText(text).width;
+    const gr = g.createLinearGradient(w / 2, 0, -w / 2, 0);
+    cols.forEach((c, i) => gr.addColorStop(cols.length === 1 ? 0 : i / (cols.length - 1), css(c)));
+    if (cols.length === 1) gr.addColorStop(1, css(tint(cols[0], INK, 0.2)));
+    g.lineJoin = 'round';
+    g.strokeStyle = 'rgba(255,255,255,0.95)';
+    g.lineWidth = 2.2;
+    g.strokeText(text, 0, 0.5);
+    g.fillStyle = gr;
+    g.fillText(text, 0, 0.5);
+  });
+  const shown = img.width * p;
+  ctx.drawImage(img, img.width - shown, 0, shown, img.height, cx + W / 2 - W * p, 31.5 - H / 2, W * p, H);
 }
 
 // ---------------------------------------------------------------- particles and hints
@@ -757,15 +1027,18 @@ export function drawParticles(ctx: CanvasRenderingContext2D, ps: Particle[]) {
       ctx.lineWidth = 0.5;
       ctx.stroke();
     } else {
-      // a small falling droplet, with its own little shine
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      const g = ctx.createRadialGradient(p.x - p.size * 0.3, p.y - p.size * 0.35, 0, p.x, p.y, p.size);
-      g.addColorStop(0, css(tint(p.rgb, WHITE, 0.75), a));
-      g.addColorStop(0.45, css(p.rgb, a * 0.9));
-      g.addColorStop(1, css(tint(p.rgb, INK, 0.35), a));
-      ctx.fillStyle = g;
-      ctx.fill();
+      // a small falling droplet, with its own little shine (one picture per colour)
+      const img = sprite(`pdrop|${p.rgb.map((v) => v.toFixed(2)).join()}`, 32, 32, (g) => {
+        const gr = g.createRadialGradient(11, 10, 0, 16, 16, 16);
+        gr.addColorStop(0, css(tint(p.rgb, WHITE, 0.75)));
+        gr.addColorStop(0.45, css(p.rgb, 0.9));
+        gr.addColorStop(1, css(tint(p.rgb, INK, 0.35)));
+        g.fillStyle = gr;
+        g.beginPath(); g.arc(16, 16, 16, 0, Math.PI * 2); g.fill();
+      });
+      ctx.globalAlpha = a;
+      ctx.drawImage(img, p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
+      ctx.globalAlpha = 1;
     }
   }
 }
@@ -801,10 +1074,11 @@ function drawDoubleTap(ctx: CanvasRenderingContext2D, x: number, y: number, p: n
 }
 
 /** A see-through fingertip showing a move: press at a, slide to b, lift. */
-export function drawHand(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, p: number, tap2 = false, via?: { x: number; y: number }) {
+export function drawHand(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, p: number, tap2 = false, via?: { x: number; y: number } | { x: number; y: number }[]) {
   if (tap2) { drawDoubleTap(ctx, ax, ay, p); return; }
   // the path: straight, or round a glue stripe through `via`
-  const pts = via ? [[ax, ay], [via.x, via.y], [bx, by]] : [[ax, ay], [bx, by]];
+  const vias = via ? (Array.isArray(via) ? via : [via]) : [];
+  const pts = [[ax, ay], ...vias.map((v) => [v.x, v.y]), [bx, by]];
   const segs = pts.slice(1).map((q, i) => Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]));
   const total = segs.reduce((m, v) => m + v, 0) || 1;
   const at = (e: number): [number, number] => {

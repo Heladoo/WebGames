@@ -224,8 +224,8 @@ const world = (page: Page, x: number, y: number) => page.evaluate(([x, y]) => {
   return { x: g.ox + x * g.S, y: g.oy + y * g.S };
 }, [x, y]);
 
-test('level 21: a drop dragged through the glitter glue gets glitter, and the glitter cup takes it', async ({ page }) => {
-  await startLevel(page, 21);
+test('level 22: a drop dragged through the glitter glue gets glitter, and the glitter cup takes it', async ({ page }) => {
+  await startLevel(page, 22);
   let s = await snap(page);
   expect(s.drops[0].glitter).toBe(false);
   expect(s.cups[0].glitter).toBe(true);
@@ -234,8 +234,8 @@ test('level 21: a drop dragged through the glitter glue gets glitter, and the gl
   await expect(page.locator('#win')).toBeVisible({ timeout: 6000 });
 });
 
-test('level 22: a plain drop through the glue cannot go to its plain cup, and the card says why', async ({ page }) => {
-  await startLevel(page, 22);
+test('level 23: a plain drop through the glue cannot go to its plain cup, and the card says why', async ({ page }) => {
+  await startLevel(page, 23);
   const s = await snap(page);
   const blue = s.drops.find((d) => isBlue(d.pig))!;
   const cup = s.cups.find((c) => !c.glitter)!;
@@ -245,8 +245,8 @@ test('level 22: a plain drop through the glue cannot go to its plain cup, and th
   await expect(page.locator('#fail-text')).toContainText('נצנצים');
 });
 
-test('level 22: going round the end of the glue keeps a drop plain; the hint shows that way', async ({ page }) => {
-  await startLevel(page, 22);
+test('level 23: going round the end of the glue keeps a drop plain; the hint shows that way', async ({ page }) => {
+  await startLevel(page, 23);
   // lift the blue drop so the straight way to its cup would cross the glue
   await page.evaluate(() => { const g = (window as any).__dd; const b = g.drops.find((d: any) => d.pig[2] > 0); b.x = 58; b.y = 14; });
   await page.waitForTimeout(100);
@@ -259,4 +259,101 @@ test('level 22: going round the end of the glue keeps a drop plain; the hint sho
   await page.waitForTimeout(900);
   const after = await snap(page);
   expect(after.cups.find((c) => !c.glitter)!.filled).toBe(true);
+});
+
+test('level 19: four green halves can never make lime and turquoise, so the level ends with the try-again card', async ({ page }) => {
+  await startLevel(page, 19);
+  // the state from the owner's screenshot: the yellow and blue drops are gone, four green halves are left
+  await page.evaluate(() => {
+    const g = (window as any).__dd;
+    const Drop = g.drops[0].constructor;
+    g.drops = [0, 1, 2, 3].map((i: number) => { const d = new Drop(40 + i * 25, 40, 1, [0, 0.5, 0.5]); d.still = 1; return d; });
+    g.dirty = true;
+  });
+  await expect(page.locator('#fail')).toBeVisible({ timeout: 4000 });
+  await expect(page.locator('#fail-text')).toContainText('ננסה שוב');
+});
+
+test('level 16: the hint splits the big red drop first (joining first would be a dead end)', async ({ page }) => {
+  await startLevel(page, 16);
+  const h = await page.evaluate(() => (window as any).__dd.suggest());
+  expect(h.tap2, 'the first hint is a double tap (split)').toBe(true);
+});
+
+test('the brown level: any joins are fine, and all the dots make one huge brown drop for the cup', async ({ page }) => {
+  await startLevel(page, 21); // the brown level comes right before the glitter
+  let s = await snap(page);
+  expect(s.cups[0].need).toBe(6);
+  // join the dots one by one into the first drop, in any order
+  for (let n = 0; n < 12 && s.drops.length > 1; n++) {
+    const big = s.drops.reduce((m, d) => (d.vol > m.vol ? d : m));
+    const small = s.drops.filter((d) => d !== big).sort((a, b) => Math.hypot(a.x - big.x, a.y - big.y) - Math.hypot(b.x - big.x, b.y - big.y))[0];
+    await drag(page, small, big, 30);
+    expect(await page.locator('#fail').isVisible(), 'no join is a mistake here').toBe(false);
+    s = await snap(page);
+  }
+  expect(s.drops.length).toBe(1);
+  expect(s.drops[0].vol).toBeCloseTo(6, 5);
+  await drag(page, s.drops[0], s.cups[0]);
+  await expect(page.locator('#win')).toBeVisible({ timeout: 7000 });
+});
+
+/** Follow the game's own hints (with their turns) until the level ends. */
+async function followHints(page: Page, max = 16) {
+  for (let n = 0; n < max; n++) {
+    const h = await page.evaluate(() => {
+      const g = (window as any).__dd; const h = g.suggest(); if (!h) return null;
+      const P = (x: number, y: number) => ({ x: g.ox + x * g.S, y: g.oy + y * g.S });
+      const vs = h.via ? (Array.isArray(h.via) ? h.via : [h.via]) : [];
+      return [P(h.ax, h.ay), ...vs.map((q: any) => P(q.x, q.y)), P(h.bx, h.by)];
+    });
+    if (!h) break;
+    await dragPath(page, h);
+    await page.waitForTimeout(1200);
+    if (await page.locator('#fail').isVisible() || await page.locator('#win').isVisible()) break;
+  }
+}
+
+test('free towel colouring: every drop soaks in, and the level is done', async ({ page }) => {
+  await startLevel(page, 30);
+  await followHints(page);
+  await expect(page.locator('#win')).toBeVisible({ timeout: 8000 });
+});
+
+test('the red dot: a drop soaks in as soon as it touches the towel, before it is let go', async ({ page }) => {
+  await startLevel(page, 32);
+  const s = await snap(page);
+  const dot = await page.evaluate(() => { const g = (window as any).__dd, c = g.towel.areaCentre(0); return { x: g.ox + c.x * g.S, y: g.oy + c.y * g.S }; });
+  const d = s.drops[0];
+  await page.mouse.move(d.x, d.y); await page.mouse.down();
+  for (let i = 1; i <= 30; i++) { await page.mouse.move(d.x + ((dot.x - d.x) * i) / 30, d.y + ((dot.y - d.y) * i) / 30); await page.waitForTimeout(16); }
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => (window as any).__dd.drops[0].state), 'soaking while the finger is still down').toBe('soak');
+  expect(await page.evaluate(() => (window as any).__dd.placedParts().size), 'the dot\'s guide is gone once a drop is on it').toBe(1);
+  await page.mouse.up();
+  await expect(page.locator('#win')).toBeVisible({ timeout: 8000 });
+});
+
+for (const [n, what] of [[33, 'the flower (joining yellow and blue for green)'], [34, 'the sun (a yellow drop on each ray)'], [35, 'the balloons (orange, green, purple)']] as const) {
+  test(`towel picture ${n}: following the hints colours ${what}`, async ({ page }) => {
+    await startLevel(page, n);
+    await followHints(page);
+    await expect(page.locator('#win')).toBeVisible({ timeout: 8000 });
+  });
+}
+
+test('the towel flower: red on the green stem is a mistake, and the card says where', async ({ page }) => {
+  await startLevel(page, 33);
+  // the game's own path planner leads the red drop to the stem without touching the petals
+  const pts = await page.evaluate(() => {
+    const g = (window as any).__dd, t = g.towel;
+    const red = g.drops.find((d: any) => d.pig[0] > 0.9);
+    const c = t.areaCentre(1);
+    const via = g.planPath(red, c.x, c.y, t.cellAt(c.x, c.y));
+    const P = (x: number, y: number) => ({ x: g.ox + x * g.S, y: g.oy + y * g.S });
+    return [P(red.x, red.y), ...via.map((q: any) => P(q.x, q.y)), P(c.x, c.y)];
+  });
+  await dragPath(page, pts);
+  await expect(page.locator('#fail')).toBeVisible({ timeout: 6000 });
+  await expect(page.locator('#fail-text')).toContainText('בגבעול');
 });

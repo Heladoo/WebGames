@@ -7,9 +7,11 @@
 import { PIG, type Pig, type RGB, pigToRgb, sameColor, scalePig, share, tint, WHITE } from './color';
 import { Drop, mergeInto, R1, reach, stepDrop } from './drop';
 import { type Glue, type Level, LEVELS, WORLD_H, WORLD_W } from './levels';
-import { type CupView, type Particle, drawBackdrop, drawCup, drawDrop, drawGlueTwinkle, drawHand, drawParticles, drawParty, PAPER, PARTY } from './render';
-import { sfx } from './sfx';
+import { type CupView, type Particle, drawBackdrop, drawCup, drawDropCached, drawGlueTwinkle, drawHand, drawParticles, drawParty, PAPER, PARTY } from './render';
+import { playParty, prepareParty, sfx } from './sfx';
 import { stats } from './stats';
+import { type Answer, quarters, QUARTER, solve } from './solver';
+import { areaTarget, Towel } from './towel';
 
 export interface Cup extends CupView {
   pig: Pig;
@@ -23,7 +25,9 @@ export interface Cup extends CupView {
 export interface FailInfo {
   a: Pig; b: Pig; mix: Pig;
   /** 'touch': colours touched in a level that keeps them apart; 'nocup': no cup wants the new drop */
-  kind: 'touch' | 'nocup' | 'stuck' | 'glitter';
+  kind: 'touch' | 'nocup' | 'stuck' | 'glitter' | 'towel';
+  /** for 'towel': the area of the picture that got the wrong colour */
+  area?: string;
   /** the drop that caused it has glitter (and no cup wants glitter of that colour) */
   glitter?: boolean;
 }
@@ -35,6 +39,8 @@ export interface GameEvents {
 }
 
 const DT = 1 / 240;
+/** the plant's corner (world units): no drop starts there */
+const PLANT = { x: 34, y: 30 };
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const portrait = matchMedia('(orientation: portrait)');
 /** water level of an empty cup (the coloured hint at the bottom) and of a full one */
@@ -68,20 +74,50 @@ export class Game {
   grab = { x: 0, y: 0 };
   idle = 0;
   /** a move to show: slide from a to b, or (tap2) tap a drop twice to split it */
-  hint: { ax: number; ay: number; bx: number; by: number; t: number; tap2?: boolean; via?: { x: number; y: number } } | null = null;
+  hint: { ax: number; ay: number; bx: number; by: number; t: number; tap2?: boolean; via?: { x: number; y: number } | { x: number; y: number }[] } | null = null;
   /** the last tap on a drop, to catch a double tap (split) */
   lastTap: { id: number; t: number; x: number; y: number } | null = null;
   /** seconds with no useful move left (a dead end ends the level gently) */
   stuckFor = 0;
+  /** the solver's answer for the drops as they are now (worked out again after every change) */
+  answer: Answer | null = null;
+  /** the drops the answer's move numbers refer to */
+  answerDrops: Drop[] = [];
+  dirty = true;
   timers: { at: number; fn: () => void }[] = [];
   drips: { at: number; drop: Drop; i: number }[] = [];
   /** the celebration, seconds since it began (-1: none) */
   party = -1;
   partyStars = 0;
+  /** the paper towel of this level, and its layer (between the still scene and the drops) */
+  towel: Towel | null = null;
+  towelEl: HTMLCanvasElement;
+  areaDone: boolean[] = [];
+  /** the paint each area of the picture has been given (drops that soaked in on it) */
+  areaGot: Pig[] = [];
+  /** each area's parts (petals, rays), the paint each part was given, and which are done */
+  parts: { area: number; piece: number; got: Pig; done: boolean }[] = [];
+  /** a drop of a colour its area doesn't use soaked in there (the mistake card follows) */
+  towelWrong: { area: number; pig: Pig } | null = null;
+  towelCheckIn = 0;
+  /** the celebration's sound plays live (its recording was not ready) */
+  liveParty = true;
   last = 0;
 
-  constructor(canvas: HTMLCanvasElement, events: GameEvents) {
+  /** the still scene (table, card, paper, glue, plant) on its own canvas under the game, painted only when it changes */
+  bg: HTMLCanvasElement;
+  /** the sharpest resolution allowed now; lowered on slow devices (see `frame`) */
+  maxDpr = 2;
+  slowFor = 0;
+  frameMs = 16;
+
+  constructor(canvas: HTMLCanvasElement, bg: HTMLCanvasElement, events: GameEvents) {
     this.canvas = canvas;
+    this.bg = bg;
+    this.towelEl = document.createElement('canvas');
+    this.towelEl.id = 'towel';
+    this.towelEl.setAttribute('aria-hidden', 'true');
+    bg.after(this.towelEl);
     this.ctx = canvas.getContext('2d')!;
     this.events = events;
     canvas.addEventListener('pointerdown', (e) => this.down(e));
@@ -98,15 +134,31 @@ export class Game {
 
   resize() {
     const w = innerWidth, h = innerHeight;
-    this.dpr = Math.min(3, devicePixelRatio || 1);
-    this.canvas.width = Math.round(w * this.dpr);
-    this.canvas.height = Math.round(h * this.dpr);
-    this.canvas.style.width = w + 'px';
-    this.canvas.style.height = h + 'px';
+    this.dpr = Math.min(this.maxDpr, devicePixelRatio || 1);
+    for (const c of [this.canvas, this.bg]) {
+      c.width = Math.round(w * this.dpr);
+      c.height = Math.round(h * this.dpr);
+      c.style.width = w + 'px';
+      c.style.height = h + 'px';
+    }
     this.S = Math.min(w / this.W, h / this.H);
     this.ox = (w - this.W * this.S) / 2;
     this.oy = (h - this.H * this.S) / 2;
     this.backdrop = null; // painted again on the next frame
+    if (this.towelEl) this.layoutTowel();
+  }
+
+  /** The towel's stain is a small picture the browser stretches smoothly over the towel. */
+  layoutTowel() {
+    const el = this.towelEl, t = this.towel;
+    el.style.display = t ? 'block' : 'none';
+    if (!t) return;
+    const d = t.def;
+    el.style.left = this.ox + d.x0 * this.S + 'px';
+    el.style.top = this.oy + d.y0 * this.S + 'px';
+    el.style.width = (d.x1 - d.x0) * this.S + 'px';
+    el.style.height = (d.y1 - d.y0) * this.S + 'px';
+    t.dirty = true;
   }
 
   layoutCups() {
@@ -128,6 +180,18 @@ export class Game {
     if (this.level !== level) this.backdrop = null; // the plant grows from level to level
     this.level = level;
     this.layoutCups();
+    this.towel = level.towel ? new Towel(level.towel) : null;
+    if (this.towel) {
+      // the towel paints its stain straight into its layer
+      this.towelEl.width = this.towel.canvas.width; this.towelEl.height = this.towel.canvas.height;
+      this.towel.canvas = this.towelEl;
+      this.towelEl.getContext('2d')!.clearRect(0, 0, this.towelEl.width, this.towelEl.height);
+    }
+    this.areaDone = this.towel ? this.towel.areas.map(() => false) : [];
+    this.areaGot = this.towel ? this.towel.areas.map(() => [0, 0, 0] as Pig) : [];
+    this.parts = this.towel ? this.towel.parts().flatMap((ps, area) => ps.map((piece) => ({ area, piece, got: [0, 0, 0] as Pig, done: false }))) : [];
+    this.towelWrong = null;
+    this.layoutTowel();
     this.drops = [];
     this.particles = [];
     this.timers = [];
@@ -142,6 +206,7 @@ export class Game {
     this.hint = null;
     this.lastTap = null;
     this.stuckFor = 0;
+    this.dirty = true;
     for (const def of level.drops) {
       const vol = def.vol ?? 1;
       // one unit of paint per unit of water, whatever the colour
@@ -149,6 +214,8 @@ export class Game {
     }
     this.spread();
     if (drip) this.dripIn();
+    // mix this level's celebration sound in the background while it is played
+    prepareParty(this.cups.length);
   }
 
   /** Let the drops drip onto the paper one by one. */
@@ -183,6 +250,8 @@ export class Game {
       for (const d of this.drops) {
         d.x = Math.max(x0, Math.min(x1, d.x));
         d.y = Math.max(y0, Math.min(y1, d.y));
+        // keep clear of the plant and the buttons in the top-left corner
+        if (d.x < PLANT.x + d.R && d.y < PLANT.y + d.R) d.y = PLANT.y + d.R;
       }
       if (!moved) break;
     }
@@ -273,6 +342,8 @@ export class Game {
   release(d: Drop) {
     d.state = 'rest';
     d.pull = null;
+    // let go over the paper towel: it drinks the drop right there (it can be carried anywhere first)
+    if (this.towel && this.onTowel(d)) { this.soak(d); return; }
     d.excite(0.08, Math.atan2(d.vy, d.vx));
     const cup = this.cupUnder(d);
     if (cup >= 0) this.tryCup(d, cup);
@@ -389,6 +460,7 @@ export class Game {
     d.pull = { x: cx - ux * (Rn + 2.5), y: cy - uy * (Rn + 2.5) };
     b.pull = { x: cx + ux * (Rn + 2.5), y: cy + uy * (Rn + 2.5) };
     this.drops.push(b);
+    this.dirty = true;
     this.splash(cx, cy, d.rgb, 4);
     sfx.split(v);
     this.later(0.55, () => {
@@ -404,6 +476,7 @@ export class Game {
     for (const g of this.glue) {
       if (segDist(d.x, d.y, g) > (g.w ?? 7) / 2 + d.R * 0.3) continue;
       d.glitter = true;
+      this.dirty = true;
       d.jiggle(Math.random() * 3);
       this.splash(d.x, d.y, [1, 0.85, 0.3], 8);
       sfx.glitter();
@@ -441,16 +514,18 @@ export class Game {
   touchCheck(d: Drop) {
     for (const o of this.drops) {
       if (o === d || o.state !== 'rest' || o.grow < 0.9) continue;
-      if (Math.hypot(o.x - d.x, o.y - d.y) > d.R * 2.2 + o.R + 14) continue;
+      // only drops within reach of the dragged one's stretched outline
+      if (Math.hypot(o.x - d.x, o.y - d.y) > d.R * 1.8 + o.R + 10) continue;
       const r = reach(d, o);
       const same = sameColor(d.pig, o.pig);
       if (r > 0) {
         const info: FailInfo = { a: [...d.pig] as Pig, b: [...o.pig] as Pig, mix: [0, 0, 0], kind: 'touch', glitter: d.glitter || o.glitter };
         mergeInto(d, o);
+        this.dirty = true;
         info.mix = [...d.pig] as Pig;
         this.grab.x *= 0.5; this.grab.y *= 0.5;
         this.splash(d.x, d.y, d.rgb, 5);
-        const ok = (same || this.level.mixing) && this.fitsACup(d.pig, d.vol, d.glitter);
+        const ok = (same || this.level.mixing) && (!!this.towel || this.level.free || this.fitsACup(d.pig, d.vol, d.glitter));
         if (ok) {
           sfx.merge(d.vol, !same);
         } else {
@@ -482,8 +557,20 @@ export class Game {
   // ------------------------------------------------------------ frame
 
   frame(now: number) {
-    const dt = Math.min(0.05, this.last ? (now - this.last) / 1000 : 0);
+    const raw = this.last ? now - this.last : 16;
+    const dt = Math.min(0.05, raw / 1000);
     this.last = now;
+    // a device that keeps missing frames gets a lower resolution (2 → 1.5 → 1), once and for good
+    this.frameMs += (Math.min(raw, 250) - this.frameMs) * 0.05;
+    if (!document.hidden && this.frameMs > 30 && this.dpr > 1) {
+      this.slowFor += raw / 1000;
+      if (this.slowFor > 2) {
+        this.maxDpr = Math.max(1, this.dpr - 0.5);
+        this.slowFor = 0;
+        this.frameMs = 16;
+        this.resize();
+      }
+    } else this.slowFor = 0;
     this.update(dt);
     this.draw();
     requestAnimationFrame((t) => this.frame(t));
@@ -508,26 +595,40 @@ export class Game {
     }
 
     // physics in small fixed steps
-    this.acc += dt;
+    // a slow device does at most 8 steps a frame (the drops then move a little
+    // slower, rather than each frame taking longer and longer)
+    this.acc = Math.min(this.acc + dt, DT * 8);
     const dragged = this.dragged();
     while (this.acc >= DT) {
       this.acc -= DT;
       for (const d of this.drops) {
         if (d.state === 'gone' || d.state === 'pour') continue;
+        // a drop that has come to rest sleeps until something touches it
+        if (d.still > 0.25) continue;
         stepDrop(d, DT, this.time);
         this.clamp(d);
       }
       // touches every step, so a fast drop cannot jump over another one
-      if (dragged && dragged.state === 'drag') { this.glueCheck(dragged); this.touchCheck(dragged); }
+      if (dragged && dragged.state === 'drag') {
+        this.glueCheck(dragged);
+        this.touchCheck(dragged);
+        // touching the paper towel: it drinks the drop right there
+        if (this.towel && dragged.state === 'drag') { const at = this.towelContact(dragged); if (at) this.soak(dragged, at); }
+      }
     }
     for (const d of this.drops) {
       d.shiver = Math.max(0, d.shiver - dt * 2.5);
       d.shake = Math.max(0, d.shake - dt);
+      // is it perfectly still? (then it is drawn from a cached picture)
+      let moving = d.state !== 'rest' || d.grow < 1 || d.shiver > 0 || d.shake > 0 || Math.hypot(d.vx, d.vy) > 0.05;
+      if (!moving) for (let i = 0; i < d.dv.length; i++) if (Math.abs(d.dv[i]) > d.R * 0.01) { moving = true; break; }
+      d.still = moving ? 0 : d.still + dt;
     }
     if (dragged && dragged.state === 'drag') {
       sfx.slide(Math.hypot(dragged.vx, dragged.vy), dragged.vol);
     }
     this.updatePours(dt);
+    if (this.towel) this.updateTowel(dt);
     this.drops = this.drops.filter((d) => d.state !== 'gone');
     this.checkStuck(dt);
 
@@ -561,11 +662,27 @@ export class Game {
     }
   }
 
-  /** A dead end (no useful move is left): after a moment, the level ends gently and says so. */
+  /** Ask the solver again when something changed (a join, split, pour or glitter). */
+  think() {
+    if (!this.dirty || !this.level) return;
+    this.dirty = false;
+    if (this.level.free || this.towel) { this.answer = null; return; }
+    const live = this.drops.filter((d) => d.state !== 'gone' && d.state !== 'pour');
+    const pouring = this.drops.filter((d) => d.state === 'pour');
+    const cups = this.cups.map((c, i) => {
+      const coming = pouring.filter((d) => d.pour?.cup === i).reduce((m, d) => m + d.vol, 0);
+      return { pig: c.pig, need: c.need * QUARTER, room: Math.round((c.total - c.got - coming) * QUARTER), g: c.glitter };
+    });
+    this.answerDrops = live;
+    this.answer = solve(live.map((d) => ({ p: quarters(d.pig), g: d.glitter })), cups, { mixing: this.level.mixing, glue: this.glue.length > 0 });
+  }
+
+  /** A dead end (the solver finds no way left): after a moment, the level ends gently and says so. */
   checkStuck(dt: number) {
+    this.think();
     const busy = this.over || this.paused || this.drips.length > 0 || this.drops.some((d) => d.state !== 'rest' || d.grow < 1);
-    if (busy || !this.cups.length) { this.stuckFor = 0; return; }
-    this.stuckFor = this.suggest() ? 0 : this.stuckFor + dt;
+    if (busy || !this.cups.length || this.level.free || this.answer?.solvable !== 'no') { this.stuckFor = 0; return; }
+    this.stuckFor += dt;
     if (this.stuckFor > 1.2) {
       this.over = true;
       const p = this.drops[0]?.pig ?? [1, 1, 1];
@@ -591,6 +708,7 @@ export class Game {
         d.grow = Math.max(0.05, 1 - q * 0.8);
       } else {
         d.state = 'gone';
+        this.dirty = true;
         c.got += d.vol;
         c.filled = c.got >= c.total - 0.01;
         c.goal = LOW + (HIGH - LOW) * Math.min(1, c.got / c.total);
@@ -598,11 +716,133 @@ export class Game {
         this.splash(c.x, wy, c.rgb, 10);
         for (let k = 0; k < 2; k++) this.particles.push({ x: c.x, y: wy, vx: 0, vy: 0, life: 0.9 + k * 0.3, max: 0.9 + k * 0.3, kind: 'ring', rgb: c.rgb, size: c.bw * 0.45, rot: 0 });
         sfx.cup(this.cups.indexOf(c), c.filled);
-        if (this.cups.every((k) => k.filled)) {
-          this.over = true;
-          this.won = true;
-          this.later(0.35, () => { this.party = 0; this.partyStars = 0; sfx.win(); });
-        }
+        if (this.cups.every((k) => k.filled)) this.winLevel();
+      }
+    }
+  }
+
+  winLevel() {
+    this.over = true;
+    this.won = true;
+    this.later(0.35, () => {
+      this.party = 0;
+      this.partyStars = 0;
+      // the recorded celebration sound if it is ready; else it plays live
+      this.liveParty = !playParty(this.cups.length);
+      if (this.liveParty) sfx.win();
+    });
+  }
+
+  // ------------------------------------------------------------ the paper towel
+
+  /** Is any part of the drop's outline on the towel? */
+  onTowel(d: Drop): boolean { return !!this.towelContact(d); }
+
+  /** The parts of the picture that a drop has soaked into (their guides are gone): "area:piece". */
+  placedParts(): Set<string> {
+    return new Set(this.parts.filter((q) => q.got.some((v) => v > 0.01)).map((q) => `${q.area}:${q.piece}`));
+  }
+
+  /** Where the drop's outline touches the towel (the spot nearest its middle), if it does. */
+  towelContact(d: Drop): { x: number; y: number; cell: number } | null {
+    const t = this.towel!;
+    let best: { x: number; y: number; cell: number } | null = null;
+    for (const f of [0.45, 0.75, 0.95]) for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const x = d.x + Math.cos(a) * d.R * f, y = d.y + Math.sin(a) * d.R * f;
+      const cell = t.cellAt(x, y);
+      if (cell >= 0) { best = { x, y, cell }; break; }
+    }
+    return best;
+  }
+
+  /** The towel drinks the drop where it touched it: a real towel starts colouring there. */
+  soak(d: Drop, at = this.towelContact(d)) {
+    if (!at) return;
+    this.cancelDrag();
+    d.soakAt = at;
+    const t = this.towel!, i = t.area[at.cell];
+    if (i >= 0) {
+      d.pig.forEach((v, k) => (this.areaGot[i][k] += v));
+      const part = this.parts.find((q) => q.area === i && q.piece === t.piece[at.cell])!;
+      d.pig.forEach((v, k) => (part.got[k] += v));
+      // a colour this area doesn't use at all (red on the green stem) is a mistake
+      const tg = areaTarget(t.areas[i]), sh = share(d.pig);
+      if (sh.some((v, k) => v > 0.05 && tg[k] < 0.02) && !this.towelWrong) this.towelWrong = { area: i, pig: [...part.got] as Pig };
+      // its guide (pale colour and outline) has done its job: the still scene is painted again without it
+      this.backdrop = null;
+    }
+    d.state = 'soak';
+    d.pull = null;
+    d.vx *= 0.2; d.vy *= 0.2;
+    d.jiggle(Math.random() * 3);
+    this.touched = true;
+    sfx.soak(d.vol);
+  }
+
+  updateTowel(dt: number) {
+    const t = this.towel!;
+    for (const d of this.drops) {
+      if (d.state !== 'soak') continue;
+      // the drop shrinks into the towel, giving it its water and dye; it slides on a little as it goes
+      const amt = Math.min(d.vol, (1.2 + d.vol * 1.5) * dt);
+      const sh = share(d.pig);
+      // into the piece it touched, around the spot where it touched (it creeps in from there)
+      const at = d.soakAt ?? { x: d.x, y: d.y, cell: -1 };
+      d.x += (at.x - d.x) * Math.min(1, dt * 3); d.y += (at.y - d.y) * Math.min(1, dt * 3);
+      t.absorb(at.x, at.y, d.R * 0.9, amt, [sh[0] * amt, sh[1] * amt, sh[2] * amt]);
+      d.vol -= amt;
+      d.setPig(scalePig(sh, d.vol));
+      if (d.vol < 0.04) d.state = 'gone';
+    }
+    t.step(dt);
+    t.render();
+    if (this.over || this.paused) return;
+    this.towelCheckIn -= dt;
+    if (this.towelCheckIn > 0) return;
+    this.towelCheckIn = 0.25;
+    const soaking = this.drops.some((d) => d.state === 'soak');
+    const left = this.drops.filter((d) => d.state !== 'gone');
+    if (!t.areas.length) {
+      // free colouring: done when every drop has soaked in
+      if (!left.length && t.quiet > 1) this.winLevel();
+      return;
+    }
+    // a picture: each part wants a drop of its area's colour (paint spreads freely on the towel,
+    // so it is judged by what was put where, not by where the colour ran)
+    if (this.towelWrong && !soaking) {
+      const w = this.towelWrong, a = t.areas[w.area];
+      this.over = true;
+      sfx.oops();
+      this.later(1, () => this.events.fail({ a: w.pig, b: scalePig(areaTarget(a), a.need), mix: w.pig, kind: 'towel', area: a.name }));
+      return;
+    }
+    const per = (q: { area: number }) => t.areas[q.area].need / this.parts.filter((o) => o.area === q.area).length;
+    for (const q of this.parts) {
+      if (q.done) continue;
+      const vol = q.got[0] + q.got[1] + q.got[2];
+      if (vol >= per(q) * 0.9 && sameColor(q.got, PIG[t.areas[q.area].color])) {
+        q.done = true;
+        const c = t.partCentre(q.area, q.piece);
+        this.splash(c.x, c.y, pigToRgb(areaTarget(t.areas[q.area])), 6);
+      }
+    }
+    t.areas.forEach((_, i) => {
+      if (this.areaDone[i] || !this.parts.every((q) => q.area !== i || q.done)) return;
+      this.areaDone[i] = true;
+      sfx.cup(i, true);
+    });
+    if (this.areaDone.every(Boolean) && !soaking) { this.winLevel(); return; }
+    // a dead end: the parts still want more of a colour than the drops left have
+    if (!soaking && t.quiet > 1) {
+      const have = [0, 0, 0], miss = [0, 0, 0];
+      for (const d of left) d.pig.forEach((v, k) => (have[k] += v));
+      for (const q of this.parts) if (!q.done) areaTarget(t.areas[q.area]).forEach((v, k) => (miss[k] += Math.max(0, v * per(q) - q.got[k])));
+      if (miss.some((v, k) => v > have[k] + 0.1)) {
+        this.over = true;
+        sfx.oops();
+        const p = left[0]?.pig ?? [1, 1, 1];
+        this.later(0.8, () => this.events.fail({ a: p, b: p, mix: p, kind: 'stuck' }));
       }
     }
   }
@@ -613,11 +853,11 @@ export class Game {
     this.party += dt;
     const t = this.party;
     this.cups.forEach((c, i) => {
-      const start = 0.05 + i * 0.1;
+      const start = PARTY.hop0 + i * PARTY.hopGap;
       const q = (t - start) / 0.45;
       c.hop = q > 0 && q < 1 ? Math.sin(q * Math.PI) * (1 - q * 0.3) : 0;
       // a little fountain from each cup as it lands
-      if (t0 < start + 0.38 && t >= start + 0.38) {
+      if (t0 < start + PARTY.hopLand && t >= start + PARTY.hopLand) {
         c.wave = 1;
         const n = reduced ? 4 : 12;
         for (let k = 0; k < n; k++) {
@@ -626,16 +866,198 @@ export class Game {
             life: 1.3, max: 1.3, kind: 'drop', rgb: tint(c.rgb, WHITE, Math.random() * 0.15), size: 0.7 + Math.random() * 0.9, rot: 0,
           });
         }
-        sfx.hop(i);
+        if (this.liveParty) sfx.hop(i);
       }
     });
     const starsAt = PARTY.stars;
-    while (this.partyStars < 3 && t >= starsAt[this.partyStars]) { sfx.sticker(this.partyStars); this.partyStars++; }
+    while (this.partyStars < 3 && t >= starsAt[this.partyStars]) { if (this.liveParty) sfx.sticker(this.partyStars); this.partyStars++; }
     if (t0 < PARTY.buttons && t >= PARTY.buttons) this.events.win();
   }
 
-  /** What should a stuck player try next? */
+  /** What should a stuck player try next? The first move of the solver's shortest way, else a rule of thumb. */
   suggest(): Game['hint'] {
+    if (this.towel) return this.suggestTowel();
+    this.think();
+    const mv = this.answer?.move, L = this.answerDrops;
+    if (mv) {
+      if (mv.kind === 'pour') {
+        const d = L[mv.drop], c = this.cups[mv.cup];
+        const px = c.x, py = c.top + c.h * 0.3;
+        return { ax: d.x, ay: d.y, bx: px, by: py, t: 0, via: d.glitter ? undefined : this.around(d.x, d.y, px, py, d.R) };
+      }
+      if (mv.kind === 'join') {
+        const a = L[mv.a], b = L[mv.b];
+        return { ax: b.x, ay: b.y, bx: a.x, by: a.y, t: 0, via: b.glitter ? undefined : this.around(b.x, b.y, a.x, a.y, b.R) };
+      }
+      if (mv.kind === 'split') { const d = L[mv.drop]; return { ax: d.x, ay: d.y, bx: d.x, by: d.y, t: 0, tap2: true }; }
+      if (mv.kind === 'glitter') {
+        const d = L[mv.drop];
+        const g = this.glue.reduce((m, q) => (segDist(d.x, d.y, q) < segDist(d.x, d.y, m) ? q : m));
+        const p = nearest(d.x, d.y, g);
+        return { ax: d.x, ay: d.y, bx: p.x, by: p.y, t: 0 };
+      }
+    }
+    if (this.answer?.solvable === 'no') return null;
+    return this.suggestRough();
+  }
+
+  /**
+   * On a towel: a drop of an area's colour to that area. For a mixed colour
+   * (green, orange, purple) the two drops are joined first on the paper, so the
+   * colour really mixes. Free colouring: anywhere on the towel.
+   */
+  suggestTowel(): Game['hint'] {
+    const t = this.towel!;
+    const free = this.drops.filter((d) => d.state === 'rest');
+    if (!free.length) return null;
+    if (!t.areas.length) {
+      // free colouring: the nearest drop to the towel's middle (it soaks in at the edge it reaches)
+      const cx = (t.def.x0 + t.def.x1) / 2, cy = (t.def.y0 + t.def.y1) / 2;
+      const d = free.reduce((m, q) => (Math.hypot(q.x - cx, q.y - cy) < Math.hypot(m.x - cx, m.y - cy) ? q : m));
+      return { ax: d.x, ay: d.y, bx: cx, by: cy, t: 0, via: this.planPath(d, cx, cy, -1) };
+    }
+    const fits = (p: Pig, want: number[]) => p.every((v, c) => v < 0.01 || v <= want[c] + 0.05);
+    for (const q of this.parts) {
+      if (q.done) continue;
+      const a = t.areas[q.area], tg = areaTarget(a);
+      const per = a.need / this.parts.filter((o) => o.area === q.area).length;
+      const want = tg.map((v, c) => v * per - q.got[c]);
+      // a drop that already has the colour: onto the part (past the other drops and parts)
+      const ready = free.find((d) => sameColor(d.pig, PIG[a.color]) && fits(d.pig, want));
+      if (ready) {
+        const c = t.partCentre(q.area, q.piece);
+        return { ax: ready.x, ay: ready.y, bx: c.x, by: c.y, t: 0, via: this.planPath(ready, c.x, c.y, t.cellAt(c.x, c.y)) };
+      }
+      // two drops that make the colour together: join them first (the closest pair)
+      let pair: [number, Drop, Drop] | null = null;
+      for (const x of free) for (const y of free) {
+        if (x === y || x.vol < y.vol) continue;
+        const p: Pig = [x.pig[0] + y.pig[0], x.pig[1] + y.pig[1], x.pig[2] + y.pig[2]];
+        // only a join that makes the area's colour (red + blue for purple, not blue + blue)
+        if (!fits(p, want) || !sameColor(p, PIG[a.color])) continue;
+        const dist = Math.hypot(x.x - y.x, x.y - y.y);
+        if (!pair || dist < pair[0]) pair = [dist, x, y];
+      }
+      if (pair) return { ax: pair[2].x, ay: pair[2].y, bx: pair[1].x, by: pair[1].y, t: 0 };
+    }
+    return null;
+  }
+
+  /**
+   * A path for a drop to a towel piece that touches nothing on the way: no other
+   * drop, and no other piece (it would soak in there). Tries straight, then one or
+   * two turns: a gap out of the drops, and a spot beside the target piece.
+   * Returns the turns (the path ends at bx, by). `target` is a cell of the target
+   * piece (-1: any towel, for free colouring).
+   */
+  planPath(d: Drop, bx: number, by: number, target: number): { x: number; y: number }[] {
+    const t = this.towel!;
+    const others = this.drops.filter((o) => o !== d && o.state === 'rest');
+    const sameCell = (k: number) => target < 0 || (t.area[k] === t.area[target] && t.piece[k] === t.piece[target]);
+    // a drop at (x, y) moving in direction `dir`: does it touch another drop, or a
+    // towel piece other than the target? A dragged drop stretches toward the finger,
+    // so the margin is bigger ahead of it than beside it.
+    const free = (x: number, y: number, last: boolean, dir = 0) => {
+      if (others.some((o) => Math.hypot(o.x - x, o.y - y) < o.R + d.R + 0.8)) return false;
+      for (let a = 0; a < 32; a++) {
+        const ang = (a / 32) * 6.283;
+        const R = d.R + 1.2 + Math.max(0, Math.cos(ang - dir)) * d.R * 0.5;
+        for (const f of [0.55, 1]) {
+          const k = t.cellAt(x + Math.cos(ang) * R * f, y + Math.sin(ang) * R * f);
+          if (k >= 0 && !(last && sameCell(k))) return false;
+        }
+      }
+      return true;
+    };
+    // a segment is clear if every step is free (reaching the target piece ends it)
+    const clear = (x0: number, y0: number, x1: number, y1: number, toTarget: boolean) => {
+      const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 0.8), dir = Math.atan2(y1 - y0, x1 - x0);
+      for (let i = 1; i <= n; i++) {
+        const x = x0 + ((x1 - x0) * i) / n, y = y0 + ((y1 - y0) * i) / n;
+        if (toTarget && this.towelContactAt(x, y, d.R, sameCell)) return true;
+        if (!free(x, y, toTarget, dir)) return false;
+      }
+      return true;
+    };
+    // the length of a path through some turning points, ending at (bx, by)
+    const len = (pts: { x: number; y: number }[]) => {
+      let m = 0, x = d.x, y = d.y;
+      for (const p of [...pts, { x: bx, y: by }]) { m += Math.hypot(p.x - x, p.y - y); x = p.x; y = p.y; }
+      return m;
+    };
+    const ok = (v: { x: number; y: number }) => v.x >= PAPER.x0 + d.R && v.x <= PAPER.x1 - d.R && v.y >= PAPER.y0 + d.R && v.y <= PAPER.y1 - d.R && free(v.x, v.y, false);
+    // a path through turning points is clear when each piece of it is (the last one may reach the target)
+    const path = (pts: { x: number; y: number }[]) => {
+      let x = d.x, y = d.y;
+      for (const p of pts) { if (!ok(p) || !clear(x, y, p.x, p.y, false)) return false; x = p.x; y = p.y; }
+      return clear(x, y, bx, by, true);
+    };
+    if (path([])) return [];
+    // the way out from among the drops (a gap, then across), and spots around the target
+    const out = this.outOfTheRow(d);
+    const ring: { x: number; y: number }[] = [];
+    for (const r of [d.R + 10, d.R + 16, d.R + 24]) for (let a = 0; a < 24; a++) ring.push({ x: bx + Math.cos((a / 24) * 6.283) * r, y: by + Math.sin((a / 24) * 6.283) * r });
+    // and round the outside of the whole picture: a walk along its corners and sides
+    const b = t.bounds, m = d.R * 1.3 + 3;
+    const mx = (b.x0 + b.x1) / 2, my = (b.y0 + b.y1) / 2;
+    const hull = [
+      { x: b.x0 - m, y: b.y0 - m }, { x: mx, y: b.y0 - m }, { x: b.x1 + m, y: b.y0 - m }, { x: b.x1 + m, y: my },
+      { x: b.x1 + m, y: b.y1 + m }, { x: mx, y: b.y1 + m }, { x: b.x0 - m, y: b.y1 + m }, { x: b.x0 - m, y: my },
+    ].map((p) => ({ x: Math.max(PAPER.x0 + d.R + 1, Math.min(PAPER.x1 - d.R - 1, p.x)), y: Math.max(PAPER.y0 + d.R + 1, Math.min(PAPER.y1 - d.R - 1, p.y)) }));
+    let best: { x: number; y: number }[] | null = null;
+    const consider = (pts: { x: number; y: number }[]) => { if ((!best || len(pts) < len(best)) && path(pts)) best = pts; };
+    consider(out);
+    for (const v of ring) { consider([v]); consider([...out, v]); }
+    // walks along the outside: each leg must be clear, then straight in or through a spot beside the target
+    const legOk = (pts: { x: number; y: number }[]) => {
+      let x = d.x, y = d.y;
+      for (const p of pts) { if (!ok(p) || !clear(x, y, p.x, p.y, false)) return false; x = p.x; y = p.y; }
+      return true;
+    };
+    for (let i = 0; i < hull.length; i++) for (const dir of [1, -1]) {
+      const walk = [...out];
+      for (let n = 0; n < hull.length - 1; n++) {
+        walk.push(hull[(i + dir * n + hull.length * 2) % hull.length]);
+        if (!legOk(walk)) break;
+        consider([...walk]);
+        for (const v of ring) consider([...walk, v]);
+      }
+    }
+    return best ?? out;
+  }
+
+  /** Would a drop of radius r at (x, y) touch a towel cell that `ok` accepts? */
+  towelContactAt(x: number, y: number, r: number, ok: (k: number) => boolean): boolean {
+    const t = this.towel!;
+    for (const f of [0.5, 0.95]) for (let a = 0; a < 16; a++) {
+      const k = t.cellAt(x + Math.cos((a / 16) * 6.283) * r * f, y + Math.sin((a / 16) * 6.283) * r * f);
+      if (k >= 0 && ok(k)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * A way out from among the other drops onto the towel: if another drop is in the
+   * way to the towel's edge, first step into the gap between them.
+   */
+  outOfTheRow(d: Drop): { x: number; y: number }[] {
+    const td = this.towel!.def;
+    const others = this.drops.filter((o) => o !== d && o.state === 'rest');
+    const room = (o: Drop) => o.R + d.R + 1;
+    // across to the towel at height y: no other drop near that line
+    const across = (y: number) => others.every((o) => o.x < d.x - 1 || o.x > td.x0 || Math.abs(o.y - y) > room(o));
+    // up or down to height y in the drop's own column: no drop on the way
+    const along = (y: number) => others.every((o) => Math.abs(o.x - d.x) > room(o) || o.y < Math.min(d.y, y) - room(o) || o.y > Math.max(d.y, y) + room(o));
+    if (across(d.y)) return [{ x: td.x0 + 3, y: d.y }];
+    for (let dy = 2; dy < 30; dy += 0.5) for (const y of [d.y + dy, d.y - dy]) {
+      if (y < PAPER.y0 + d.R || y > PAPER.y1 - d.R) continue;
+      if (along(y) && across(y)) return [{ x: d.x, y }, { x: td.x0 + 3, y }];
+    }
+    return [{ x: td.x0 + 3, y: d.y }];
+  }
+
+  /** Rules of thumb, for when the solver gave up (a very big search). */
+  suggestRough(): Game['hint'] {
     const free = this.drops.filter((d) => d.state === 'rest');
     const takes = (k: Cup, d: { pig: Pig; vol: number }, glitter: boolean) =>
       !k.filled && sameColor(d.pig, k.pig) && k.glitter === glitter && d.vol >= k.need - 0.01 && d.vol <= k.total - k.got + 0.01;
@@ -678,15 +1100,22 @@ export class Game {
     const ctx = this.ctx;
     const k = this.dpr * this.S;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (!this.backdrop) this.backdrop = drawBackdrop(this.canvas.width, this.canvas.height, this.ox * this.dpr, this.oy * this.dpr, k, this.stage(), this.glue);
-    ctx.drawImage(this.backdrop, 0, 0);
+    if (!this.backdrop) {
+      // paint the still scene once, onto the layer underneath
+      this.backdrop = drawBackdrop(this.canvas.width, this.canvas.height, this.ox * this.dpr, this.oy * this.dpr, k, this.stage(), this.glue, this.level?.towel, this.placedParts());
+      const b = this.bg.getContext('2d')!;
+      b.setTransform(1, 0, 0, 1, 0, 0);
+      b.drawImage(this.backdrop, 0, 0);
+    }
+    // the game layer itself is transparent: clear it and draw only what lives
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(k, 0, 0, k, this.ox * this.dpr, this.oy * this.dpr);
     if (this.glue.length) drawGlueTwinkle(ctx, this.glue, this.time);
     for (const c of this.cups) drawCup(ctx, c, this.time);
     // resting drops first, the moving one on top
     const order = [...this.drops].sort((a, b) => (a.state === 'drag' ? 1 : 0) - (b.state === 'drag' ? 1 : 0));
-    for (const d of order) drawDrop(ctx, d, k);
-    if (this.party >= 0) drawParty(ctx, this.party, this.cups.map((c) => c.rgb));
+    for (const d of order) drawDropCached(ctx, d, k);
+    if (this.party >= 0) drawParty(ctx, this.party, this.partyColors(), k);
     drawParticles(ctx, this.particles);
     if (this.hint) drawHand(ctx, this.hint.ax, this.hint.ay, this.hint.bx, this.hint.by, this.hint.t, this.hint.tap2, this.hint.via);
   }
@@ -697,11 +1126,20 @@ export class Game {
     return i < 0 ? 5 : i;
   }
 
+  /** The colours of the writing in the celebration: the cups', or the picture's / the drops'. */
+  partyColors(): RGB[] {
+    if (this.cups.length) return this.cups.map((c) => c.rgb);
+    if (this.towel?.areas.length) return this.towel.areas.map((a) => pigToRgb(PIG[a.color]));
+    return [pigToRgb(PIG.red), pigToRgb(PIG.yellow), pigToRgb(PIG.blue)];
+  }
+
   /** For tests and debugging: positions in CSS pixels. */
   snapshot() {
     const X = (x: number) => this.ox + x * this.S, Y = (y: number) => this.oy + y * this.S;
     return {
       over: this.over, won: this.won,
+      areas: this.towel ? this.towel.areas.map((a, i) => ({ name: a.name, done: this.areaDone[i], paint: this.towel!.areaPaint()[i], centre: (() => { const c = this.towel!.areaCentre(i); return { x: X(c.x), y: Y(c.y) }; })() })) : [],
+      towel: this.towel ? { x0: X(this.towel.def.x0), y0: Y(this.towel.def.y0), x1: X(this.towel.def.x1), y1: Y(this.towel.def.y1) } : null,
       drops: this.drops.map((d) => ({ id: d.id, x: X(d.x), y: Y(d.y), r: d.R * this.S, vol: d.vol, pig: d.pig, state: d.state, glitter: d.glitter })),
       cups: this.cups.map((c) => ({ x: X(c.x), y: Y(c.top + c.h * 0.35), filled: c.filled, need: c.need, total: c.total, got: c.got, pig: c.pig, glitter: c.glitter })),
       toScreen: (x: number, y: number) => ({ x: X(x), y: Y(y) }),

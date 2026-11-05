@@ -2,8 +2,19 @@
 // rises fast, like a small bubble ringing; success notes are soft FM bells on
 // a pentatonic scale, walking up and down. Everything goes through a small
 // generated room reverb and a compressor so nothing can spike.
+//
+// The celebration is the richest moment (bells, a warm pad, sticker pops, cup
+// hops, all with the room) and starting all those voices at once made old
+// tablets stutter. So it is mixed once in the background into a recording
+// (an OfflineAudioContext renders the very same recipes) while the level is
+// played, and the celebration just plays that recording. Same sound, almost no cost.
+
+import { PARTY } from './render';
 
 let ac: AudioContext | null = null;
+/** while mixing a recording: the offline context, and a time shift for the event being recorded */
+let rendering: OfflineAudioContext | null = null;
+let shift = 0;
 let master: GainNode | null = null;
 let send: GainNode | null = null;
 let muted = false;
@@ -21,25 +32,31 @@ function build(): AudioContext | null {
   master = ac.createGain();
   master.gain.value = muted ? 0 : VOL;
   master.connect(hs).connect(comp).connect(ac.destination);
-  // room
-  const len = Math.floor(ac.sampleRate * 2.2);
-  const ir = ac.createBuffer(2, len, ac.sampleRate);
+  const conv = ac.createConvolver();
+  conv.buffer = roomIR(ac);
+  send = ac.createGain();
+  send.gain.value = 0.35;
+  send.connect(conv).connect(master);
+  return ac;
+}
+
+let ir: AudioBuffer | null = null;
+/** The room: 2.2 s of stereo noise, decaying and darkening. Made once. */
+function roomIR(a: BaseAudioContext): AudioBuffer {
+  if (ir && ir.sampleRate === a.sampleRate) return ir;
+  const len = Math.floor(a.sampleRate * 2.2);
+  ir = a.createBuffer(2, len, a.sampleRate);
   for (let ch = 0; ch < 2; ch++) {
     const d = ir.getChannelData(ch);
     let lp = 0;
     for (let i = 0; i < len; i++) {
-      const t = i / ac.sampleRate;
+      const t = i / a.sampleRate;
       const k = 0.25 + 0.7 * Math.min(1, t / 1.5); // darker as it fades
       lp += (Math.random() * 2 - 1 - lp) * (1 - k);
       d[i] = lp * Math.exp(-t * 2.8);
     }
   }
-  const conv = ac.createConvolver();
-  conv.buffer = ir;
-  send = ac.createGain();
-  send.gain.value = 0.35;
-  send.connect(conv).connect(master);
-  return ac;
+  return ir;
 }
 
 /** Call from a user gesture. */
@@ -59,14 +76,15 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function out(g: AudioNode, wet = 0.6, pan = 0) {
+  const a: BaseAudioContext = rendering ?? ac!;
   let node: AudioNode = g;
   if (pan) {
-    const p = ac!.createStereoPanner();
+    const p = a.createStereoPanner();
     p.pan.value = pan;
     node = g.connect(p);
   }
   node.connect(master!);
-  const s = ac!.createGain();
+  const s = a.createGain();
   s.gain.value = wet;
   node.connect(s).connect(send!);
 }
@@ -75,7 +93,7 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
 let noiseBuf: AudioBuffer | null = null;
 /** Pink-ish noise, made once (softer than white noise). */
-function noise(a: AudioContext): AudioBuffer {
+function noise(a: BaseAudioContext): AudioBuffer {
   if (noiseBuf) return noiseBuf;
   const len = a.sampleRate * 2;
   noiseBuf = a.createBuffer(1, len, a.sampleRate);
@@ -92,7 +110,7 @@ function noise(a: AudioContext): AudioBuffer {
 /** A short wet tick: a band of noise, like a fingertip touching water. */
 function tick(freq: number, gain: number, dur: number, pan: number) {
   const a = ready(); if (!a) return;
-  const t = a.currentTime;
+  const t = a.currentTime + shift;
   const src = a.createBufferSource();
   src.buffer = noise(a);
   const bp = a.createBiquadFilter();
@@ -109,29 +127,36 @@ function tick(freq: number, gain: number, dur: number, pan: number) {
 // the sound of a drop sliding on paper: a noise bed whose loudness and
 // brightness follow the drop's speed (it runs silent between drags)
 let slideGain: GainNode | null = null, slideBp: BiquadFilterNode | null = null;
-function slideNodes(a: AudioContext) {
-  if (slideGain) return;
-  const src = a.createBufferSource();
-  src.buffer = noise(a);
-  src.loop = true;
-  slideBp = a.createBiquadFilter();
-  slideBp.type = 'bandpass'; slideBp.Q.value = 1.2; slideBp.frequency.value = 500;
-  const lp = a.createBiquadFilter();
-  lp.type = 'lowpass'; lp.frequency.value = 1800;
-  slideGain = a.createGain();
-  slideGain.gain.value = 0;
-  src.connect(slideBp).connect(lp).connect(slideGain);
-  out(slideGain, 0.15);
-  src.start();
+let slideSrc: AudioBufferSourceNode | null = null;
+function slideNodes(a: BaseAudioContext) {
+  if (!slideGain) {
+    slideBp = a.createBiquadFilter();
+    slideBp.type = 'bandpass'; slideBp.Q.value = 1.2; slideBp.frequency.value = 500;
+    const lp = a.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 1800;
+    slideGain = a.createGain();
+    slideGain.gain.value = 0;
+    slideBp.connect(lp).connect(slideGain);
+    out(slideGain, 0.15);
+  }
+  // the noise only plays while a drop is dragged (a loop running all the time costs old tablets)
+  if (!slideSrc) {
+    slideSrc = a.createBufferSource();
+    slideSrc.buffer = noise(a);
+    slideSrc.loop = true;
+    slideSrc.connect(slideBp!);
+    slideSrc.start();
+  }
 }
 
-function ready(): AudioContext | null {
+function ready(): BaseAudioContext | null {
+  if (rendering) return rendering;
   return ac && ac.state === 'running' && !muted ? ac : null;
 }
 
 function plop(f0: number, gain: number, when = 0, rise = 2.3, dur = 0.17, pan = 0) {
   const a = ready(); if (!a) return;
-  const t = a.currentTime + when;
+  const t = a.currentTime + when + shift;
   const o = a.createOscillator();
   o.type = 'sine';
   o.frequency.setValueAtTime(f0, t);
@@ -147,7 +172,7 @@ function plop(f0: number, gain: number, when = 0, rise = 2.3, dur = 0.17, pan = 
 
 function bell(freq: number, gain: number, when = 0, dur = 1.8, pan = 0) {
   const a = ready(); if (!a) return;
-  const t = a.currentTime + when;
+  const t = a.currentTime + when + shift;
   const car = a.createOscillator();
   car.frequency.value = freq;
   const mod = a.createOscillator();
@@ -167,7 +192,7 @@ function bell(freq: number, gain: number, when = 0, dur = 1.8, pan = 0) {
 
 function soft(freq: number, gain: number, when: number, dur: number, to?: number) {
   const a = ready(); if (!a) return;
-  const t = a.currentTime + when;
+  const t = a.currentTime + when + shift;
   const o = a.createOscillator();
   o.type = 'triangle';
   o.frequency.setValueAtTime(freq, t);
@@ -228,8 +253,16 @@ export const sfx = {
   slide(speed: number, vol = 1) {
     const a = ready();
     if (!a) return;
-    slideNodes(a);
     const t = a.currentTime;
+    if (speed <= 0) {
+      if (slideSrc && slideGain) {
+        slideGain.gain.setTargetAtTime(0, t, 0.05);
+        slideSrc.stop(t + 0.3);
+        slideSrc = null;
+      }
+      return;
+    }
+    slideNodes(a);
     const v = Math.min(1, speed / 90);
     slideGain!.gain.setTargetAtTime(v * v * 0.05 * Math.min(1.4, Math.sqrt(vol)), t, 0.06);
     slideBp!.frequency.setTargetAtTime(380 + v * 900 / Math.sqrt(vol), t, 0.08);
@@ -281,6 +314,26 @@ export const sfx = {
     [24, 28, 31, 36].forEach((st, i) => bell(note(st), 0.025, i * 0.04 + rand(0, 0.015), 0.9, rand(-0.5, 0.5)));
     tick(rand(5000, 7000), 0.03, 0.12, 0);
   },
+    /** a drop soaks into the paper towel: a soft wet hush and a low plop */
+  soak(vol: number) {
+    const a = ready(); if (!a) return;
+    const t = a.currentTime + shift;
+    const src = a.createBufferSource();
+    src.buffer = noise(a);
+    const lp = a.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(2400, t);
+    lp.frequency.exponentialRampToValueAtTime(500, t + 0.5);
+    const g = a.createGain();
+    const peak = 0.05 * Math.min(1.6, Math.sqrt(vol));
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    src.connect(lp).connect(g);
+    out(g, 0.4, rand(-0.3, 0.3));
+    src.start(t, Math.random() * 1.2); src.stop(t + 0.65);
+    plop((260 / Math.sqrt(vol)) * rand(0.95, 1.05), 0.07, 0.02, 0.7, 0.2);
+  },
     /** a cup hops in the celebration */
   hop(i: number) { plop(500 + i * 120, 0.1, 0, 2.4, 0.15, [-0.4, 0, 0.4][i % 3]); },
   /** a star sticker pops on */
@@ -292,7 +345,7 @@ export const sfx = {
   win() {
     [0, 4, 7, 12, 16, 19, 24].forEach((st, i) => bell(note(st), 0.07, i * 0.12, 2.4));
     const a = ready(); if (!a) return;
-    const t = a.currentTime;
+    const t = a.currentTime + shift;
     for (const st of [-12, -5, 0, 4]) {
       for (const det of [-6, 6]) {
         const o = a.createOscillator();
@@ -312,3 +365,52 @@ export const sfx = {
     }
   },
 };
+
+// ---------------------------------------------------------------- the celebration, recorded
+
+const parties = new Map<number, AudioBuffer | 'mixing'>();
+
+/** Mix the celebration for a level with n cups into a recording, in the background. */
+export function prepareParty(n: number) {
+  if (!ac || parties.has(n) || typeof OfflineAudioContext === 'undefined') return;
+  parties.set(n, 'mixing');
+  const sr = ac.sampleRate;
+  let oc: OfflineAudioContext;
+  try { oc = new OfflineAudioContext(2, Math.ceil(sr * 5), sr); } catch { parties.delete(n); return; }
+  const m = oc.createGain();
+  m.connect(oc.destination);
+  const s = oc.createGain();
+  s.gain.value = 0.35;
+  const conv = oc.createConvolver();
+  conv.buffer = roomIR(oc);
+  s.connect(conv).connect(m);
+  const saved: [GainNode | null, GainNode | null] = [master, send];
+  master = m; send = s; rendering = oc;
+  try {
+    // the same events, at the same times as the live celebration (see Game.updateParty)
+    shift = 0; sfx.win();
+    PARTY.stars.forEach((at, i) => { shift = at; sfx.sticker(i); });
+    for (let i = 0; i < n; i++) { shift = PARTY.hop0 + i * PARTY.hopGap + PARTY.hopLand; sfx.hop(i); }
+  } finally {
+    shift = 0; rendering = null;
+    [master, send] = saved;
+  }
+  oc.startRendering().then((b) => parties.set(n, b)).catch(() => parties.delete(n));
+}
+
+/** Play the recorded celebration if it is ready (true), else the game plays it live. */
+export function playParty(n: number): boolean {
+  const b = parties.get(n), a = ready();
+  if (!a || !(b instanceof AudioBuffer) || !master) return false;
+  const src = a.createBufferSource();
+  src.buffer = b;
+  src.connect(master);
+  src.start();
+  return true;
+}
+
+/** For tests: the recorded celebration for n cups, if mixed. */
+export function partyBuffer(n: number): AudioBuffer | null {
+  const b = parties.get(n);
+  return b instanceof AudioBuffer ? b : null;
+}
